@@ -1,0 +1,253 @@
+# ========================================
+# RAG System - Git Ignore Configuration
+# ========================================
+
+# 🔐 SECURITY - API Keys and Secrets
+# CRITICAL: Never commit these files!
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.staging
+*.key
+*.pem
+*.p12
+*.pfx
+config/secrets.json
+secrets/
+
+# 📊 EXPERIMENT RESULTS AND LOGS
+# These are generated outputs that change frequently
+regression_test_results/
+evaluation_results.json
+evaluation_report.md
+EVALUATION_COMPARISON.md
+RATE_LIMITING_NOTES.md
+*.log
+*.out
+logs/
+results/
+experiment_logs/
+performance_metrics/
+
+# 💾 DATABASE FILES
+# ChromaDB and other database files (large and regeneratable)
+*.sqlite3
+*.db
+chroma.sqlite3
+data/chroma_db/
+embedding_experiment_db/
+generation_experiment_db/
+retrieval_experiment_db/
+system_optimization_db/
+test_chroma_db_*/
+*.chroma/
+vector_db/
+database/
+db_backups/
+chroma_db/
+
+# ChromaDB specific files and directories
+**/chroma.sqlite3
+**/*chroma_db*/
+*.bin
+*.index
+*.hnsw
+
+# 🐍 PYTHON SPECIFIC
+# Standard Python gitignore patterns
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# 🧪 TESTING AND COVERAGE
+# Test outputs and coverage reports
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.coverage.*
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+test_results/
+test_outputs/
+pytest_report.html
+
+# 📓 JUPYTER NOTEBOOKS
+# Notebook checkpoints and outputs
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+*.ipynb_checkpoints
+Untitled*.ipynb
+
+# 🔧 DEVELOPMENT TOOLS
+# IDE and editor files
+.vscode/settings.json
+.vscode/launch.json
+.vscode/.ropeproject
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# 🐳 CONTAINERS AND DEPLOYMENT
+# Docker and deployment artifacts
+.dockerignore
+Dockerfile.*
+docker-compose.override.yml
+.docker/
+kubernetes/
+
+# 📦 DEPENDENCIES AND VIRTUAL ENVIRONMENTS
+# Virtual environments (if locally created)
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+.conda/
+conda-meta/
+
+# 🚀 DEPLOYMENT AND PRODUCTION
+# Production configuration and builds
+.vercel/
+.netlify/
+.aws/
+terraform.tfstate*
+.terraform/
+
+# 📈 MACHINE LEARNING SPECIFIC
+# Model files, datasets, and ML artifacts
+models/
+*.model
+*.pkl
+*.pickle
+*.joblib
+*.pt
+*.pth
+*.onnx
+*.h5
+*.hdf5
+checkpoints/
+wandb/
+mlruns/
+.mlflow/
+data/raw/
+data/processed/
+data/interim/
+*.parquet
+*.feather
+
+# 🧹 TEMPORARY FILES
+# System and application temporary files
+*.tmp
+*.temp
+*.cache
+.cache/
+.temp/
+.tmp/
+debug_*.py
+temp_*.py
+scratch_*.py
+# Temporary test files (but not in tests/ directory)
+test_*.py
+!tests/test_*.py
+# Temporary demo files (but not legitimate demos in project directories)
+demo_*.py
+!regression_testing/demo_*.py
+
+# 📋 DOCUMENTATION BUILDS
+# Generated documentation
+docs/_build/
+docs/build/
+site/
+.mkdocs.yml.backup
+
+# 🌐 WEB ASSETS
+# Frontend build artifacts (if any)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+static/build/
+static/dist/
+
+# ⚙️ CONFIGURATION OVERRIDES
+# Local configuration overrides
+config/local.py
+config/development.json
+config/production.json
+local_settings.py
+instance/
+
+# 📱 MOBILE AND PLATFORM SPECIFIC
+# Platform specific files
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Icon?
+
+# 🔄 BACKUP FILES
+# Backup and recovery files
+*.bak
+*.backup
+*.old
+*.orig
+*~
+.#*
+#*#
+
+# =======================================
+# PROJECT SPECIFIC EXCLUSIONS
+# =======================================
+
+# RAG Pipeline Specific
+chunking_results/
+embedding_results/
+generation_results/
+retrieval_results/
+optimization_results/
+
+# Analysis and Debug Files
+analyze_*.py
+debug_*.py
+cleanup_*.py
+limited_evaluation.py
+dependency_audit.py
+
+# Experiment Database Backups
+experiment_backups/
+vector_backups/

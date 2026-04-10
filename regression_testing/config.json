@@ -1,0 +1,100 @@
+{
+  "regression_config": {
+    "thresholds": {
+      "semantic_similarity_threshold": 0.75,
+      "keyword_match_threshold": 0.6,
+      "response_time_threshold": 5.0,
+      "minimum_response_length": 50,
+      "length_tolerance": 0.3,
+      "sources_minimum": 1
+    },
+    "scoring_weights": {
+      "semantic_similarity": 0.4,
+      "keyword_match": 0.25,
+      "length_appropriate": 0.15,
+      "sources_adequate": 0.1,
+      "performance_good": 0.05,
+      "content_substantial": 0.05
+    },
+    "quality_gate": {
+      "minimum_pass_rate": 0.8,
+      "allow_critical_failures": false,
+      "minimum_avg_similarity": 0.75
+    },
+    "test_execution": {
+      "save_results_by_default": true,
+      "results_directory": "regression_test_results",
+      "similarity_model": "all-MiniLM-L6-v2",
+      "timeout_per_test": 30.0
+    }
+  },
+  "test_categories": {
+    "factual": {
+      "description": "Tests for factual accuracy and knowledge",
+      "weight": 1.0,
+      "critical": true
+    },
+    "technical": {
+      "description": "Tests for technical GenAI concepts",
+      "weight": 1.0,
+      "critical": true
+    },
+    "process": {
+      "description": "Tests for process and methodology questions",
+      "weight": 0.8,
+      "critical": false
+    },
+    "deployment": {
+      "description": "Tests for deployment and production topics",
+      "weight": 0.8,
+      "critical": false
+    },
+    "metrics": {
+      "description": "Tests for metrics and evaluation knowledge",
+      "weight": 1.0,
+      "critical": true
+    },
+    "edge_case": {
+      "description": "Edge cases and error handling",
+      "weight": 0.6,
+      "critical": false
+    }
+  },
+  "priority_levels": {
+    "high": {
+      "description": "Critical functionality that must work",
+      "quality_gate_required": true,
+      "weight": 1.0
+    },
+    "medium": {
+      "description": "Important but not critical functionality",
+      "quality_gate_required": false,
+      "weight": 0.8
+    },
+    "low": {
+      "description": "Nice-to-have functionality",
+      "quality_gate_required": false,
+      "weight": 0.5
+    }
+  },
+  "environments": {
+    "development": {
+      "relaxed_thresholds": true,
+      "semantic_similarity_threshold": 0.65,
+      "keyword_match_threshold": 0.5,
+      "response_time_threshold": 10.0
+    },
+    "staging": {
+      "relaxed_thresholds": false,
+      "semantic_similarity_threshold": 0.75,
+      "keyword_match_threshold": 0.6,
+      "response_time_threshold": 7.0
+    },
+    "production": {
+      "relaxed_thresholds": false,
+      "semantic_similarity_threshold": 0.80,
+      "keyword_match_threshold": 0.65,
+      "response_time_threshold": 5.0
+    }
+  }
+}
