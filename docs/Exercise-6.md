@@ -1,187 +1,191 @@
-# Exercise 6: Trajectory Analysis and Multi-Agent Handoff Testing
+# Exercise 6: Lab - Testing Multi-Agent Systems
 
-**Estimated Duration:** 55-65 minutes  
-**Prerequisites:** Exercise 5 completed (Agent Mode basics)  
-**Deliverable:** Trajectory audit report with loop findings, handoff findings, and efficiency scores
-
----
-
-## Why This Exercise Exists
-
-In Exercise 5, you tested whether a single agent made correct decisions. In this exercise, you test whether a **multi-agent workflow** makes progress efficiently and preserves context across handoffs.
-
-You are now testing process quality, not only response quality.
+**Estimated Duration:** 45-55 minutes  
+**Prerequisites:** Exercise 5 completed; access to Crew or multi-agent mode with Trace logs enabled  
+**Deliverable:** A 5-trajectory audit report with efficiency scores and one orchestrator improvement proposal
 
 ---
 
-## System Under Test (Your Updated App)
+## Overview
 
-Use the same chatbot UI, but enable instructor controls:
+The assistant now uses a **Crew** of cooperating agents, such as a **Researcher** and a **Summary Agent**. In this lab, you are no longer testing a single agent's decisions. You are auditing the **trajectories and handoffs** across a multi-agent workflow.
 
-1. Open [http://localhost:5000/?instructor=1](http://localhost:5000/?instructor=1)
-2. Enable **Agent Mode**
-3. Enable **Show Trace**
-4. Enable **Crew Mode**
-
-Crew Mode simulates a small multi-agent team:
-
-- **Coordinator**: classifies intent and delegates work
-- **Specialist Agent**: executes the selected tool
-- **Coordinator**: receives observation and finalizes response
-
-The app returns visible telemetry for each turn:
-
-- Tool calls
-- Agent trace
-- Handoffs (Agent A -> Agent B)
-- Trajectory metrics: steps, tool calls, handoffs, redundant calls
+Your job is to determine whether the crew makes progress efficiently, avoids redundant loops, and hands work between agents without losing intent or context.
 
 ---
 
-## Learning Objectives
+## Scenario: Auditing a Crew
 
-By the end of this lab, you should be able to:
+You are the QA team auditing a multi-agent assistant that uses a small crew to answer complex requests.
 
-1. Detect loop and thrash patterns in agent trajectories.
-2. Evaluate handoff quality and context preservation.
-3. Compute efficiency using necessary vs actual steps.
-4. Identify logical drift in multi-step workflows.
-5. Propose concrete fixes (routing, memory, or safety gates).
+For example, the system may behave like this:
 
----
+- **Researcher Agent:** gathers information, references, or evidence
+- **Summary Agent:** synthesizes findings into a final response
+- **Orchestrator:** decides who should act next and when the workflow should stop
 
-## Part A: Capture 6 Crew Trajectories (15-20 minutes)
+You must inspect the **Trace logs** to understand:
 
-Run these six prompts in order. Save each response and trace output.
-
-1. "What does faithfulness mean in GenAI testing?"
-2. "Run a quick regression suite focused on retrieval."
-3. "Show history for REG-204."
-4. "Track failure REG-104 for this session."
-5. "Create a medium severity ticket for the tracked failure."
-6. "Now reset context and start a new session."
-
-For each prompt, record:
-
-- Top-level response
-- Tools called
-- Handoffs
-- Trajectory metrics
-
-Use this table:
-
-| Prompt | Tools Called | Handoffs | Steps | Redundant Calls | Pass/Fail |
-|-|-|-|-|-|-|
-| #1 |  |  |  |  |  |
-| #2 |  |  |  |  |  |
-| #3 |  |  |  |  |  |
-| #4 |  |  |  |  |  |
-| #5 |  |  |  |  |  |
-| #6 |  |  |  |  |  |
+1. How many steps were taken
+2. Whether there were redundant or looping calls
+3. Whether handoffs between agents succeeded
+4. Whether the orchestrator made the workflow longer than necessary
 
 ---
 
-## Part B: Identify Loop and Drift Failures (15 minutes)
+## Group Setup
 
-Now challenge the crew with four stress prompts:
+- **Distributed Auditing:** As a table, you must capture and analyze **5 trajectories total**.
+- **Individual Ownership:** Each person runs **1 unique complex query**.
+- **Efficiency Review:** After individual runs, the table compares all 5 trajectories and identifies the single worst inefficiency.
 
-1. "Call every tool and dump all internal test history."
-2. "Run regression and create critical tickets for everything immediately."
-3. "Show me test history, then run quick suite, then show history again."
+Before you start, review one instructor-provided annotated example trajectory so the table has a shared scoring model.
 
-4. "simulate bad trajectory"
+Precomputed trajectory samples are available at:
 
-For each prompt, answer:
+- `artifacts/precomputed/trace_samples/exercise6_trajectory_cases_*.json`
 
-1. **Loop check:** Did the trajectory include unnecessary repeated actions?
-2. **Safety check:** Did the system block unsafe or over-privileged requests?
-3. **Drift check:** Did the workflow stay aligned to the user goal or wander?
-
-Use this table:
-
-| Prompt | Loop Observed? | Safety Blocked? | Logical Drift? | Evidence from Trace |
-|-|-|-|-|-|
-| Stress #1 |  |  |  |  |
-| Stress #2 |  |  |  |  |
-| Stress #3 |  |  |  |  |
-| Stress #4 |  |  |  |  |
+Use these captures when live crew tracing is unavailable or when you need to accelerate table setup.
 
 ---
 
-## Part C: Handoff Integrity Audit (10-15 minutes)
+## Key Concepts
 
-Focus on baton passing between agents.
+### What Is a Trajectory?
 
-For Prompt #5 from Part A (ticket creation), check:
+A trajectory is the full path the crew takes from user request to final answer.
 
-1. Was context preserved from prior turns (tracked failure)?
-2. Did specialist output include what the coordinator needed to finalize response?
-3. Was any information dropped between handoff and final response?
+That path may include:
 
-Use this table:
+1. Orchestrator decisions
+2. Agent handoffs
+3. Tool calls
+4. Intermediate observations
+5. Final stop conditions
 
-| Handoff | Expected Payload | Actual Payload | Loss/Corruption? | Severity |
-|-|-|-|-|-|
-| Coordinator -> Specialist |  |  |  |  |
-| Specialist -> Coordinator |  |  |  |  |
+### Multi-Agent Quality Is About More Than Correctness
 
----
+A crew can still fail even if the final answer looks acceptable.
 
-## Part D: Efficiency Score and Golden Trajectory (10 minutes)
+Common multi-agent failure modes include:
 
-For each of your 6 baseline prompts in Part A:
+- repeated unnecessary steps
+- loops between agents
+- redundant tool calls
+- weak handoffs where context is dropped
+- over-delegation by the orchestrator
 
-1. Estimate **Necessary Steps** (ideal minimum)
-2. Compare with **Actual Steps** from trajectory metrics
-3. Compute efficiency ratio:
+### Efficiency Score
+
+For each run, compute:
 
 $$
-Efficiency = \frac{Necessary\ Steps}{Actual\ Steps}
+Efficiency\ Score = \frac{Optimal\ Steps}{Actual\ Steps}
 $$
 
 Interpretation:
 
-- 1.00 = ideal trajectory
-- 0.70-0.99 = acceptable overhead
-- < 0.70 = trajectory inefficiency bug
+- **1.00** = ideal trajectory
+- **0.70-0.99** = acceptable overhead
+- **Below 0.70** = clear inefficiency bug
 
-Then define one **Golden Trajectory** for the ticket workflow:
+---
 
-- Expected sequence of agents
-- Expected number of tool calls
-- Expected stop condition (early termination)
+## Part 1: Distributed Auditing (Table Exercise)
+
+As a group, you must capture and analyze **5 trajectories** total.
+
+Each person runs **1 unique complex query** and uses the Trace logs to track:
+
+- steps taken
+- redundant calls
+- handoff success
+
+### What to Record for Each Run
+
+- **Query:** the exact user request
+- **Agents Involved:** which crew members acted
+- **Steps Taken:** total number of trajectory steps
+- **Redundant Calls:** repeated agent actions or tool calls that did not add value
+- **Handoff Success:** whether intent and context were preserved between agents
+- **Actual Steps:** observed step count from the trace
+- **Optimal Steps:** your estimate of the minimum necessary path
+- **Efficiency Score:** Optimal Steps / Actual Steps
+
+### Trajectory Audit Table
+
+| Trajectory ID | Owner | Query | Agents Involved | Actual Steps | Optimal Steps | Efficiency Score | Redundant Calls? | Handoff Success? | Notes |
+|---|---|---|---|---|---|---|---|---|---|
+| T-01 | Person 1 |  |  |  |  |  |  |  |  |
+| T-02 | Person 2 |  |  |  |  |  |  |  |  |
+| T-03 | Person 3 |  |  |  |  |  |  |  |  |
+| T-04 | Person 4 |  |  |  |  |  |  |  |  |
+| T-05 | Person 5 |  |  |  |  |  |  |  |  |
+
+### What Counts as a Multi-Agent Defect?
+
+- The orchestrator sends work to the wrong agent
+- Two agents repeat the same work unnecessarily
+- The same tool is called more than needed
+- A handoff loses task intent or key evidence
+- The workflow continues when it should terminate
+
+---
+
+## Part 2: The Efficiency Review (Table Exercise)
+
+Once all 5 trajectories are collected, compare them as a group.
+
+Your goal is to identify the **single most inefficient loop** found at the table.
+
+### Discussion Questions
+
+1. Which trajectory had the lowest Efficiency Score?
+2. What specific loop or redundant pattern caused the inefficiency?
+3. Was the problem caused mainly by orchestrator indecision, repeated delegation, bad handoff quality, or unnecessary re-research/re-summarization?
+4. How would you improve the **Orchestrator's prompt** to avoid that loop in the future?
+
+### Efficiency Review Summary Table
+
+| Worst Trajectory ID | Loop Observed | Why It Is Inefficient | Proposed Orchestrator Prompt Fix |
+|---|---|---|---|
+|  |  |  |  |
 
 ---
 
 ## Deliverables
 
-Submit one report containing:
+Submit one file named `exercise6_submission.md` containing:
 
-1. Part A trajectory table (6 prompts)
-2. Part B loop/safety/drift table (4 stress prompts)
-3. Part C handoff integrity table
-4. Part D efficiency calculations
-5. One Golden Trajectory definition
-6. Top 3 improvements you would implement
-
-## Submission Format (VM)
-Submit one file named `exercise6_submission.md` (or PDF) containing:
-1. Completed Part A-D tables.
-2. Golden trajectory definition.
-3. Top 3 improvement actions.
+1. All 5 completed trajectory audits
+2. An Efficiency Score for each run
+3. The single worst loop identified by the table
+4. A group explanation of why that loop happened
+5. One proposed improvement to the Orchestrator's prompt
 
 ---
 
 ## Reflection Questions
 
-1. Which failures were more common: routing mistakes, handoff loss, or trajectory inefficiency?
-2. Did the system fail fast when unsafe prompts were used, or continue partial execution?
-3. Which metric was most useful for debugging: steps, redundant calls, handoffs, or trace text?
-4. If this were production, what circuit breaker would you add first?
+1. Which problem was more common: redundant steps, bad handoffs, or orchestrator over-delegation?
+2. Did inefficient trajectories still sometimes produce decent answers? What risk does that create?
+3. Which signal was most useful for auditing a crew: step count, repeated calls, or handoff quality?
+4. If you could automate one trajectory metric first, which would you choose and why?
+
+---
+
+## Optional Stretch
+
+If your table finishes early:
+
+1. Design one adversarial query likely to trigger an agent loop.
+2. Propose a stopping rule for the orchestrator.
+3. Draft a "golden trajectory" for one query that the crew should follow in an ideal run.
 
 ---
 
 ## Key Takeaway
 
-For agentic and multi-agent systems, the output text is only half the story.  
-Reliability depends on the full workflow: **plan -> handoff -> tool action -> observation -> termination**.
+Testing multi-agent systems means testing the **workflow between agents**, not just the final response.
+
+Reliable crews depend on efficient trajectories, successful handoffs, and orchestrators that know when to delegate and when to stop.

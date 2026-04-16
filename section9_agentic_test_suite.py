@@ -15,7 +15,7 @@ import os
 from datetime import datetime
 from typing import Any, Dict, List
 
-from app.main import app
+from app.exercise_local_client import get_exercise_test_client
 
 
 def ts() -> str:
@@ -229,7 +229,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    client = app.test_client()
+    client, transport = get_exercise_test_client()
 
     baseline_session = f"sec9-base-{ts()}"
     pirate_session = f"sec9-pirate-{ts()}"
@@ -248,6 +248,7 @@ def main() -> None:
     report = {
         "meta": {
             "timestamp": datetime.now().isoformat(),
+            "transport": transport,
             "retries": args.retries,
             "baseline_session": baseline_session,
             "pirate_session": pirate_session,
@@ -260,6 +261,7 @@ def main() -> None:
     paths = write_outputs(report, args.output_dir)
 
     print("Section 9 automation run complete")
+    print(f"Transport: {transport}")
     print(f"Decision: {gate['decision']}")
     print(f"Baseline pass rate: {gate['baseline_pass_rate']}")
     print(f"Pirate pass rate: {gate['pirate_pass_rate']}")

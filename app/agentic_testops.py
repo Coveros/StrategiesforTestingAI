@@ -993,3 +993,34 @@ class TestOpsAgent:
             "circuit_open": self._circuit_breaker_is_open(),
             "active_sessions": len(self.session_state),
         }
+
+    def reset_session_state(self, session_id: str, reset_circuit_breaker: bool = False) -> Dict[str, Any]:
+        """Reset one session's memory for deterministic exercise reruns."""
+        existed = session_id in self.session_state
+        if existed:
+            del self.session_state[session_id]
+        if reset_circuit_breaker:
+            self._reset_circuit_breaker()
+
+        return {
+            "scope": "session",
+            "session_id": session_id,
+            "session_existed": existed,
+            "circuit_open": self._circuit_breaker_is_open(),
+            "active_sessions": len(self.session_state),
+        }
+
+    def reset_all_state(self, reset_circuit_breaker: bool = True) -> Dict[str, Any]:
+        """Reset all in-memory agent state for clean classroom starts."""
+        session_count = len(self.session_state)
+        self.session_state = {}
+        self.consecutive_dependency_failures = 0
+        if reset_circuit_breaker:
+            self._reset_circuit_breaker()
+
+        return {
+            "scope": "all",
+            "cleared_sessions": session_count,
+            "circuit_open": self._circuit_breaker_is_open(),
+            "active_sessions": len(self.session_state),
+        }

@@ -1,0 +1,138 @@
+{
+  "timestamp": "2026-04-16T19:07:15.972102",
+  "total": 26,
+  "passed": 26,
+  "failed": 0,
+  "checks": [
+    {
+      "name": "run.py exists",
+      "ok": true,
+      "details": "C:\\Users\\jpayne\\Documents\\Training\\Notebooks for ML classes\\StrategiesforTestingAI\\run.py"
+    },
+    {
+      "name": "launch.py exists",
+      "ok": true,
+      "details": "C:\\Users\\jpayne\\Documents\\Training\\Notebooks for ML classes\\StrategiesforTestingAI\\launch.py"
+    },
+    {
+      "name": "section7 runner exists",
+      "ok": true,
+      "details": "C:\\Users\\jpayne\\Documents\\Training\\Notebooks for ML classes\\StrategiesforTestingAI\\section7_nfr_quickrun.py"
+    },
+    {
+      "name": "section9 runner exists",
+      "ok": true,
+      "details": "C:\\Users\\jpayne\\Documents\\Training\\Notebooks for ML classes\\StrategiesforTestingAI\\section9_agentic_test_suite.py"
+    },
+    {
+      "name": "artifact prep helper exists",
+      "ok": true,
+      "details": "C:\\Users\\jpayne\\Documents\\Training\\Notebooks for ML classes\\StrategiesforTestingAI\\prepare_exercise_artifacts.py"
+    },
+    {
+      "name": "Exercise-1.md exists",
+      "ok": true,
+      "details": "C:\\Users\\jpayne\\Documents\\Training\\Notebooks for ML classes\\StrategiesforTestingAI\\docs\\Exercise-1.md"
+    },
+    {
+      "name": "Exercise-2.md exists",
+      "ok": true,
+      "details": "C:\\Users\\jpayne\\Documents\\Training\\Notebooks for ML classes\\StrategiesforTestingAI\\docs\\Exercise-2.md"
+    },
+    {
+      "name": "Exercise-3.md exists",
+      "ok": true,
+      "details": "C:\\Users\\jpayne\\Documents\\Training\\Notebooks for ML classes\\StrategiesforTestingAI\\docs\\Exercise-3.md"
+    },
+    {
+      "name": "Exercise-4.md exists",
+      "ok": true,
+      "details": "C:\\Users\\jpayne\\Documents\\Training\\Notebooks for ML classes\\StrategiesforTestingAI\\docs\\Exercise-4.md"
+    },
+    {
+      "name": "Exercise-5.md exists",
+      "ok": true,
+      "details": "C:\\Users\\jpayne\\Documents\\Training\\Notebooks for ML classes\\StrategiesforTestingAI\\docs\\Exercise-5.md"
+    },
+    {
+      "name": "Exercise-6.md exists",
+      "ok": true,
+      "details": "C:\\Users\\jpayne\\Documents\\Training\\Notebooks for ML classes\\StrategiesforTestingAI\\docs\\Exercise-6.md"
+    },
+    {
+      "name": "Exercise-7.md exists",
+      "ok": true,
+      "details": "C:\\Users\\jpayne\\Documents\\Training\\Notebooks for ML classes\\StrategiesforTestingAI\\docs\\Exercise-7.md"
+    },
+    {
+      "name": "Exercise-8.md exists",
+      "ok": true,
+      "details": "C:\\Users\\jpayne\\Documents\\Training\\Notebooks for ML classes\\StrategiesforTestingAI\\docs\\Exercise-8.md"
+    },
+    {
+      "name": "Exercise-9.md exists",
+      "ok": true,
+      "details": "C:\\Users\\jpayne\\Documents\\Training\\Notebooks for ML classes\\StrategiesforTestingAI\\docs\\Exercise-9.md"
+    },
+    {
+      "name": "Exercise 3 regression snapshot",
+      "ok": true,
+      "details": "C:\\Users\\jpayne\\Documents\\Training\\Notebooks for ML classes\\StrategiesforTestingAI\\artifacts\\precomputed\\exercise3\\regression_results_20260416_190505.json"
+    },
+    {
+      "name": "Exercise 3 regression summary",
+      "ok": true,
+      "details": "C:\\Users\\jpayne\\Documents\\Training\\Notebooks for ML classes\\StrategiesforTestingAI\\artifacts\\precomputed\\exercise3\\regression_summary_20260416_190505.txt"
+    },
+    {
+      "name": "Exercise 3 evaluation results",
+      "ok": true,
+      "details": "C:\\Users\\jpayne\\Documents\\Training\\Notebooks for ML classes\\StrategiesforTestingAI\\artifacts\\precomputed\\exercise3\\evaluation_results.json"
+    },
+    {
+      "name": "Exercise 3 evaluation report",
+      "ok": true,
+      "details": "C:\\Users\\jpayne\\Documents\\Training\\Notebooks for ML classes\\StrategiesforTestingAI\\artifacts\\precomputed\\exercise3\\evaluation_report.md"
+    },
+    {
+      "name": "Exercise 4 trace sample",
+      "ok": true,
+      "details": "C:\\Users\\jpayne\\Documents\\Training\\Notebooks for ML classes\\StrategiesforTestingAI\\artifacts\\precomputed\\trace_samples\\exercise4_trace_cases_20260416_190513.json"
+    },
+    {
+      "name": "Exercise 6 trajectory sample",
+      "ok": true,
+      "details": "C:\\Users\\jpayne\\Documents\\Training\\Notebooks for ML classes\\StrategiesforTestingAI\\artifacts\\precomputed\\trace_samples\\exercise6_trajectory_cases_20260416_190513.json"
+    },
+    {
+      "name": "Exercise 7 quickrun artifact",
+      "ok": true,
+      "details": "C:\\Users\\jpayne\\Documents\\Training\\Notebooks for ML classes\\StrategiesforTestingAI\\artifacts\\precomputed\\section7\\section7_quickrun_20260416_190519.json"
+    },
+    {
+      "name": "Exercise 9 CI artifact",
+      "ok": true,
+      "details": "C:\\Users\\jpayne\\Documents\\Training\\Notebooks for ML classes\\StrategiesforTestingAI\\artifacts\\precomputed\\section9\\section9_agentic_ci_20260416_190520.json"
+    },
+    {
+      "name": "Smoke: Section 7 quick-run",
+      "ok": true,
+      "details": "exit=0"
+    },
+    {
+      "name": "Smoke: Section 9 CI suite",
+      "ok": true,
+      "details": "exit=0"
+    },
+    {
+      "name": "Smoke: Regression quick offline",
+      "ok": true,
+      "details": "exit=0"
+    },
+    {
+      "name": "Smoke: Evaluation offline",
+      "ok": true,
+      "details": "exit=0"
+    }
+  ]
+}

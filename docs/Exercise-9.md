@@ -1,147 +1,220 @@
-# Exercise 9: Automation and MLOps for Agentic Testers
+# Exercise 9: Lab - Automating the Test Run / MLOps
 
-**Estimated Duration:** 55-65 minutes  
-**Prerequisites:** Exercises 5-8 complete  
-**Deliverable:** CI-style test artifacts + ship/no-ship decision for a prompt/config update
-
----
-
-## Why This Exercise Exists
-
-In this final section, you operationalize everything from prior labs into an automation workflow.
-
-Goal: treat agent prompts/configuration as versioned artifacts, run automated checks, and make a release gate decision using evidence.
+**Estimated Duration:** 35-45 minutes  
+**Prerequisites:** Exercises 5-8 completed; access to the CI-style test suite and release artifacts in Codespaces  
+**Deliverable:** An individual baseline-vs-candidate analysis plus a group Go/No-Go release decision and shift-right monitoring plan
 
 ---
 
-## System Under Test
+## Overview
 
-You will run an automated suite against the agentic chatbot in two configurations:
+This final lab simulates the **Go/No-Go Release Meeting** for the assistant. Your job is to treat the assistant like a production system under release review: compare versions, analyze performance and quality trade-offs, and decide whether the candidate build should ship.
 
-1. **Baseline (v1):** default persona
-2. **Updated (v2):** pirate persona (simulated prompt/config change)
-
-The question is not "Is pirate tone funny?"  
-The question is: **Does v2 violate quality or safety gates?**
+This is not just a test run. It is a release decision exercise.
 
 ---
 
-## Part A: Run the Automated Suite (15 minutes)
+## Scenario: The Release Advisory Board
 
-From project root run:
+The assistant has two versions available for evaluation:
+
+1. **v1.0 (Baseline)**
+2. **v2.0 (Candidate)**
+
+Everyone on the table will review the provided CI results for these two versions and compare them.
+
+You will capture:
+
+- **Pass Rate**
+- **Latency**
+
+The goal is to see whether results are consistent across the group and whether the candidate is ready for release.
+
+---
+
+## Group Setup
+
+- **Individual Analysis:** Everyone reviews the provided baseline-versus-candidate results on their own machine.
+- **Release Advisory Board:** The table regroups and acts as the decision-making board.
+- **Final Vote:** Every person must argue either **Ship** or **No-Ship**, then cast a vote.
+
+Precomputed Section 9 release-gate artifacts are available at:
+
+- `artifacts/precomputed/section9/section9_agentic_ci_*.json`
+- `artifacts/precomputed/section9/section9_agentic_ci_*.txt`
+
+Regenerate snapshots with:
 
 ```bash
-python section9_agentic_test_suite.py
+python prepare_exercise_artifacts.py
 ```
 
-This script executes:
+---
 
-1. baseline run (default persona)
-2. updated run (pirate persona)
-3. gating logic and decision
+## Key Concepts
 
-Artifacts generated in `regression_test_results`:
+### Why Compare Baseline vs Candidate?
 
-1. `section9_agentic_ci_*.json`
-2. `section9_agentic_ci_summary_*.txt`
+A release decision should be based on evidence, not intuition.
+
+The baseline gives you a known reference point. The candidate tells you what changed.
+
+You are looking for trade-offs such as:
+
+- faster but less accurate
+- more accurate but slower
+- safer but more expensive
+- higher pass rate with worse operational latency
+
+### CI Is Only the First Gate
+
+Automated tests help decide whether a release is acceptable **before shipping**.
+
+But even a shipped candidate still needs **Shift-Right monitoring** after release.
+
+### Release Decisions Are Trade-Off Decisions
+
+In this lab, the table must reason through a realistic conflict:
+
+- **v2.0 is 30% faster**
+- **v2.0 has a 2% lower Accuracy score**
+
+The team must decide whether that trade-off is acceptable.
 
 ---
 
-## Part B: Inspect Results and Flakiness Controls (15 minutes)
+## Part 1: Individual Analysis
 
-Open the JSON artifact and answer:
+Each person reviews the CI output snapshot in their own Codespace and compares **v1.0 (Baseline)** vs **v2.0 (Candidate)**.
 
-1. Which cases passed/failed in baseline?
-2. Which cases passed/failed in pirate mode?
-3. Were any retries used to handle probabilistic variance?
-4. Did any showstopper test fail?
+Record the following from the provided output:
 
-Use this table:
+- Pass Rate for v1.0
+- Pass Rate for v2.0
+- Latency for v1.0
+- Latency for v2.0
 
-| Case ID | Baseline | Pirate | Showstopper? | Retry Used? | Notes |
-|-|-|-|-|-|-|
-| router_regression |  |  | No |  |  |
-| history_fetch |  |  | No |  |  |
-| harmful_block |  |  | Yes |  |  |
+### Individual Analysis Table
 
----
+| Person | Baseline Pass Rate | Candidate Pass Rate | Baseline Latency | Candidate Latency | Notes |
+|---|---|---|---|---|---|
+| Person 1 |  |  |  |  |  |
+| Person 2 |  |  |  |  |  |
+| Person 3 |  |  |  |  |  |
+| Person 4 |  |  |  |  |  |
+| Person 5 |  |  |  |  |  |
 
-## Part C: Apply Gating Policy (10-15 minutes)
+### Questions to Answer Individually
 
-Use this policy:
-
-1. **Immediate FAIL** if any showstopper fails (e.g., harmful-block case fails).
-2. **FAIL** if pass-rate drop from baseline to pirate exceeds 0.25.
-3. **PASS_WITH_WARNINGS** if latency warning exists but no showstopper fails.
-4. **PASS** otherwise.
-
-Document the script decision and whether you agree.
-
-Template:
-
-| Gate Condition | Triggered? | Evidence |
-|-|-|-|
-| Showstopper failed |  |  |
-| Pass-rate drop > 0.25 |  |  |
-| Latency warning |  |  |
-| Final decision |  |  |
+1. Are your results consistent with other people at the table?
+2. Is the latency improvement real and repeatable?
+3. Is the accuracy drop small enough to tolerate?
+4. Would you personally recommend Ship or No-Ship based on your own machine?
 
 ---
 
-## Part D: Shift-Right Monitoring Plan (15 minutes)
+## Part 2: The Release Advisory Board (Group Decision)
 
-Design a production monitoring plan for this agentic chatbot:
+Now regroup as the **Release Advisory Board**.
 
-1. Choose 3 metrics to monitor continuously.
-2. Define alert thresholds.
-3. Define one weekly drift check.
-4. Define one feedback-loop rule to turn user feedback into tests.
+### The Conflict
 
-Use this template:
+Assume the group sees this result:
 
-| Metric | Why It Matters | Threshold | Action on Breach |
-|-|-|-|-|
-| policy_bypass rate | security control | > 0 over 24h | block release + incident review |
-| circuit_open_events | reliability health | > 3/hour | inspect dependency stability |
-| redundant_tool_calls | cost/loop risk | > 0.2 average | investigate trajectory inefficiency |
+- **v2.0 is 30% faster**
+- **v2.0 has a 2% lower Accuracy score**
 
-Weekly drift check:
+### The Discussion
 
-- Compare current pass-rate and response-time distribution against prior week.
+You have **5 minutes** to debate.
 
-Feedback rule:
+Every person must provide **one reason** to either:
 
-- Every "thumbs down" with security category becomes a new regression case.
+- **Ship**
+- **No-Ship**
+
+### Board Deliberation Table
+
+| Person | Position (Ship / No-Ship) | Reason |
+|---|---|---|
+| Person 1 |  |  |
+| Person 2 |  |  |
+| Person 3 |  |  |
+| Person 4 |  |  |
+| Person 5 |  |  |
+
+### Final Vote
+
+After the discussion, cast a final table vote.
+
+| Final Outcome | Vote Count | Rationale |
+|---|---|---|
+| Ship |  |  |
+| No-Ship |  |  |
+
+Document the final decision and why the board chose it.
+
+---
+
+## Part 3: Shift-Right Monitoring Plan
+
+Whether you choose Ship or No-Ship, define a production monitoring plan.
+
+Your plan must include:
+
+1. What to monitor after release
+2. What thresholds would trigger concern
+3. What you would do if v2.0 underperforms in production
+
+### Shift-Right Monitoring Template
+
+| Metric | Why It Matters | Threshold / Alert Rule | Action if Triggered |
+|---|---|---|---|
+| Accuracy trend |  |  |  |
+| Latency / TTFT |  |  |  |
+| User complaints / thumbs down |  |  |  |
+| Safety failures |  |  |  |
+
+Also define:
+
+- **Rollback Rule:** When would you rollback v2.0?
+- **Observation Window:** How long will you monitor closely after launch?
 
 ---
 
 ## Deliverables
 
-Submit:
+Submit one file named `exercise9_submission.md` containing:
 
-1. Generated JSON/TXT artifacts from Part A
-2. Completed analysis tables (Parts B and C)
-3. Monitoring plan (Part D)
-4. Final recommendation: **Ship / Ship with warnings / Do not ship**
-
-## Submission Format (VM)
-Submit:
-1. `section9_agentic_ci_*.json`
-2. `section9_agentic_ci_summary_*.txt`
-3. One file named `exercise9_submission.md` (or PDF) containing your gate rationale and monitoring plan.
+1. Your individual baseline vs candidate results
+2. The board deliberation table
+3. The final Ship / No-Ship vote and rationale
+4. Your Shift-Right monitoring plan
+5. Your rollback rule
 
 ---
 
 ## Reflection Questions
 
-1. Which failures should block deployment immediately in agentic systems?
-2. Where should fuzzy assertions be used, and where should strict assertions remain?
-3. What belongs in CI vs what belongs in production monitoring?
-4. How would you reduce flakiness without hiding real regressions?
+1. How much accuracy loss is acceptable in exchange for latency improvement?
+2. What kinds of failures should always block release, even if performance is better?
+3. Did group members see consistent CI results, or was there meaningful variance across machines?
+4. What is the most important shift-right signal after launch?
+
+---
+
+## Optional Stretch
+
+If your table finishes early:
+
+1. Define a formal release gate policy for future versions.
+2. Propose one automated canary-release metric.
+3. Design a release dashboard for the Release Advisory Board.
 
 ---
 
 ## Key Takeaway
 
-MLOps for agentic systems means turning testing into a continuous, automated control system.  
-If prompt/config changes are not gated in CI and monitored in production, regressions will reach users.
+MLOps is not just about running tests automatically.
+
+It is about turning evidence from CI, performance, and production monitoring into disciplined release decisions.

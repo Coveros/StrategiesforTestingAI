@@ -1,297 +1,206 @@
-# Exercise 4: Decompose a RAG Failure - Retriever vs. Generator Diagnosis
+# Exercise 4: Lab - Diagnosing RAG Failures with Root Cause Analysis
 
-**Estimated Duration:** 50-60 minutes  
-**Prerequisites:** Completion of Exercise 2 (at least 3 golden records with real outputs)  
-**Deliverable:** Diagnosis report for 3-4 failing queries, with root cause (Retriever or Generator) and proposed fix  
+**Estimated Duration:** 45-60 minutes  
+**Prerequisites:** Exercises 1-3 completed, Trace UI access in the chatbot  
+**Deliverable:** Three case diagnoses and three production bug reports with team ownership
 
 ---
 
 ## Overview
 
-A chatbot's answer is only as good as the documents it retrieves. If the retriever pulls the wrong chunk, the generator - no matter how powerful - will hallucinate, summarize incorrectly, or refuse to answer.
+You are the on-call QA/TestOps engineer. Product just escalated **three critical chatbot bugs** from production users. Your job is to triage each failure by using the Trace UI and determine whether the issue belongs to:
 
-This exercise teaches you to **decompose failures** along the RAG pipeline:
+- **Data Engineering** (retriever/search quality)
+- **Prompt Engineering** (generator/LLM behavior)
+- **Shared ownership** (both layers contribute)
 
-1. **Retriever Failure:** Wrong document retrieved, or right document ranked too low.
-2. **Generator Failure:** Retrieved documents were good, but the LLM misused or ignored them.
+This lab is about **root cause analysis**, not guesswork. You will inspect retrieved documents, context quality, and generated responses to identify where the failure actually occurs.
 
-By instrumenting the chatbot, you'll learn to fix problems at their source - not downstream.
+---
+
+## Scenario: Three Production Bugs
+
+You must diagnose these three cases:
+
+1. **Case A: Bad Librarian**  
+The bot returns unrelated or weakly related sources for a query.
+
+2. **Case B: The Liar**  
+The bot retrieves relevant sources, but the response adds facts not grounded in those sources.
+
+3. **Case C: Lazy Bot**  
+The bot retrieves relevant context that contains the answer, but still responds incompletely (or says it does not know).
+
+---
+
+## Group Setup
+
+- **Individual Work:** Each student reviews the three provided Trace cases or verifies one live query if instructed, then drafts case diagnoses.
+- **Table Discussion:** Teams compare diagnoses, challenge ownership decisions, and align on the strongest remediation plan per case.
 
 ---
 
 ## Key Concepts
 
-### The Dependency Chain
+| Failure Type | What Failed | Typical Signal | Likely Owner |
+|---|---|---|---|
+| **Context Precision Failure** | Retriever | Top docs are weak/off-topic despite similar wording | Data Engineering |
+| **Groundedness Failure** | Generator | Response includes claims not present in retrieved context | Prompt Engineering |
+| **Context Recall Failure** | Retriever and/or Generator | Useful context exists, but answer is missed | Data or Prompt Engineering |
 
-```
-User Query
-    ↓
-Query Embedding
-    ↓
-Similarity Search (Retriever) ← Failure here = wrong context
-    ↓
-Top K Documents -> Injected into prompt
-    ↓
-LLM Generation (Generator) ← Failure here = wrong use of context
-    ↓
-Answer
-```
-
-**Principle:** If retrieval fails, generation fails. Fix the retriever first.
-
-### Three Root Causes
-
-| Failure Mode | Symptom | Likely Cause |
-|-|-|-|
-| **Hallucination** | Answer includes info not in knowledge base | Retriever pulled weak/irrelevant docs; Generator filled gaps from training data |
-| **Incomplete Answer** | "I don't know" despite having relevant docs | Retriever pulled right docs but ranked them too low (position bias); Or docs didn't make it to prompt context window |
-| **Wrong Answer** | Answer is fluent but addresses a different question | Retriever prioritized semantic similarity over relevance; Generator used out-of-context docs |
+**Important:** Always diagnose retrieval first. If context is wrong, generation cannot be right.
 
 ---
 
-## Part A: Inspect the Retriever (20 minutes)
+## Part A: Trigger and Inspect the Bugs (10-15 minutes)
 
-### Step 1: Run Your Exercise 2 Queries
+Use the instructor-provided Trace captures first. If your instructor asks for live verification, run these exact queries in the chatbot at [http://localhost:5000](http://localhost:5000):
 
-Open the GenAI Testing Chatbot at [http://localhost:5000](http://localhost:5000).
+If live trace generation is unavailable, use precomputed trace samples from:
 
-Pick **3-4 queries from your Exercise 2 golden records** that either:
-- Failed in Exercise 3 regression testing, OR
-- You suspect the chatbot struggled with, OR
-- You know it hallucinated or gave an incomplete answer.
+- `artifacts/precomputed/trace_samples/exercise4_trace_cases_*.json`
 
-**For each query, submit it to the chatbot (via the web UI).**
+These files include query, response, and trace metadata for the three lab cases.
 
-### Step 2: Examine the "Sources" Metadata
+1. `What are the key differences between black-box and white-box testing for GenAI?`
+2. `According to the production best practices, what is the recommended batch size for processing GenAI evaluations?`
+3. `Explain the concept of hallucination in the context of GenAI testing.`
 
-After the chatbot responds, you'll see metadata (sources, timing, temperature). This is the **retriever's output**.
+For each query, capture Trace evidence:
 
-**Look at each source:**
+- Retrieved Documents (file names + similarity)
+- Context snippets or source previews
+- Final generated response
 
-```
-Source 1: genai_testing_guide.md (Chunk 5)
-  Similarity: 87%
-  Preview: "The GenAI Testing Guide covers methodologies..."
-
-Source 2: faq_genai_testing.md (Chunk 12)
-  Similarity: 71%
-  Preview: "Q: What is a hallucination?..."
-
-Source 3: production_best_practices.md (Chunk 8)
-  Similarity: 64%
-  Preview: "Best practices for deploying..."
-```
-
-### Step 3: Grade the Retriever
-
-For each query, fill out the worksheet below:
-
-| Query | Expected Source | Actual Top Source | Actual Top Similarity | On Target? (Y/N) | Notes |
-|-|-|-|-|-|-|
-| `"What evaluation metrics matter?"` | `evaluation_metrics.md` | `genai_testing_guide.md` | 87% | N | Should have prioritized eval metrics doc |
-| | | | | | |
-
-**Grading Criteria:**
-- **Y (On Target):** The top-ranked source is the correct knowledge base doc with ≥75% similarity.
-- **N (Off Target):** Top source is wrong, OR similarity is too low (<70%), OR number of relevant docs is insufficient.
-
-### Step 4: Root Cause Analysis
-
-For each "N" grade, propose why the retriever failed:
-
-```
-Query: "What evaluation metrics matter?"
-  Status: Off Target (wrong doc ranked first)
-  Root Cause Hypothesis:
-    [ ] Embedding mismatch - Query about "evaluation" found "safety"
-    [ ] Chunk size issue - Key content split across chunks; top chunk lacks context
-    [ ] Vocabulary gap - Query uses "metrics" but docs use "dimensions" or "measurements"
-    [ ] Too many results retrieved - Not filtering by relevance threshold
-```
+Use screenshots or copy/paste text evidence. Focus on evidence quality, not on re-creating every trace from scratch.
 
 ---
 
-## Part B: Inspect the Generator (15-20 minutes)
+## Part B: Diagnose Case A - Bad Librarian (10-12 minutes)
 
-Now assume the **retriever did its job**. Did the generator use that context correctly?
+### Goal
+Determine whether this is a **Context Precision Failure**.
 
-### Step 1: Examine the Response Quality
+### Diagnosis Template
 
-For each query, re-read the chatbot's response. Ask:
+- **Query:**
+- **Expected primary source(s):**
+- **Actual top retrieved source(s):**
+- **Similarity pattern (high/medium/low):**
+- **Are top sources actually relevant?** Yes/No
+- **Root cause category:**
+  - [ ] Query-retrieval mismatch
+  - [ ] Poor ranking / noisy top-k
+  - [ ] Chunking/index quality issue
+- **Owning team:** Data Engineering / Shared
+- **Justification (1-3 sentences with Trace evidence):**
 
-1. **Did it stick to the retrieved context?**
-   - Yes: Response directly paraphrases or quotes the sources.
-   - No: Response includes facts not in the sources (hallucination).
-   - Partial: Mix of grounded + speculative content.
-
-2. **Did it answer the specific question?**
-   - Yes: Response directly addresses the user's intent.
-   - No: Response is tangentially relevant or off-topic.
-   - Partial: Answers part of the question.
-
-3. **Was the reasoning sound?**
-   - Yes: Logical flow; cites evidence.
-   - Partial: Some leaps in logic; missing connections.
-   - No: Non-sequiturs; incoherent.
-
-### Step 2: Root Cause Analysis
-
-If the generator underperformed, choose the likely culprit:
-
-```
-Query: "What evaluation metrics matter?"
-  Retrieved Sources: genai_testing_guide.md, evaluation_metrics.md (good!)
-  Response Quality Assessment:
-    ❌ Did NOT stick to context - included claims about "bias metrics" not in docs
-    Likely Generator Failure Cause:
-      [ ] Prompt not strict enough ("answer only from context" unclear)
-      [ ] Context window cut off - docs were truncated before reaching the LLM
-      [ ] Position bias - Relevant info was in the middle of context; LLM ignored it
-      [ ] Hallucination from pre-training - Model filled gaps with training knowledge
-```
+### Decision Rule
+If retrieved docs are weak or off-topic, this is primarily a retriever problem.
 
 ---
 
-## Part C: Propose a Fix (15-20 minutes)
+## Part C: Diagnose Case B - The Liar (10-12 minutes)
 
-For each of your 3-4 failing queries, you identified whether the problem was:
-- **Retriever:** Wrong docs, low similarity, insufficient quantity
-- **Generator:** Right docs but misused them
+### Goal
+Determine whether this is a **Groundedness Failure**.
 
-Now propose **one concrete fix** for each failure category.
+### Diagnosis Template
 
-### Option 1: Retriever Tuning
+- **Query:**
+- **Were retrieved docs relevant?** Yes/No
+- **Key claim in response to verify:**
+- **Is claim directly supported by retrieved context?** Yes/No
+- **Unsupported additions detected?** Yes/No
+- **Root cause category:**
+  - [ ] Hallucination from model prior knowledge
+  - [ ] Prompt allows unsupported inference
+  - [ ] Citation/grounding constraints missing
+- **Owning team:** Prompt Engineering / Shared
+- **Justification (1-3 sentences with Trace evidence):**
 
-**Examples:**
-- **Increase retrieval count:** From `top_k=5` to `top_k=10` to capture more context.
-- **Lower similarity threshold:** From 0.75 to 0.65 to include useful documents even if not perfectly aligned.
-- **Adjust chunk size:** From 2000 chars to 1000 chars to improve granularity (smaller, focused chunks).
-- **Add keyword boosting:** Prioritize documents containing specific keywords (e.g., "evaluation," "metrics") in the query.
-- **Hybrid search:** Combine semantic similarity with keyword matching (e.g., BM25) for better precision on technical terms.
-
-**Deliverable:** Write a one-sentence fix proposal with expected impact.
-
-```
-Example:
-  Failure: Query "What is faithfulness?" retrieved faq_genai_testing.md (71% sim) 
-  before production_best_practices.md (63% sim), but FAQ had only a definition.
-  
-  Fix: Reduce chunk size from 2000 to 1000 characters. Smaller chunks will isolate 
-  the key definitions and examples, improving similarity scores for targeted queries.
-  
-  Expected Impact: Increase relevant doc rank; reduce hallucination from LLM padding weak context.
-```
-
-### Option 2: Generator Constraint
-
-**Examples:**
-- **Stricter system prompt:** Add explicit penalty for external knowledge (e.g., "Do not use facts from your training data. Refuse if the context is insufficient.").
-- **Citation requirement:** Force the model to cite source filenames (e.g., "(from genai_testing_guide.md)").
-- **Length constraint:** If the generated answer exceeds a threshold, truncate and flag for human review.
-- **Confidence threshold:** If the model's internal confidence is low, respond with "I don't have confident information" instead of guessing.
-
-**Deliverable:** Write a new system prompt rule or constraint.
-
-```
-Example:
-  Failure: Query "What evaluation metrics matter?" retrieved genai_testing_guide.md, 
-  but response also mentioned "inter-rater reliability" which isn't in that doc.
-  
-  Fix: Add to system prompt: "You must cite the source document in parentheses for 
-  every claim (e.g., 'Faithfulness is key (from Evaluation Metrics)').  If a claim 
-  is not in the provided context, do not make it."
-  
-  Expected Impact: Force hallucinations to surface as unsupported claims; make bias more visible for human review.
-```
-
-### Option 3: Context Engineering
-
-**Examples:**
-- **Re-rank retrieved documents:** Use a secondary model (Cross-Encoder) to reorder Top K results by relevance.
-- **Summarize long chunks:** Before injecting into prompt, distill each document to the top 200 characters to save tokens and improve signal-to-noise.
-- **Metadata annotation:** Prepend each source with a label (e.g., "[Source: Evaluation Metrics] ...") to help the LLM identify and cite sources.
-- **Context distillation:** Extract only the most relevant sentences from each document rather than entire chunks.
-
-**Deliverable:** Describe the transformation applied to context before it reaches the generator.
-
-```
-Example:
-  Failure: Response was tangentially relevant; did address "evaluation" but drifted 
-  to "testing frameworks" which are different topics.
-  
-  Fix: Implement metadata enrichment. Before injecting context into prompt, prepend 
-  each source with "[Context from: <FILENAME>] ". Additionally, add a separator 
-  between sources: "---\n". This makes the LLM aware of source boundaries and less 
-  likely to conflate ideas from different documents.
-  
-  Expected Impact: Reduce off-topic drift; improve citation accuracy.
-```
+### Decision Rule
+If retrieval is good but the response invents or extends facts, this is primarily a generator/prompt problem.
 
 ---
 
-## Part D: Document Your Findings (10 minutes)
+## Part D: Diagnose Case C - Lazy Bot (10-12 minutes)
 
-Create a **Diagnosis Report** with the following structure:
+### Goal
+Determine whether this is a **Context Recall / Lost-in-the-Middle Failure**.
 
-### Report Template
+### Diagnosis Template
 
-**Query 1: "[Your Query Text Here]"**
+- **Query:**
+- **Does retrieved context contain the answer?** Yes/No
+- **Did final response use that answer?** Yes/No
+- **Potential failure pattern:**
+  - [ ] Answer buried in long context (position bias)
+  - [ ] Too much noisy context
+  - [ ] Retrieval incomplete for the full intent
+  - [ ] Prompt did not prioritize evidence use
+- **Owning team:** Data Engineering / Prompt Engineering / Shared
+- **Justification (1-3 sentences with Trace evidence):**
 
-| Item | Finding |
-|-|-|
-| **Ground Truth** | Expected documents: ___; Expected answer summary: ___ |
-| **Retrieved Docs** | Source 1: _____ (Sim: __%); Source 2: _____ (Sim: __%); Source 3: _____ (Sim: _%) |
-| **Actual Response** | [Copy response text] |
-| **Retriever Diagnosis** | On Target / Off Target. Root cause: ________________ |
-| **Generator Diagnosis** | Stuck to context / Hallucinated / Off-topic. Root cause: ________________ |
-| **Primary Failure** | Retriever / Generator |
-| **Proposed Fix** | **Category:** [Tuning / Constraint / Engineering]. **Description:** ________________ |
-| **Expected Impact** | ________________ |
+### Decision Rule
+If answer evidence exists but is not used, investigate both ranking/context design and prompt behavior.
+
+---
+
+## Part E: Write Production Bug Reports (5-8 minutes)
+
+For each case (A, B, C), write one concise bug report:
+
+### Bug Report Template
+
+- **Bug Title:**
+- **Severity:** High / Medium / Low
+- **Expected Behavior:**
+- **Actual Behavior:**
+- **Root Cause Category:** Context Precision / Groundedness / Context Recall
+- **Owning Team:** Data Engineering / Prompt Engineering / Shared
+- **Recommended Action:**
+- **Acceptance Criteria (how we verify fix):**
+
+Focus on clear, actionable language that engineering can execute.
+
+If time is short, use bullet-point bug reports instead of full prose paragraphs.
 
 ---
 
 ## Deliverable Checklist
 
-- [ ] Worksheet completed for 3-4 queries with retriever grades (On Target / Off Target).
-- [ ] Root cause analysis for each Off-Target grade.
-- [ ] Generator quality assessment (Stuck to context / Hallucinated / Off-topic).
-- [ ] At least one retriever fix proposal and one generator fix proposal drafted.
-- [ ] Diagnosis Report completed with all 3-4 queries documented.
+- [ ] Three Trace outputs captured (screenshots or text copies)
+- [ ] Case A diagnosis completed and root cause identified
+- [ ] Case B diagnosis completed and root cause identified
+- [ ] Case C diagnosis completed and root cause identified
+- [ ] Each case assigned to the correct owning team
+- [ ] Three production bug reports written with actionable recommendations
 
-## Submission Format (VM)
-Submit one file named `exercise4_submission.md` (or PDF) containing:
-1. Retriever worksheet for 3-4 queries.
-2. Generator analysis for the same queries.
-3. Proposed fixes and final diagnosis report.
+## Submission Format
 
----
+Submit one file named `exercise4_submission.md` containing:
 
-## Reflection Questions
-
-1. **Dependency Insight:** Of your 3-4 failures, how many were retriever-only vs. generator-only vs. both? What does this suggest about where to invest effort?
-
-2. **Threshold Sensitivity:** A small similarity threshold change (e.g., 0.75 -> 0.60) can dramatically shift which documents get retrieved. How would you tune this without overfitting to your 4 test cases?
-
-3. **Position Bias:** If the most relevant document is ranked 4th instead of 1st, will the LLM use it? Why or why not? (Hint: Think about context window limits.)
-
-4. **Generalization:** Your fixes are tailored to your 3-4 test queries. How would you avoid overfitting? (Hint: What if the fix works for "evaluation metrics" but breaks "hallucination detection"?)
-
-5. **Production Implication:** In production, you can't manually diagnose every query. How would you automate this decomposition for thousands of daily queries?
-
----
-
-## Resources
-
-- **Running Chatbot:** [http://localhost:5000](http://localhost:5000)
-- **RAG Pipeline Code:** [app/rag_pipeline.py](../app/rag_pipeline.py) - Inspect the `_retrieve_documents()` and `_generate_response()` methods
-- **Retrieval Experiments:** [experiments/retrieval_experiments.py](../experiments/retrieval_experiments.py) - Reference for tuning retrieval parameters
-- **Knowledge Base:** [data/documents/](../data/documents/) - The source of truth your retriever should find
-- **Vector Database Stats:** Run `python -c "from app.rag_pipeline import RAGPipeline; p = RAGPipeline(); print(f'Total docs: {p.collection.count()}')"` to see database stats
+1. **Case A Report:** Context Precision failure diagnosis + bug report
+2. **Case B Report:** Groundedness failure diagnosis + bug report
+3. **Case C Report:** Context Recall failure diagnosis + bug report
 
 ---
 
 ## Key Takeaway
 
-**The best RAG debugging skill is tracing the dependency chain:** If the retriever pulls garbage, the generator is fighting an uphill battle. Conversely, a perfect retriever with a weak generator wastes resources. Know which system is failing, fix it at source, and validate your fix with a before/after comparison.
+Root cause analysis in RAG is a pipeline discipline:
 
-In Exercise 5, you'll learn to automate this decomposition for production monitoring-so you catch failures as they happen, not after users complain.
+- If retrieval fails, generation cannot recover reliably.
+- If retrieval succeeds but response drifts, grounding/prompt controls are weak.
+- If evidence exists but is missed, context ranking and prompt strategy both need review.
+
+Use Trace evidence to triage quickly and route work to the right team.
+
+---
+
+## Resources
+
+- Chatbot: [http://localhost:5000](http://localhost:5000)
+- Pipeline code: [app/rag_pipeline.py](../app/rag_pipeline.py)
+- Knowledge base: [data/documents/](../data/documents/)

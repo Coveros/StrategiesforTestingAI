@@ -1,0 +1,311 @@
+{
+  "results": [
+    {
+      "test_id": "hallucination_basic",
+      "category": "factual",
+      "priority": "high",
+      "query": "What is hallucination in GenAI?",
+      "response": "Hallucination in GenAI refers to when AI models generate content that appears plausible but is factually incorrect, not supported by training data, or inconsistent with provided context.",
+      "gold_standard": "Hallucination in GenAI refers to when AI models generate content that appears plausible but is factually incorrect, not supported by training data, or inconsistent with provided context. It is a key challenge in generative AI systems that can lead to misinformation.",
+      "scores": {
+        "semantic_similarity": 0.786504424778761,
+        "keyword_match": 0.6666666666666666,
+        "length_appropriate": 1.0,
+        "sources_adequate": 1.0,
+        "performance_good": 1.0,
+        "content_substantial": 1.0
+      },
+      "overall_score": 0.8312684365781712,
+      "semantic_similarity": 0.786504424778761,
+      "keyword_match": 0.6666666666666666,
+      "response_length": 186,
+      "expected_length_range": [
+        100,
+        400
+      ],
+      "sources_count": 1,
+      "response_time": 0.0,
+      "test_passed": true,
+      "pass_reasons": {
+        "semantic_similarity_pass": true,
+        "keyword_match_pass": true,
+        "performance_pass": true,
+        "no_errors": true
+      },
+      "timestamp": "2026-04-16T19:00:39.280552"
+    },
+    {
+      "test_id": "rag_evaluation",
+      "category": "technical",
+      "priority": "high",
+      "query": "How do you evaluate RAG system performance?",
+      "response": "RAG evaluation should cover retrieval precision/recall, answer faithfulness, response relevance, hallucination rate, and operational metrics like latency and cost.",
+      "gold_standard": "RAG system evaluation involves multiple metrics including retrieval accuracy (precision, recall), generation quality (BLEU, ROUGE scores), semantic similarity, response relevance, hallucination rate, and end-to-end performance measures. Common approaches include human evaluation, automated metrics, and comparison against ground truth datasets.",
+      "scores": {
+        "semantic_similarity": 0.11542972022114256,
+        "keyword_match": 0.5,
+        "length_appropriate": 1.0,
+        "sources_adequate": 1.0,
+        "performance_good": 1.0,
+        "content_substantial": 1.0
+      },
+      "overall_score": 0.5211718880884569,
+      "semantic_similarity": 0.11542972022114256,
+      "keyword_match": 0.5,
+      "response_length": 163,
+      "expected_length_range": [
+        150,
+        500
+      ],
+      "sources_count": 1,
+      "response_time": 0.0,
+      "test_passed": false,
+      "pass_reasons": {
+        "semantic_similarity_pass": false,
+        "keyword_match_pass": true,
+        "performance_pass": true,
+        "no_errors": true
+      },
+      "timestamp": "2026-04-16T19:00:39.280552"
+    },
+    {
+      "test_id": "testing_best_practices",
+      "category": "process",
+      "priority": "medium",
+      "query": "What are best practices for testing GenAI applications?",
+      "response": "Best practices include baseline metrics, diverse test datasets, automated regressions, hallucination and bias monitoring, and continuous evaluation in production.",
+      "gold_standard": "Best practices for testing GenAI applications include: establishing baseline performance metrics, creating diverse test datasets, implementing automated regression testing, monitoring for hallucinations and bias, conducting human evaluation, testing edge cases, validating against domain expertise, and implementing continuous evaluation pipelines.",
+      "scores": {
+        "semantic_similarity": 0.27801120448179273,
+        "keyword_match": 0.5,
+        "length_appropriate": 1.0,
+        "sources_adequate": 1.0,
+        "performance_good": 1.0,
+        "content_substantial": 1.0
+      },
+      "overall_score": 0.5862044817927171,
+      "semantic_similarity": 0.27801120448179273,
+      "keyword_match": 0.5,
+      "response_length": 162,
+      "expected_length_range": [
+        120,
+        450
+      ],
+      "sources_count": 1,
+      "response_time": 0.0,
+      "test_passed": false,
+      "pass_reasons": {
+        "semantic_similarity_pass": false,
+        "keyword_match_pass": true,
+        "performance_pass": true,
+        "no_errors": true
+      },
+      "timestamp": "2026-04-16T19:00:39.281551"
+    },
+    {
+      "test_id": "production_deployment",
+      "category": "deployment",
+      "priority": "medium",
+      "query": "What should you consider when deploying GenAI to production?",
+      "response": "Production GenAI rollout requires monitoring, fallback paths, security controls, cost governance, and ongoing quality evaluation.",
+      "gold_standard": "Production GenAI deployment requires careful consideration of model monitoring, performance benchmarks, security measures, cost optimization, scalability planning, error handling, fallback mechanisms, compliance requirements, user feedback collection, and continuous model evaluation and updating procedures.",
+      "scores": {
+        "semantic_similarity": 0.18077803203661327,
+        "keyword_match": 0.375,
+        "length_appropriate": 1.0,
+        "sources_adequate": 1.0,
+        "performance_good": 1.0,
+        "content_substantial": 1.0
+      },
+      "overall_score": 0.5160612128146452,
+      "semantic_similarity": 0.18077803203661327,
+      "keyword_match": 0.375,
+      "response_length": 129,
+      "expected_length_range": [
+        100,
+        400
+      ],
+      "sources_count": 1,
+      "response_time": 0.0,
+      "test_passed": false,
+      "pass_reasons": {
+        "semantic_similarity_pass": false,
+        "keyword_match_pass": true,
+        "performance_pass": true,
+        "no_errors": true
+      },
+      "timestamp": "2026-04-16T19:00:39.281551"
+    },
+    {
+      "test_id": "evaluation_metrics",
+      "category": "metrics",
+      "priority": "high",
+      "query": "What metrics are used to measure AI performance?",
+      "response": "Common AI metrics include accuracy, precision, recall, and F1, plus GenAI-specific checks like faithfulness, semantic similarity, hallucination rate, and user satisfaction.",
+      "gold_standard": "AI performance metrics vary by task but commonly include accuracy, precision, recall, F1-score, AUC-ROC for classification; BLEU, ROUGE, perplexity for language tasks; and specialized metrics like hallucination rate, semantic similarity, response relevance, and user satisfaction scores for generative AI systems.",
+      "scores": {
+        "semantic_similarity": 0.2516691212567501,
+        "keyword_match": 0.5555555555555556,
+        "length_appropriate": 1.0,
+        "sources_adequate": 1.0,
+        "performance_good": 1.0,
+        "content_substantial": 1.0
+      },
+      "overall_score": 0.589556537391589,
+      "semantic_similarity": 0.2516691212567501,
+      "keyword_match": 0.5555555555555556,
+      "response_length": 172,
+      "expected_length_range": [
+        120,
+        400
+      ],
+      "sources_count": 1,
+      "response_time": 0.0,
+      "test_passed": false,
+      "pass_reasons": {
+        "semantic_similarity_pass": false,
+        "keyword_match_pass": true,
+        "performance_pass": true,
+        "no_errors": true
+      },
+      "timestamp": "2026-04-16T19:00:39.282552"
+    },
+    {
+      "test_id": "edge_case_empty",
+      "category": "edge_case",
+      "priority": "low",
+      "query": "",
+      "response": "ERROR: Empty query provided",
+      "gold_standard": "ERROR: Empty query provided",
+      "scores": {
+        "semantic_similarity": 1.0,
+        "keyword_match": 0.8,
+        "length_appropriate": 1.0,
+        "edge_case_behavior": 1.0
+      },
+      "overall_score": 0.9,
+      "semantic_similarity": 1.0,
+      "keyword_match": 0.8,
+      "response_length": 27,
+      "expected_length_range": [
+        10,
+        50
+      ],
+      "sources_count": 0,
+      "response_time": 0.01,
+      "test_passed": true,
+      "pass_reasons": {
+        "semantic_similarity_pass": true,
+        "keyword_match_pass": true,
+        "length_reasonable": true,
+        "edge_case_appropriate": true
+      },
+      "timestamp": "2026-04-16T19:00:39.282552"
+    },
+    {
+      "test_id": "edge_case_irrelevant",
+      "category": "edge_case",
+      "priority": "medium",
+      "query": "What is the best pizza topping?",
+      "response": "I cannot answer this question as it is not related to testing generative AI applications, which is my area of expertise. Please ask questions about GenAI testing, evaluation metrics, or AI system deployment.",
+      "gold_standard": "I cannot answer this question as it is not related to testing generative AI applications, which is my area of expertise. Please ask questions about GenAI testing, evaluation metrics, or AI system deployment.",
+      "scores": {
+        "semantic_similarity": 0.9,
+        "keyword_match": 1.0,
+        "length_appropriate": 0.5,
+        "edge_case_behavior": 1.0
+      },
+      "overall_score": 0.95,
+      "semantic_similarity": 0.9,
+      "keyword_match": 1.0,
+      "response_length": 207,
+      "expected_length_range": [
+        80,
+        200
+      ],
+      "sources_count": 0,
+      "response_time": 0.0,
+      "test_passed": true,
+      "pass_reasons": {
+        "semantic_similarity_pass": true,
+        "keyword_match_pass": true,
+        "length_reasonable": true,
+        "edge_case_appropriate": true
+      },
+      "timestamp": "2026-04-16T19:00:39.282552"
+    }
+  ],
+  "summary": {
+    "timestamp": "2026-04-16T19:00:39.282552",
+    "total_tests": 7,
+    "passed_tests": 3,
+    "failed_tests": 4,
+    "pass_rate": 0.42857142857142855,
+    "total_execution_time": 0.0019998550415039062,
+    "avg_semantic_similarity": 0.5017703575392942,
+    "avg_keyword_match": 0.6281746031746032,
+    "avg_overall_score": 0.6991803652379399,
+    "avg_response_time": 0.0014285714285714286,
+    "avg_response_length": 149.42857142857142,
+    "category_breakdown": {
+      "factual": {
+        "total": 1,
+        "passed": 1
+      },
+      "technical": {
+        "total": 1,
+        "passed": 0
+      },
+      "process": {
+        "total": 1,
+        "passed": 0
+      },
+      "deployment": {
+        "total": 1,
+        "passed": 0
+      },
+      "metrics": {
+        "total": 1,
+        "passed": 0
+      },
+      "edge_case": {
+        "total": 2,
+        "passed": 2
+      }
+    },
+    "priority_breakdown": {
+      "high": {
+        "total": 3,
+        "passed": 1
+      },
+      "medium": {
+        "total": 3,
+        "passed": 1
+      },
+      "low": {
+        "total": 1,
+        "passed": 1
+      }
+    },
+    "critical_failures": 2,
+    "critical_failure_details": [
+      {
+        "id": "rag_evaluation",
+        "query": "How do you evaluate RAG system performance?"
+      },
+      {
+        "id": "evaluation_metrics",
+        "query": "What metrics are used to measure AI performance?"
+      }
+    ]
+  },
+  "config": {
+    "semantic_similarity_threshold": 0.65,
+    "length_tolerance": 0.3,
+    "response_time_threshold": 15.0,
+    "minimum_response_length": 50,
+    "keyword_match_threshold": 0.25,
+    "sources_minimum": 1,
+    "offline_mode": true
+  }
+}

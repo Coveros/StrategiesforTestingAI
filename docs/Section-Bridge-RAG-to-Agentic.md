@@ -4,11 +4,15 @@
 **Estimated Duration:** 5-10 minutes  
 **Delivery:** After Exercise 4 debrief, before distributing Exercise 5
 
+**Pacing Context:** Exercises 1-4 are designed to fit a roughly 3.5 to 4.0 hour RAG block, including this bridge. Exercises 5-9 are designed to fit a roughly 4.0 to 4.5 hour agentic block, with Exercises 4 and 6 remaining the main intentional deep dives.
+
 ---
 
 ## Purpose
 
 Students just spent Exercises 1-4 learning to test a RAG chatbot. This bridge reframes everything they learned and shows why it is necessary but not sufficient for agentic systems. It answers the question: *"Why can't I just use the same tests I already wrote?"*
+
+For the full timing model, see [Course-Schedule.md](Course-Schedule.md).
 
 ---
 
@@ -132,6 +136,14 @@ Exercise 7  ──  NFR: timeouts, rate limits, robustness
 Exercise 8  ──  Security: prompt injection + guardrails
 Exercise 9  ──  CI gate: automated deploy/no-deploy decision
 ```
+
+**Recommended downstream timing:**
+
+- Exercise 5: 45-50 minutes
+- Exercise 6: 45-55 minutes
+- Exercise 7: 40-50 minutes
+- Exercise 8: 40-50 minutes
+- Exercise 9: 35-45 minutes
 
 ---
 

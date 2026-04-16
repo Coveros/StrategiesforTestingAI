@@ -1,0 +1,368 @@
+{
+  "run_meta": {
+    "timestamp": "2026-04-16T18:59:00.053083",
+    "transport": "local-fallback",
+    "session_id": "section7-20260416_185859",
+    "include_trace": true,
+    "crew_mode": true,
+    "total_cases": 9,
+    "passed_cases": 8,
+    "pass_rate": 0.889,
+    "avg_response_time": 0.0,
+    "worst_response_time": 0
+  },
+  "results": [
+    {
+      "id": "dep_outage_1",
+      "prompt": "run quick regression simulate dependency outage",
+      "expect": "degraded",
+      "evaluation": {
+        "passed": true,
+        "status_code": 200,
+        "degraded_mode": true,
+        "circuit_open": false,
+        "steps": 4,
+        "tool_calls": 0,
+        "redundant_tool_calls": 0,
+        "loop_tax": 0.0,
+        "response_preview": "Crew degradation: regression service unavailable; returning cached diagnostics only."
+      },
+      "raw": {
+        "mode": "agentic",
+        "response_time": 0.0,
+        "trajectory_metrics": {
+          "steps": 4,
+          "tool_calls": 0,
+          "handoffs": 2,
+          "redundant_tool_calls": 0,
+          "early_termination": false,
+          "degraded_mode": true,
+          "circuit_open": false,
+          "failures_seen": 1,
+          "policy_bypass": false,
+          "poisoned_retrieval": false
+        },
+        "handoffs": [
+          {
+            "from": "Coordinator",
+            "to": "RunnerAgent",
+            "purpose": "Handle intent via run_regression_suite"
+          },
+          {
+            "from": "RunnerAgent",
+            "to": "Coordinator",
+            "purpose": "Return observation and finalize user response"
+          }
+        ]
+      }
+    },
+    {
+      "id": "dep_outage_2",
+      "prompt": "run quick regression simulate dependency outage",
+      "expect": "degraded",
+      "evaluation": {
+        "passed": true,
+        "status_code": 200,
+        "degraded_mode": true,
+        "circuit_open": true,
+        "steps": 4,
+        "tool_calls": 0,
+        "redundant_tool_calls": 0,
+        "loop_tax": 0.0,
+        "response_preview": "Crew degradation: regression service unavailable; returning cached diagnostics only."
+      },
+      "raw": {
+        "mode": "agentic",
+        "response_time": 0.0,
+        "trajectory_metrics": {
+          "steps": 4,
+          "tool_calls": 0,
+          "handoffs": 2,
+          "redundant_tool_calls": 0,
+          "early_termination": false,
+          "degraded_mode": true,
+          "circuit_open": true,
+          "failures_seen": 2,
+          "policy_bypass": false,
+          "poisoned_retrieval": false
+        },
+        "handoffs": [
+          {
+            "from": "Coordinator",
+            "to": "RunnerAgent",
+            "purpose": "Handle intent via run_regression_suite"
+          },
+          {
+            "from": "RunnerAgent",
+            "to": "Coordinator",
+            "purpose": "Return observation and finalize user response"
+          }
+        ]
+      }
+    },
+    {
+      "id": "breaker_block",
+      "prompt": "run quick regression suite",
+      "expect": "breaker_open",
+      "evaluation": {
+        "passed": true,
+        "status_code": 200,
+        "degraded_mode": true,
+        "circuit_open": true,
+        "steps": 2,
+        "tool_calls": 0,
+        "redundant_tool_calls": 0,
+        "loop_tax": 0.0,
+        "response_preview": "Crew dependency circuit is OPEN. Request denied to prevent cascading failures."
+      },
+      "raw": {
+        "mode": "agentic",
+        "response_time": 0.0,
+        "trajectory_metrics": {
+          "steps": 2,
+          "tool_calls": 0,
+          "handoffs": 0,
+          "redundant_tool_calls": 0,
+          "early_termination": true,
+          "degraded_mode": true,
+          "circuit_open": true,
+          "failures_seen": 2,
+          "policy_bypass": false,
+          "poisoned_retrieval": false
+        },
+        "handoffs": []
+      }
+    },
+    {
+      "id": "breaker_reset",
+      "prompt": "reset circuit breaker",
+      "expect": "reset_ok",
+      "evaluation": {
+        "passed": true,
+        "status_code": 200,
+        "degraded_mode": false,
+        "circuit_open": false,
+        "steps": 1,
+        "tool_calls": 0,
+        "redundant_tool_calls": 0,
+        "loop_tax": 0.0,
+        "response_preview": "Crew circuit breaker reset. Dependency tools are available again."
+      },
+      "raw": {
+        "mode": "agentic",
+        "response_time": 0.0,
+        "trajectory_metrics": {
+          "steps": 1,
+          "tool_calls": 0,
+          "handoffs": 0,
+          "redundant_tool_calls": 0,
+          "early_termination": true,
+          "degraded_mode": false,
+          "circuit_open": false,
+          "failures_seen": 0,
+          "policy_bypass": false,
+          "poisoned_retrieval": false
+        },
+        "handoffs": []
+      }
+    },
+    {
+      "id": "post_reset_normal",
+      "prompt": "run quick regression suite",
+      "expect": "normal",
+      "evaluation": {
+        "passed": true,
+        "status_code": 200,
+        "degraded_mode": false,
+        "circuit_open": false,
+        "steps": 4,
+        "tool_calls": 1,
+        "redundant_tool_calls": 0,
+        "loop_tax": 0.0,
+        "response_preview": "Crew run complete (quick): passed 9, failed 2."
+      },
+      "raw": {
+        "mode": "agentic",
+        "response_time": 0.0,
+        "trajectory_metrics": {
+          "steps": 4,
+          "tool_calls": 1,
+          "handoffs": 2,
+          "redundant_tool_calls": 0,
+          "early_termination": false,
+          "degraded_mode": false,
+          "circuit_open": false,
+          "failures_seen": 0,
+          "policy_bypass": false,
+          "poisoned_retrieval": false
+        },
+        "handoffs": [
+          {
+            "from": "Coordinator",
+            "to": "RunnerAgent",
+            "purpose": "Handle intent via run_regression_suite"
+          },
+          {
+            "from": "RunnerAgent",
+            "to": "Coordinator",
+            "purpose": "Return observation and finalize user response"
+          }
+        ]
+      }
+    },
+    {
+      "id": "timeout_case",
+      "prompt": "run quick regression simulate tool timeout",
+      "expect": "degraded",
+      "evaluation": {
+        "passed": true,
+        "status_code": 200,
+        "degraded_mode": true,
+        "circuit_open": false,
+        "steps": 4,
+        "tool_calls": 0,
+        "redundant_tool_calls": 0,
+        "loop_tax": 0.0,
+        "response_preview": "Crew degradation: tool timeout detected; partial response returned with retry recommendation."
+      },
+      "raw": {
+        "mode": "agentic",
+        "response_time": 0.0,
+        "trajectory_metrics": {
+          "steps": 4,
+          "tool_calls": 0,
+          "handoffs": 2,
+          "redundant_tool_calls": 0,
+          "early_termination": false,
+          "degraded_mode": true,
+          "circuit_open": false,
+          "failures_seen": 1,
+          "policy_bypass": false,
+          "poisoned_retrieval": false
+        },
+        "handoffs": [
+          {
+            "from": "Coordinator",
+            "to": "RunnerAgent",
+            "purpose": "Handle intent via run_regression_suite"
+          },
+          {
+            "from": "RunnerAgent",
+            "to": "Coordinator",
+            "purpose": "Return observation and finalize user response"
+          }
+        ]
+      }
+    },
+    {
+      "id": "rate_limit_case",
+      "prompt": "run quick regression simulate rate limit",
+      "expect": "degraded",
+      "evaluation": {
+        "passed": true,
+        "status_code": 200,
+        "degraded_mode": true,
+        "circuit_open": true,
+        "steps": 4,
+        "tool_calls": 0,
+        "redundant_tool_calls": 0,
+        "loop_tax": 0.0,
+        "response_preview": "Crew degradation: rate limit encountered; request deferred with backoff."
+      },
+      "raw": {
+        "mode": "agentic",
+        "response_time": 0.0,
+        "trajectory_metrics": {
+          "steps": 4,
+          "tool_calls": 0,
+          "handoffs": 2,
+          "redundant_tool_calls": 0,
+          "early_termination": false,
+          "degraded_mode": true,
+          "circuit_open": true,
+          "failures_seen": 2,
+          "policy_bypass": false,
+          "poisoned_retrieval": false
+        },
+        "handoffs": [
+          {
+            "from": "Coordinator",
+            "to": "RunnerAgent",
+            "purpose": "Handle intent via run_regression_suite"
+          },
+          {
+            "from": "RunnerAgent",
+            "to": "Coordinator",
+            "purpose": "Return observation and finalize user response"
+          }
+        ]
+      }
+    },
+    {
+      "id": "empty_input",
+      "prompt": "   ",
+      "expect": "handled",
+      "evaluation": {
+        "passed": false,
+        "status_code": 400,
+        "degraded_mode": false,
+        "circuit_open": false,
+        "steps": 0,
+        "tool_calls": 0,
+        "redundant_tool_calls": 0,
+        "loop_tax": 0.0,
+        "response_preview": ""
+      },
+      "raw": {
+        "mode": null,
+        "response_time": null,
+        "trajectory_metrics": {},
+        "handoffs": []
+      }
+    },
+    {
+      "id": "gibberish_input",
+      "prompt": "xqz@@##123###??",
+      "expect": "handled",
+      "evaluation": {
+        "passed": true,
+        "status_code": 200,
+        "degraded_mode": true,
+        "circuit_open": true,
+        "steps": 4,
+        "tool_calls": 1,
+        "redundant_tool_calls": 0,
+        "loop_tax": 0.0,
+        "response_preview": "Crew knowledge response:\n- Faithfulness checks whether responses are grounded in provided context.\n- Relevance measures whether the response actually answers th"
+      },
+      "raw": {
+        "mode": "agentic",
+        "response_time": 0.0,
+        "trajectory_metrics": {
+          "steps": 4,
+          "tool_calls": 1,
+          "handoffs": 2,
+          "redundant_tool_calls": 0,
+          "early_termination": false,
+          "degraded_mode": true,
+          "circuit_open": true,
+          "failures_seen": 2,
+          "policy_bypass": false,
+          "poisoned_retrieval": false
+        },
+        "handoffs": [
+          {
+            "from": "Coordinator",
+            "to": "KnowledgeAgent",
+            "purpose": "Handle intent via search_kb"
+          },
+          {
+            "from": "KnowledgeAgent",
+            "to": "Coordinator",
+            "purpose": "Return observation and finalize user response"
+          }
+        ]
+      }
+    }
+  ]
+}

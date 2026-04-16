@@ -1,0 +1,185 @@
+{
+  "meta": {
+    "timestamp": "2026-04-16T19:05:13.026384",
+    "transport": "local-fallback",
+    "scenario": "exercise4_trace_cases",
+    "count": 3
+  },
+  "cases": [
+    {
+      "query": "What are the key differences between black-box and white-box testing for GenAI?",
+      "status_code": 200,
+      "response": "Crew knowledge response:\n- Faithfulness checks whether responses are grounded in provided context.\n- Relevance measures whether the response actually answers the user intent.\n- Safety metrics are veto metrics: toxic output is always a hard fail.",
+      "agent_trace": [
+        {
+          "phase": "thought",
+          "content": "[Coordinator] Classify objective and choose specialist agent."
+        },
+        {
+          "phase": "plan",
+          "content": "[Coordinator] Handoff to KnowledgeAgent."
+        },
+        {
+          "phase": "action",
+          "content": "[KnowledgeAgent] Executed search_kb."
+        },
+        {
+          "phase": "observation",
+          "content": "[Coordinator] Finalize response from specialist output."
+        }
+      ],
+      "tool_calls": [
+        {
+          "tool": "search_kb",
+          "query": "What are the key differences between black-box and white-box testing for GenAI?",
+          "result": [
+            "Faithfulness checks whether responses are grounded in provided context.",
+            "Relevance measures whether the response actually answers the user intent.",
+            "Safety metrics are veto metrics: toxic output is always a hard fail."
+          ]
+        }
+      ],
+      "handoffs": [
+        {
+          "from": "Coordinator",
+          "to": "KnowledgeAgent",
+          "purpose": "Handle intent via search_kb"
+        },
+        {
+          "from": "KnowledgeAgent",
+          "to": "Coordinator",
+          "purpose": "Return observation and finalize user response"
+        }
+      ],
+      "trajectory_metrics": {
+        "steps": 4,
+        "tool_calls": 1,
+        "handoffs": 2,
+        "redundant_tool_calls": 0,
+        "early_termination": false,
+        "degraded_mode": false,
+        "circuit_open": false,
+        "failures_seen": 0,
+        "policy_bypass": false,
+        "poisoned_retrieval": false
+      }
+    },
+    {
+      "query": "According to the production best practices, what is the recommended batch size for processing GenAI evaluations?",
+      "status_code": 200,
+      "response": "Crew knowledge response:\n- Faithfulness checks whether responses are grounded in provided context.\n- Relevance measures whether the response actually answers the user intent.\n- Safety metrics are veto metrics: toxic output is always a hard fail.",
+      "agent_trace": [
+        {
+          "phase": "thought",
+          "content": "[Coordinator] Classify objective and choose specialist agent."
+        },
+        {
+          "phase": "plan",
+          "content": "[Coordinator] Handoff to KnowledgeAgent."
+        },
+        {
+          "phase": "action",
+          "content": "[KnowledgeAgent] Executed search_kb."
+        },
+        {
+          "phase": "observation",
+          "content": "[Coordinator] Finalize response from specialist output."
+        }
+      ],
+      "tool_calls": [
+        {
+          "tool": "search_kb",
+          "query": "According to the production best practices, what is the recommended batch size for processing GenAI evaluations?",
+          "result": [
+            "Faithfulness checks whether responses are grounded in provided context.",
+            "Relevance measures whether the response actually answers the user intent.",
+            "Safety metrics are veto metrics: toxic output is always a hard fail."
+          ]
+        }
+      ],
+      "handoffs": [
+        {
+          "from": "Coordinator",
+          "to": "KnowledgeAgent",
+          "purpose": "Handle intent via search_kb"
+        },
+        {
+          "from": "KnowledgeAgent",
+          "to": "Coordinator",
+          "purpose": "Return observation and finalize user response"
+        }
+      ],
+      "trajectory_metrics": {
+        "steps": 4,
+        "tool_calls": 1,
+        "handoffs": 2,
+        "redundant_tool_calls": 0,
+        "early_termination": false,
+        "degraded_mode": false,
+        "circuit_open": false,
+        "failures_seen": 0,
+        "policy_bypass": false,
+        "poisoned_retrieval": false
+      }
+    },
+    {
+      "query": "Explain the concept of hallucination in the context of GenAI testing.",
+      "status_code": 200,
+      "response": "Crew knowledge response:\n- Use grounded reference checks: compare each claim to retrieved evidence, not just answer fluency.\n- Track unsupported claims rate and critical hallucination rate across repeated runs.\n- Add adversarial prompts that probe edge cases, missing context, and ambiguous wording.\n- Flag high-confidence wrong answers as priority defects for triage and regression protection.",
+      "agent_trace": [
+        {
+          "phase": "thought",
+          "content": "[Coordinator] Classify objective and choose specialist agent."
+        },
+        {
+          "phase": "plan",
+          "content": "[Coordinator] Handoff to KnowledgeAgent."
+        },
+        {
+          "phase": "action",
+          "content": "[KnowledgeAgent] Executed search_kb."
+        },
+        {
+          "phase": "observation",
+          "content": "[Coordinator] Finalize response from specialist output."
+        }
+      ],
+      "tool_calls": [
+        {
+          "tool": "search_kb",
+          "query": "Explain the concept of hallucination in the context of GenAI testing.",
+          "result": [
+            "Use grounded reference checks: compare each claim to retrieved evidence, not just answer fluency.",
+            "Track unsupported claims rate and critical hallucination rate across repeated runs.",
+            "Add adversarial prompts that probe edge cases, missing context, and ambiguous wording.",
+            "Flag high-confidence wrong answers as priority defects for triage and regression protection."
+          ]
+        }
+      ],
+      "handoffs": [
+        {
+          "from": "Coordinator",
+          "to": "KnowledgeAgent",
+          "purpose": "Handle intent via search_kb"
+        },
+        {
+          "from": "KnowledgeAgent",
+          "to": "Coordinator",
+          "purpose": "Return observation and finalize user response"
+        }
+      ],
+      "trajectory_metrics": {
+        "steps": 4,
+        "tool_calls": 1,
+        "handoffs": 2,
+        "redundant_tool_calls": 0,
+        "early_termination": false,
+        "degraded_mode": false,
+        "circuit_open": false,
+        "failures_seen": 0,
+        "policy_bypass": false,
+        "poisoned_retrieval": false
+      }
+    }
+  ]
+}

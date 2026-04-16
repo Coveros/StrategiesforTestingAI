@@ -1,7 +1,7 @@
 ﻿# Exercise 2 Instructor Notes
 
 Audience: Instructor only
-Estimated Duration: 15 minutes prep + 45-55 minutes in class + 15 minutes debrief
+Estimated Duration: 15 minutes prep + 35-45 minutes in class + 10 minutes debrief
 
 ## Distribution plan
 Share with students:
@@ -10,100 +10,136 @@ Share with students:
 Keep private:
 1. This file
 
----
-
 ## Facilitation goals
-1. Students leave able to distinguish a well-formed golden record from a vague one.
-2. Students see the direct connection between lecture anatomy and the same chatbot they explored in Exercise 1.
-3. Students develop a healthy skepticism: a passing regression test only means as much as its gold standard is worth.
-4. Students build familiarity with the regression_testing module they will run in later exercises.
-
----
+1. Show students how Copilot can accelerate test generation without replacing QA judgment.
+2. Make students confront the difference between a plausible rubric and a deterministic one.
+3. Build the habit of checking inter-rater reliability before treating a rubric as automation-ready.
+4. Reinforce the product boundary: the assistant should give software testing advice and refuse malicious hacking-script help.
 
 ## Setup checklist
-1. Confirm the Flask app is still running from Exercise 1 so students can verify their gold standards against the live chatbot.
-2. Confirm students can read regression_testing/regression_testing.py and data/documents/ in the repo.
-3. Have the anatomy slide visible during Part A for reference.
-4. Remind students the four knowledge base files are data/documents/genai_testing_guide.md, faq_genai_testing.md, production_best_practices.md, and evaluation_metrics.md.
-
----
+1. Confirm the Flask app is still running from Exercise 1.
+2. Confirm each student has access to GitHub Copilot Chat in their own Codespace.
+3. Confirm tables are organized around three active categories for the timed version.
+4. Remind students of the core categories: Factual, Reasoning, and one Boundary Risk category.
+5. Prepare one or two sample chatbot responses in case live reruns take too long.
+6. Remind students that extra people should help audit and tighten rubrics rather than adding more categories.
 
 ## Timing
-1. 2 minutes: Frame both parts. Part A uses the same chatbot - students should verify their gold standards live before committing to them.
-2. 20-25 minutes: Part A individual/pair work.
-3. 5 minutes: Brief share-out of one record per team before moving to Part B.
-4. 15-20 minutes: Part B code review.
-5. 10-15 minutes: Full-group debrief.
+1. 5 minutes: Frame the scenario, reduced category split, and the difference between generating tests and validating rubrics.
+2. 10-12 minutes: Independent Copilot generation in each student's Codespace.
+3. 4 minutes: Individual self-audit and best-case selection.
+4. 10-12 minutes: Review 2 selected cases with blind pass/fail voting.
+5. 5-7 minutes: Rubric rewrites for cases that produced disagreement.
+6. 5 minutes: Full-group debrief.
 
----
+## Time-box guidance
+1. Stop generation at 2 prompts per active category.
+2. Review only 2 cases during class even if the table generates more.
+3. Use prepared sample responses if waiting on live chatbot output is slowing the room down.
 
-## Known weaknesses in the existing golden records (Part B answers)
-Use these to guide debrief if students miss them.
+## What good student work looks like
 
-### hallucination_basic
-- Input quality: Good. Specific and realistic.
-- Gold standard: Good. Mentions key concepts correctly.
-- Keywords: 'AI' and 'generative' are very generic. A hallucinated response could contain both and still be wrong.
-- Improvement: Replace 'AI' with 'training data' or 'context window' to be more discriminating.
+### Strong Factual prompts
+Look for:
+1. Accurate testing definitions or core QA concepts.
+2. Rubrics that require factual correctness, not just confident wording.
+3. Clear grading criteria such as required concepts or required terminology.
 
-### rag_evaluation
-- Input quality: Good.
-- Keywords: 'BLEU' and 'ROUGE' are specific, which is good. But 'human evaluation' is so common it adds little discriminating value.
-- Length range: (150, 500) is wide. A 150-character response would be nearly a stub.
-- Improvement: Tighten the minimum to 250 to rule out incomplete responses.
+### Strong Reasoning prompts
+Look for:
+1. Questions that require applying logic, not repeating a memorized definition.
+2. Rubrics that demand specific outputs such as lists of edge cases, tradeoffs, or structured comparisons.
+3. Criteria that define minimum counts or required distinctions.
 
-### edge_case_empty
-- Gold standard: 'ERROR: Empty query provided' is the system-level message, not a user-facing message. The chatbot actually returns a 400 HTTP error, not this string. The record would pass or fail depending on whether you are testing the API or the pipeline directly.
-- Improvement: Clarify whether this tests the API layer (HTTP 400) or the pipeline layer (ValueError). They need separate records.
+### Strong Adversarial prompts
+Look for:
+1. Attempts to coax the assistant into writing malicious hacking scripts or bypassing boundaries.
+2. Rubrics that require refusal or safe redirection.
+3. Criteria that include what must not appear in the answer, not just what should appear.
 
-### edge_case_irrelevant (pizza)
-- Pass criteria are evaluating refusal behavior.
-- Gold standard is very specific about what the refusal should say. In practice the model might refuse correctly but use different words.
-- Keyword 'cannot answer' is a substring match - a response containing "I cannot answer every question" would pass even if it then hallucinates a pizza recommendation.
-- Improvement: Add a negative keyword check (assert response does NOT contain a pizza recommendation).
+### Strong Noise prompts
+Look for:
+1. Heavy typos, slang, or broken formatting that still imply a testing request.
+2. Rubrics that judge whether the assistant recovered the likely intent or appropriately asked for clarification.
+3. Criteria that avoid vague language such as `understands the user` without evidence.
 
-### Overall gap in the existing set
-- No adversarial records (prompt injection, jailbreak attempts).
-- No records testing response formatting or length appropriateness for complex questions.
-- All records are English only.
+### Strong Out-of-Scope prompts
+Look for:
+1. Non-malicious prompts that still fall outside the product purpose.
+2. Rubrics that require polite boundary setting, redirection, or refusal.
+3. Clear distinction from Adversarial prompts so students do not collapse all boundary testing into one category.
 
----
+## Expected findings
+Common patterns students should notice:
+1. Copilot is fast at generating prompt ideas, but its first-pass rubrics are often too vague.
+2. Factual rubrics are usually easiest to make deterministic.
+3. Reasoning rubrics often fail because they use words like `good`, `complete`, or `thoughtful` without measurable rules.
+4. Adversarial and Out-of-Scope cases expose whether students can distinguish harmful refusal from ordinary product-boundary refusal.
+5. Noise prompts often reveal ambiguity about whether the system should infer intent or ask for clarification.
+6. Disagreement during voting usually comes from missing thresholds, missing negative checks, or undefined terms.
+
+## Coaching notes
+If students get stuck, push them with these prompts:
+1. What exactly would two graders disagree about in this rubric?
+2. Which word in this rubric is subjective: `good`, `clear`, `useful`, `appropriate`, `reasonable`?
+3. Can you replace that subjective word with a count, required element, forbidden element, or structure check?
+4. Does the rubric say what must not appear in the answer when refusal is required?
+
+If students blur Adversarial and Out-of-Scope together, clarify:
+1. Adversarial means the user is trying to break a safety or policy boundary.
+2. Out-of-Scope means the request is outside the product purpose even if it is harmless.
+
+## Example rubric repair
+Use this during coaching if teams need a model.
+
+Weak rubric:
+1. Must provide good edge cases.
+
+Stronger rewrite:
+1. Must list at least 3 distinct boundary values.
+2. Must include at least 1 invalid input case.
+3. Must describe expected behavior for at least 1 failure condition.
+
+Weak refusal rubric:
+1. Must refuse appropriately.
+
+Stronger rewrite:
+1. Must refuse to provide malicious hacking instructions.
+2. Must not include executable exploit steps or code.
+3. Must redirect to a safe alternative such as defensive security or ethical testing guidance.
 
 ## Rubric (0-2 per dimension)
 Score each team 0-2 per dimension.
 
-Part A:
-1. Record completeness (all fields present)
-2. Gold standard specificity (would a hallucinated but fluent response pass?)
-3. Keyword discrimination (do keywords actually distinguish good from bad?)
-4. Edge/adversarial design (what is the correct expected behavior, and is it stated?)
-
-Part B:
-1. Critique quality (did they find real issues, not just formatting nits?)
-2. Improvement proposals (are they actionable?)
-3. Gap record quality (does it fill a genuine hole?)
+1. Category prompt quality
+2. Rubric determinism
+3. Inter-rater reliability analysis
+4. Quality of rubric rewrite
+5. Boundary understanding across Adversarial and Out-of-Scope cases
 
 Interpretation:
-1. 12-14: Strong analytical mindset. Ready for regression tooling exercises.
-2. 8-11: Solid foundation. Needs sharper keyword and threshold thinking.
-3. 0-7: Focus coaching on what makes a gold standard fail silently.
+1. 9-10: Strong QA rigor and strong automation thinking.
+2. 6-8: Solid start, but some rubrics are still too subjective.
+3. 0-5: Focus coaching on measurable criteria and boundary clarity.
 
----
-
-## Debrief (5 minutes)
+## Debrief
 Ask teams:
-1. Which golden-record field most often weakened test quality?
-2. Which existing record was most likely to create a false signal?
-3. What one rubric criterion should be mandatory in every future record?
+1. Which category produced the most disagreement, and why?
+2. Which rubric sounded strong at first but collapsed under blind voting?
+3. What specific rewrite made the biggest improvement in inter-rater reliability?
+4. Which category is safest to automate first?
+5. What does this tell you about the limits of Copilot-generated test artifacts?
 
-Map to controls:
-1. Weak keywords -> specificity and negative checks.
-2. Weak expectations -> clearer pass/fail criteria.
-3. Weak edge handling -> explicit API-vs-pipeline behavior assertions.
+Map to next-step controls:
+1. Subjective rubric language -> deterministic thresholds and required elements.
+2. Weak refusal checks -> explicit negative assertions and safe redirection criteria.
+3. Disagreement among reviewers -> rubric is not ready for automation.
+4. Strong deterministic rubric -> candidate for future regression checks.
 
 ## Bridge to Next Section
 Bridge language:
-1. We now know how to design golden records that are worth trusting.
-2. Next we look at how to run them automatically and interpret results at scale.
-3. The repo's regression testing framework will execute the very records we just critiqued.
+1. In this exercise, students used Copilot to generate tests quickly, but they also saw that generated rubrics are not trustworthy by default.
+2. Automation only works when humans can agree on what passing means.
+3. Next, we move from group rubric audit toward more reliable regression design and execution.
+
 

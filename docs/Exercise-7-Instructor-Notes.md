@@ -1,168 +1,262 @@
-﻿# Exercise 7: Testing Non-Functional Requirements in the Agentic Chatbot - Instructor Notes
+﻿# Exercise 7: Lab - Stress Testing / NFRs - Instructor Notes
 
 ---
 
-## Objective
+## Overview
 
-Students should validate system-level resilience in the agentic chatbot under adverse conditions.
+Students validate the assistant's behavior under **non-functional stress**, not just correctness. This lab is about operational reliability: how the system behaves when dependencies fail, tools slow down, inputs get extreme, or latency and cost drift upward.
 
-Focus areas:
+**Key Learning Objective:** Students should learn to evaluate the assistant across five NFR pillars:
 
-1. Dependency failure handling
-2. Circuit breaker behavior
-3. Timeout and rate-limit resilience
-4. Boundary input robustness
-5. Latency and cost-risk proxies
+1. Outage / Rate Limits
+2. Timeouts
+3. Boundary Inputs
+4. Gibberish / Fuzzing
+5. Cost / Latency
 
----
-
-## Setup Checklist
-
-1. Launch app and verify [http://localhost:5000](http://localhost:5000) is reachable.
-2. Open [http://localhost:5000/?instructor=1](http://localhost:5000/?instructor=1).
-3. Enable Agent Mode, Show Trace, Crew Mode.
-4. Confirm special NFR prompts work:
-   - "run quick regression simulate dependency outage"
-   - "run quick regression simulate tool timeout"
-   - "run quick regression simulate rate limit"
-   - "reset circuit breaker"
-5. Optional standardized submission path: `python section7_nfr_quickrun.py` (generates JSON + TXT artifacts in `regression_test_results`).
+This is a distributed chaos-engineering lab. Each student owns one NFR area, then the table merges results into a shared **Resilience Scorecard**.
 
 ---
 
-## Timing (50-60 minutes)
+## Setup Checklist (10 minutes before class)
 
-| Phase | Time | Outcome |
-|-|-|-|
-| Intro to NFR framing | 5 minutes | Students align on resilience vs correctness |
-| Part A dependency + breaker | 15 minutes | Outage and breaker behavior observed |
-| Part B timeout + rate limit | 10-12 minutes | Unhappy path handling assessed |
-| Part C boundary cases | 12-15 minutes | Robustness under weird inputs validated |
-| Part D latency/loop-tax | 10 minutes | Simple cost-risk proxy calculated |
-| Debrief | 5 minutes | Hardening priorities discussed |
+- [ ] Confirm students can access traces, latency metrics, and token-cost metadata if available
+- [ ] Confirm there is a practical way to simulate or approximate 429s, timeouts, and long-input cases
+- [ ] Explain the five NFR pillars before the exercise begins
+- [ ] Ensure each table can assign one person per pillar if possible
+- [ ] Remind students that the goal is not just to break the assistant, but to evaluate whether it fails **gracefully**
+- [ ] Have the student-facing lab open: [docs/Exercise-7.md](Exercise-7.md)
 
 ---
 
-## Expected Findings
+## Timing
 
-### Dependency and circuit behavior
+| Phase | Time | Notes |
+|---|---|---|
+| Intro and NFR framing | 5 minutes | Shift from correctness QA to resilience QA |
+| Part 1: Chaos assignments | 18-22 minutes | Each person runs one deliberate stress case for one NFR area |
+| Part 2: Resilience scorecard | 12-15 minutes | Table combines findings and picks weakest link |
+| Debrief | 5 minutes | Discuss which NFR is riskiest for production |
+| **Total** | **40-50 minutes** | - |
 
-Students should observe:
+---
 
-1. Graceful degraded responses for simulated outages.
-2. Circuit breaker opens after repeated failures.
-3. Dependency calls blocked while breaker is open.
-4. "reset circuit breaker" restores normal behavior.
+## Time-box Guidance
 
-### Timeout and 429 handling
+- Cap the lab at one strong stress case per pillar.
+- Reduce Person 5 to 3 baseline queries instead of 5.
+- If discussion drifts, require pass/fail/mixed plus one severity note instead of a long debate for every row.
 
-Students should observe:
+---
 
-1. Timeout path returns fallback response (no crash).
-2. 429 path reports backpressure behavior.
-3. User communication remains explicit and understandable.
+## Expected Findings by NFR Area
 
-### Boundary robustness
+### Person 1: Outage / Rate Limits
 
-Students should observe:
+Common failure patterns:
 
-1. Empty and gibberish inputs do not crash the app.
-2. Very long inputs may be slower but should remain stable.
-3. Unexpected/unsafe tool execution should not occur on noise input.
+- Assistant does not communicate 429-style backpressure clearly
+- System retries poorly or repeatedly without helping the user
+- Partial failure leaves the system in a confusing state
 
-### Latency and cost-risk proxy
+What strong evidence looks like:
 
-Students should observe:
+- Clear example of graceful degradation or lack of it
+- Proof of whether the assistant remained usable after the rate-limit event
 
-1. Response-time spread across scenarios.
-2. Higher trajectory complexity can increase perceived cost risk.
-3. Redundant tool calls act as a practical loop-tax indicator.
+### Person 2: Timeouts
+
+Common failure patterns:
+
+- Assistant waits too long with no useful feedback
+- No circuit-breaker-like behavior or timeout containment
+- User receives a vague or misleading answer after a slow failure
+
+What strong evidence looks like:
+
+- Measured or observed delay behavior
+- Clear judgment on whether the timeout path was safe and understandable
+
+### Person 3: Boundary Inputs
+
+Common failure patterns:
+
+- Extremely large text causes crashes or broken formatting
+- Context handling fails silently under long input
+- Large input causes unstable or confusing assistant behavior
+
+What strong evidence looks like:
+
+- A concrete long-input example and the resulting behavior
+- Clear distinction between safe truncation and outright failure
+
+### Person 4: Gibberish / Fuzzing
+
+Common failure patterns:
+
+- Assistant hallucinates structured meaning from nonsense input
+- Unexpected tool usage is triggered by noise
+- Non-English or malformed input causes instability instead of controlled fallback
+
+What strong evidence looks like:
+
+- Example input and proof of whether the system stayed stable
+- Judgment on whether fallback or clarification behavior was appropriate
+
+### Person 5: Cost / Latency
+
+Common failure patterns:
+
+- TTFT varies wildly across normal baseline queries
+- Similar requests have disproportionate token cost
+- One or two runs reveal clear cost/latency spikes
+
+What strong evidence looks like:
+
+- Five baseline runs with average TTFT and average Token Cost
+- Identification of worst-case latency or cost outlier
+
+---
+
+## Facilitation Tips
+
+### While Students Run Stress Cases
+
+Keep them focused on NFR behavior, not just correctness:
+
+- "Did the system fail safely or unsafely?"
+- "Was the user told clearly what happened?"
+- "Did the system degrade, or did it just behave strangely?"
+- "Would this be acceptable if it happened in production every day?"
+
+### While Person 5 Measures Cost / Latency
+
+Push for concrete metrics:
+
+- "What is your average TTFT?"
+- "Which run was the worst outlier?"
+- "Would you call this stable or noisy? Why?"
+
+### During the Resilience Scorecard Discussion
+
+Keep the table from naming everything as equally bad:
+
+- Require one weakest-link choice
+- Ask for severity reasoning, not just pass/fail
+- Require one recommended fix per NFR area
 
 ---
 
 ## Rubric (0-2 per dimension)
 
-### 1) Failure-Path Validation (0-2)
+### NFR Test Quality (0-2)
 
-- 0: Incomplete tests; little evidence
-- 1: Partial tests; some evidence
-- 2: Complete failure-path checks with clear outcomes
+- **0:** Stress cases are vague, weak, or incomplete
+- **1:** Stress cases are usable but evidence is limited
+- **2:** Stress cases are concrete and clearly tied to one NFR pillar
 
-### 2) Circuit Breaker Reasoning (0-2)
+### Evidence and Analysis Quality (0-2)
 
-- 0: No clear breaker analysis
-- 1: Breaker behavior observed but weak interpretation
-- 2: Correct interpretation of open/block/reset cycle
+- **0:** Claims unsupported by evidence
+- **1:** Some evidence captured, but interpretation is shallow
+- **2:** Strong evidence showing how the system behaved under stress
 
-### 3) Boundary and Stability Analysis (0-2)
+### Resilience Scorecard Quality (0-2)
 
-- 0: Minimal boundary testing
-- 1: Boundary tests run with shallow analysis
-- 2: Boundary cases analyzed with meaningful pass/fail criteria
+- **0:** No clear combined scorecard
+- **1:** Scorecard present but weakly justified
+- **2:** Scorecard clearly summarizes pass/fail, severity, evidence, and fixes
 
-### 4) Hardening Recommendations (0-2)
+### Weakest-Link Reasoning (0-2)
 
-- 0: Generic recommendations
-- 1: Some actionable ideas
-- 2: Prioritized, concrete mitigations tied to evidence
+- **0:** No clear weakest-link decision
+- **1:** Weakest link chosen but poorly justified
+- **2:** Weakest link selected with evidence-based production reasoning
+
+**Total: 8 points**
 
 ---
 
 ## Strong Mitigations to Reward
 
-1. Retry policy with capped exponential backoff
-2. Circuit breaker cooldown telemetry and alerting
-3. Per-tool timeout contracts and fallback paths
-4. Input guardrails and early validation gates
-5. Queue/backpressure strategy for 429 bursts
-6. NFR regression checks in CI with scenario sampling
+If students propose these, reward strongly:
+
+1. Rate-limit backoff and user-visible degraded mode messaging
+2. Per-tool timeout limits and circuit-breaker style recovery behavior
+3. Input-size guardrails and truncation policies
+4. Early validation for gibberish, malformed, or unsupported inputs
+5. Cost and latency telemetry with alert thresholds
+6. Automated resilience regressions for baseline TTFT and failure behavior
 
 ---
 
-## Common Misconceptions to Correct
+## Transition and Bridge Language
 
-1. "If answer text is okay, reliability is okay."
-   - Correction: Resilience is independent of answer fluency.
+### Opening (Connect to Exercise 6)
 
-2. "Circuit breakers are optional in AI apps."
-   - Correction: Dependency-heavy agent workflows need blast-radius control.
+"In Exercise 6, you audited whether a multi-agent crew worked efficiently. In this lab, we ask a different question: when the environment gets hostile or expensive, does the assistant stay reliable?"
 
-3. "Average latency is enough."
-   - Correction: Tail latency and failure spikes drive user experience.
+### Mid-Lab Framing
 
----
+"A system can be logically correct and still operationally weak. Your job is to find where reliability breaks first under stress."
 
-## Debrief (5 minutes)
+### Closing (to next stage)
 
-Ask each team:
-
-1. "What failed first under stress?"
-2. "Did the system degrade gracefully or silently?"
-3. "What one reliability control should be added before production?"
-
-Map answers to controls:
-
-- dependency instability -> retries + breaker policy
-- noisy inputs -> validation and refusal defaults
-- latency spikes -> timeout and queue controls
-- loop-cost risk -> trajectory caps and redundancy suppression
+"You just stress-tested the assistant's non-functional behavior. The next step is to automate these resilience checks so failures in cost, latency, and recovery are caught before release."
 
 ---
 
-## Submission Standardization (Recommended)
+## Common Student Mistakes and Corrections
 
-If students are on isolated VMs, request these two artifacts from each student/team:
-
-1. `section7_quickrun_*.json`
-2. `section7_quickrun_summary_*.txt`
-
-These provide consistent evidence for pass/fail and reduce grading variability across environments.
+| Mistake | What You Hear | Correction |
+|---|---|---|
+| Focuses only on answer quality | "The response was still correct" | "Correctness is not enough if the system is unstable or too expensive." |
+| Treats slowdown as acceptable by default | "It was slow, but it finished" | "Production users care about timeouts, TTFT, and responsiveness." |
+| Confuses weird output with graceful degradation | "It kind of worked" | "Did it fail clearly and safely, or just behave unpredictably?" |
+| Ignores outliers in Person 5 data | "The average looked okay" | "A single severe latency or cost spike can still be the real risk." |
+| Picks weakest link by opinion | "I think fuzzing was worst" | "What evidence makes it worse than the other NFR areas?" |
 
 ---
 
-## Bridge to Next Section
+## Answers to Anticipated Questions
 
-Suggested transition:
+**Q: What if we cannot trigger a true 429 or timeout in class?**  
+A: Use the closest available simulation or approximation. The key is to observe recovery behavior and user communication under stress.
 
-"You can now test agentic reliability manually. Next, we automate this into non-functional regression suites so resilience regressions are caught before release."
+**Q: Does Person 5 need exactly five baseline queries?**  
+A: Yes, if possible. Five runs give enough data for simple averages and outlier discussion without taking too long.
+
+**Q: What if more than one NFR looks bad?**  
+A: That is expected. The table must still choose one weakest link based on severity, blast radius, and confidence in the evidence.
+
+**Q: Should students fix the app during this lab?**  
+A: Not required. The main goal is diagnosis quality, prioritization, and resilience reasoning.
+
+---
+
+## Debrief (5-10 minutes)
+
+Ask the room:
+
+1. Which NFR was the weakest link today?
+2. Did the assistant fail gracefully, noisily, or silently under stress?
+3. What one reliability control would you ship before production?
+
+Map answers back to controls:
+
+- rate limits -> backoff, queueing, degraded-mode messaging
+- timeouts -> timeout policies, circuit breakers, fallback responses
+- boundary inputs -> size limits, truncation, validation
+- fuzzing stability -> input guards, fallback clarification behavior
+- cost/latency -> telemetry, thresholds, regression alerts
+
+---
+
+## Optional Deep Dive
+
+If a group finishes early:
+
+1. Ask them to define a target SLO for TTFT
+2. Ask them to design one automated chaos test for their weakest-link NFR
+3. Ask them to rank all five NFRs by production blast radius
 

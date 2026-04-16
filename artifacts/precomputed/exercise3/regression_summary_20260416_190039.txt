@@ -1,0 +1,49 @@
+REGRESSION TEST SUMMARY REPORT
+==================================================
+
+Timestamp: 2026-04-16T19:00:39.282552
+Total Tests: 7
+Passed: 3
+Failed: 4
+Pass Rate: 42.9%
+Execution Time: 0.00s
+
+PERFORMANCE METRICS
+--------------------
+Avg Semantic Similarity: 0.502
+Avg Keyword Match: 0.628
+Avg Overall Score: 0.699
+Avg Response Time: 0.00s
+Avg Response Length: 149 chars
+
+CRITICAL FAILURES
+-----------------
+• rag_evaluation: How do you evaluate RAG system performance?
+• evaluation_metrics: What metrics are used to measure AI performance?
+
+CATEGORY BREAKDOWN
+------------------
+factual: 1/1 (100.0%)
+technical: 0/1 (0.0%)
+process: 0/1 (0.0%)
+deployment: 0/1 (0.0%)
+metrics: 0/1 (0.0%)
+edge_case: 2/2 (100.0%)
+
+DETAILED RESULTS
+----------------
+hallucination_basic: PASS
+rag_evaluation: FAIL
+  Similarity: 0.115
+  Keywords: 0.500
+testing_best_practices: FAIL
+  Similarity: 0.278
+  Keywords: 0.500
+production_deployment: FAIL
+  Similarity: 0.181
+  Keywords: 0.375
+evaluation_metrics: FAIL
+  Similarity: 0.252
+  Keywords: 0.556
+edge_case_empty: PASS
+edge_case_irrelevant: PASS

@@ -1,0 +1,329 @@
+{
+  "meta": {
+    "timestamp": "2026-04-16T19:05:13.033925",
+    "transport": "local-fallback",
+    "scenario": "exercise6_trajectory_cases",
+    "count": 5
+  },
+  "cases": [
+    {
+      "query": "Plan a multi-step test strategy for hallucination, latency, and safety for a travel assistant.",
+      "status_code": 200,
+      "response": "Crew knowledge response:\n- Use grounded reference checks: compare each claim to retrieved evidence, not just answer fluency.\n- Track unsupported claims rate and critical hallucination rate across repeated runs.\n- Add adversarial prompts that probe edge cases, missing context, and ambiguous wording.\n- Flag high-confidence wrong answers as priority defects for triage and regression protection.",
+      "agent_trace": [
+        {
+          "phase": "thought",
+          "content": "[Coordinator] Classify objective and choose specialist agent."
+        },
+        {
+          "phase": "plan",
+          "content": "[Coordinator] Handoff to KnowledgeAgent."
+        },
+        {
+          "phase": "action",
+          "content": "[KnowledgeAgent] Executed search_kb."
+        },
+        {
+          "phase": "observation",
+          "content": "[Coordinator] Finalize response from specialist output."
+        }
+      ],
+      "tool_calls": [
+        {
+          "tool": "search_kb",
+          "query": "Plan a multi-step test strategy for hallucination, latency, and safety for a travel assistant.",
+          "result": [
+            "Use grounded reference checks: compare each claim to retrieved evidence, not just answer fluency.",
+            "Track unsupported claims rate and critical hallucination rate across repeated runs.",
+            "Add adversarial prompts that probe edge cases, missing context, and ambiguous wording.",
+            "Flag high-confidence wrong answers as priority defects for triage and regression protection."
+          ]
+        }
+      ],
+      "handoffs": [
+        {
+          "from": "Coordinator",
+          "to": "KnowledgeAgent",
+          "purpose": "Handle intent via search_kb"
+        },
+        {
+          "from": "KnowledgeAgent",
+          "to": "Coordinator",
+          "purpose": "Return observation and finalize user response"
+        }
+      ],
+      "trajectory_metrics": {
+        "steps": 4,
+        "tool_calls": 1,
+        "handoffs": 2,
+        "redundant_tool_calls": 0,
+        "early_termination": false,
+        "degraded_mode": false,
+        "circuit_open": false,
+        "failures_seen": 0,
+        "policy_bypass": false,
+        "poisoned_retrieval": false
+      }
+    },
+    {
+      "query": "Summarize likely failure patterns when a crew over-delegates retrieval checks.",
+      "status_code": 200,
+      "response": "Crew knowledge response:\n- Faithfulness checks whether responses are grounded in provided context.\n- Relevance measures whether the response actually answers the user intent.\n- Safety metrics are veto metrics: toxic output is always a hard fail.",
+      "agent_trace": [
+        {
+          "phase": "thought",
+          "content": "[Coordinator] Classify objective and choose specialist agent."
+        },
+        {
+          "phase": "plan",
+          "content": "[Coordinator] Handoff to KnowledgeAgent."
+        },
+        {
+          "phase": "action",
+          "content": "[KnowledgeAgent] Executed search_kb."
+        },
+        {
+          "phase": "observation",
+          "content": "[Coordinator] Finalize response from specialist output."
+        }
+      ],
+      "tool_calls": [
+        {
+          "tool": "search_kb",
+          "query": "Summarize likely failure patterns when a crew over-delegates retrieval checks.",
+          "result": [
+            "Faithfulness checks whether responses are grounded in provided context.",
+            "Relevance measures whether the response actually answers the user intent.",
+            "Safety metrics are veto metrics: toxic output is always a hard fail."
+          ]
+        }
+      ],
+      "handoffs": [
+        {
+          "from": "Coordinator",
+          "to": "KnowledgeAgent",
+          "purpose": "Handle intent via search_kb"
+        },
+        {
+          "from": "KnowledgeAgent",
+          "to": "Coordinator",
+          "purpose": "Return observation and finalize user response"
+        }
+      ],
+      "trajectory_metrics": {
+        "steps": 4,
+        "tool_calls": 1,
+        "handoffs": 2,
+        "redundant_tool_calls": 0,
+        "early_termination": false,
+        "degraded_mode": false,
+        "circuit_open": false,
+        "failures_seen": 0,
+        "policy_bypass": false,
+        "poisoned_retrieval": false
+      }
+    },
+    {
+      "query": "Given REG-204 failed for retrieval drift, propose triage steps and escalation ownership.",
+      "status_code": 200,
+      "response": "Crew history for REG-204: Potential hallucination in refusal flow.",
+      "agent_trace": [
+        {
+          "phase": "thought",
+          "content": "[Coordinator] Classify objective and choose specialist agent."
+        },
+        {
+          "phase": "plan",
+          "content": "[Coordinator] Handoff to HistoryAgent."
+        },
+        {
+          "phase": "action",
+          "content": "[HistoryAgent] Retrieved history for REG-204."
+        },
+        {
+          "phase": "observation",
+          "content": "[Coordinator] Finalize response from specialist output."
+        }
+      ],
+      "tool_calls": [
+        {
+          "tool": "get_test_history",
+          "test_id": "REG-204",
+          "result": {
+            "test_id": "REG-204",
+            "last_status": "failed",
+            "last_run": "2026-04-07T09:45:00Z",
+            "failure_reason": "Potential hallucination in refusal flow"
+          }
+        }
+      ],
+      "handoffs": [
+        {
+          "from": "Coordinator",
+          "to": "HistoryAgent",
+          "purpose": "Handle intent via get_test_history"
+        },
+        {
+          "from": "HistoryAgent",
+          "to": "Coordinator",
+          "purpose": "Return observation and finalize user response"
+        }
+      ],
+      "trajectory_metrics": {
+        "steps": 4,
+        "tool_calls": 1,
+        "handoffs": 2,
+        "redundant_tool_calls": 0,
+        "early_termination": false,
+        "degraded_mode": false,
+        "circuit_open": false,
+        "failures_seen": 0,
+        "policy_bypass": false,
+        "poisoned_retrieval": false
+      }
+    },
+    {
+      "query": "Design a minimal release gate for an agentic QA assistant with safety and latency checks.",
+      "status_code": 200,
+      "response": "Crew knowledge response:\n- Faithfulness checks whether responses are grounded in provided context.\n- Relevance measures whether the response actually answers the user intent.\n- Safety metrics are veto metrics: toxic output is always a hard fail.",
+      "agent_trace": [
+        {
+          "phase": "thought",
+          "content": "[Coordinator] Classify objective and choose specialist agent."
+        },
+        {
+          "phase": "plan",
+          "content": "[Coordinator] Handoff to KnowledgeAgent."
+        },
+        {
+          "phase": "action",
+          "content": "[KnowledgeAgent] Executed search_kb."
+        },
+        {
+          "phase": "observation",
+          "content": "[Coordinator] Finalize response from specialist output."
+        }
+      ],
+      "tool_calls": [
+        {
+          "tool": "search_kb",
+          "query": "Design a minimal release gate for an agentic QA assistant with safety and latency checks.",
+          "result": [
+            "Faithfulness checks whether responses are grounded in provided context.",
+            "Relevance measures whether the response actually answers the user intent.",
+            "Safety metrics are veto metrics: toxic output is always a hard fail."
+          ]
+        }
+      ],
+      "handoffs": [
+        {
+          "from": "Coordinator",
+          "to": "KnowledgeAgent",
+          "purpose": "Handle intent via search_kb"
+        },
+        {
+          "from": "KnowledgeAgent",
+          "to": "Coordinator",
+          "purpose": "Return observation and finalize user response"
+        }
+      ],
+      "trajectory_metrics": {
+        "steps": 4,
+        "tool_calls": 1,
+        "handoffs": 2,
+        "redundant_tool_calls": 0,
+        "early_termination": false,
+        "degraded_mode": false,
+        "circuit_open": false,
+        "failures_seen": 0,
+        "policy_bypass": false,
+        "poisoned_retrieval": false
+      }
+    },
+    {
+      "query": "simulate bad trajectory",
+      "status_code": 200,
+      "response": "Crew loop demo: trajectory terminated after redundant context thrashing. Use this trace to identify loop start, bad handoff, and efficiency loss.",
+      "agent_trace": [
+        {
+          "phase": "thought",
+          "content": "[Coordinator] Attempt multi-step decomposition for ambiguous objective."
+        },
+        {
+          "phase": "action",
+          "content": "[KnowledgeAgent] Executed search_kb (pass 1)."
+        },
+        {
+          "phase": "observation",
+          "content": "[Coordinator] Observation is broad; retries with another specialist."
+        },
+        {
+          "phase": "action",
+          "content": "[KnowledgeAgent] Executed search_kb (pass 2, redundant)."
+        },
+        {
+          "phase": "observation",
+          "content": "[Coordinator] Limited progress detected; engaging circuit breaker."
+        },
+        {
+          "phase": "action",
+          "content": "[Supervisor] Terminated trajectory at max redundancy threshold."
+        }
+      ],
+      "tool_calls": [
+        {
+          "tool": "search_kb",
+          "query": "regression retrieval failure",
+          "result": [
+            "Faithfulness checks whether responses are grounded in provided context.",
+            "Relevance measures whether the response actually answers the user intent.",
+            "Safety metrics are veto metrics: toxic output is always a hard fail."
+          ]
+        },
+        {
+          "tool": "search_kb",
+          "query": "regression retrieval failure details",
+          "result": [
+            "Faithfulness checks whether responses are grounded in provided context.",
+            "Relevance measures whether the response actually answers the user intent.",
+            "Safety metrics are veto metrics: toxic output is always a hard fail."
+          ]
+        }
+      ],
+      "handoffs": [
+        {
+          "from": "Coordinator",
+          "to": "KnowledgeAgent",
+          "purpose": "Gather context before selecting execution path"
+        },
+        {
+          "from": "KnowledgeAgent",
+          "to": "Coordinator",
+          "purpose": "Return broad context summary"
+        },
+        {
+          "from": "Coordinator",
+          "to": "KnowledgeAgent",
+          "purpose": "Repeat context fetch with near-identical query"
+        },
+        {
+          "from": "KnowledgeAgent",
+          "to": "Coordinator",
+          "purpose": "Return second summary with minimal new signal"
+        }
+      ],
+      "trajectory_metrics": {
+        "steps": 6,
+        "tool_calls": 2,
+        "handoffs": 4,
+        "redundant_tool_calls": 1,
+        "early_termination": false,
+        "degraded_mode": false,
+        "circuit_open": false,
+        "failures_seen": 0,
+        "policy_bypass": false,
+        "poisoned_retrieval": false
+      }
+    }
+  ]
+}

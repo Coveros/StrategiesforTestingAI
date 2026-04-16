@@ -1,35 +1,43 @@
-# Exercise 3: Audit & Extend the Evaluation Framework
+# Exercise 3: Lab - Audit & Extend the Evaluation Framework
 
-**Estimated Duration:** 45-55 minutes  
-**Prerequisites:** Completion of Exercise 2 (golden records designed and verified)  
-**Deliverable:** A new evaluation heuristic or threshold adjustment, tested against the GenAI Testing Chatbot  
+**Estimated Duration:** 40-45 minutes  
+**Prerequisites:** Completion of Exercise 2; access to GitHub Copilot; Codespace environment  
+**Deliverable:** An audit worksheet plus one Copilot-generated metric prototype validated against a targeted regression example  
 
 ---
 
-## Overview
+## Scenario
 
-In Exercise 2, you designed and verified golden records - test cases with expected outputs. But how do we *automatically* grade the chatbot against those records at scale?
+You have inherited an **automated evaluation framework** for the GenAI Testing Assistant. This framework runs a regression suite and uses several pre-built metrics (e.g., keyword matchers, length limits, or basic regex) to grade the bot's answers.
 
-This exercise flips the question: **What makes a good evaluation metric?**
+**The Problem:** You suspect some of these automated tests are either **too strict** (failing good answers as false positives) or **too loose** (passing bad answers as false negatives). Your job is to:
 
-You will:
-1. **Audit** the existing regression test framework to understand which metrics catch which failures.
-2. **Identify gaps** where the current metrics miss real problems.
-3. **Extend** the framework with a new evaluation rule tailored to the chatbot's behavior.
+1. **Audit** the existing suite to identify one false positive and one false negative
+2. **Use GitHub Copilot** to rapidly prototype one new evaluation rule
+3. **Integrate and smoke-test** it against a targeted regression example
+4. **Share the trade-off** you introduced
 
-This moves you from testing the system (Exercises 1-2) to testing the *tests themselves* - a critical production skill.
+---
+
+## Group Setup
+
+- **Individual Work:** You will inspect the provided regression output snapshot or run the quick suite if needed, then use Copilot to generate one new evaluation rule.
+- **Table Discussion:** You will compare one false positive, one false negative, and one candidate metric per table.
 
 ---
 
 ## Key Concepts
 
-### Why Audit the Auditors?
+### False Positives vs. False Negatives
 
-Evaluation metrics are not perfect. A scoring system can:
-- **False Negative:** Miss a hallucination because the paraphrasing is fluent.
-- **False Positive:** Flag a correct answer as wrong because it didn't match the exact phrasing.
+In AI testing, evaluation metrics can fail in two directions:
 
-Your job: Find these mistakes and propose a fix.
+| Problem | Definition | Example |
+|---------|-----------|---------|
+| **False Positive** | Test fails even though bot's answer was correct | Bot says "learning, designing, and executing tests simultaneously." Test expects "simultaneous learning, test design, and execution." Test fails because exact string match. |
+| **False Negative** | Test passes even though bot's answer was poor | Bot's response is vague or incomplete but contains a required keyword, so regex checker passes it. |
+
+Your job: Find evidence of both in the inherited framework.
 
 ### Three Layers of Evaluation
 
@@ -37,197 +45,376 @@ Your job: Find these mistakes and propose a fix.
 2. **Semantic (Medium Cost):** Embedding-based similarity, cosine distance thresholds.
 3. **LLM-as-Judge (Expensive & Powerful):** Use a model to evaluate another model's output.
 
-The regression testing framework layers all three. Your task is to strengthen one.
+The inherited framework likely uses deterministic rules. Copilot will help you add stronger checks without writing boilerplate code.
 
 ---
 
-## Part A: Explore & Map (25 minutes)
+## Part A: Audit the Auditors (15 minutes)
 
-### Step 1: Run the Regression Test Suite
+### Step 1: Inspect the Regression Test Suite Output
 
-Open a terminal and navigate to the repo root.
+Use the instructor-provided regression output snapshot first. If you are asked to verify one case live, run the existing test suite:
+
+Precomputed snapshots are available in this repository at:
+
+- `artifacts/precomputed/exercise3/regression_results_*.json`
+- `artifacts/precomputed/exercise3/regression_summary_*.txt`
+- `artifacts/precomputed/exercise3/evaluation_results.json`
+- `artifacts/precomputed/exercise3/evaluation_report.md`
+
+To regenerate these artifacts deterministically in constrained environments, run:
+
+```bash
+python prepare_exercise_artifacts.py
+```
 
 ```bash
 python -m regression_testing.regression_testing --quick
 ```
 
-This runs a quick pass of the golden records from Exercise 2 against the chatbot.
+Or, if using pytest:
+
+```bash
+pytest tests/evaluation_framework.py -v
+```
 
 **Expected output:**
-- A summary table with columns: Test ID | Status | Metric | Score | Message
-- Some tests will **PASS** (score ≥ threshold, typically 0.75).
-- Some will **FAIL** (score < threshold or rule violation).
-- Some will have **WARNINGS** (edge cases).
+- A summary table with test results
+- Some tests will **PASS** ✅
+- Some will **FAIL** ❌
+- Look for patterns: which metrics are triggering failures?
 
-### Step 2: Review Low-Scoring Tests
+### Step 2: Table Review (Swivel and Share)
 
-Examine the failing or warning tests. For each one, note:
+Turn your laptops to show your table the test report. Together, discuss:
 
-1. **What was the query?** (Look back at your Exercise 2 golden record.)
-2. **What did the chatbot output?** (Examine the response.)
-3. **Which metric failed?**
-   - *Faithfulness:* Did the response stick to the knowledge base, or did it hallucinate?
-   - *Relevance:* Did it answer the question asked, or go off-topic?
-   - *Coherence:* Is the output malformed, repetitive, or dangerous?
+#### Find a False Positive
 
-**Use the worksheet below to organize your findings:**
+Look for a **test that failed, but the bot's answer was actually good**. Ask:
 
-| Test ID | Query | Metric Failed | Why? | Is This a Real Failure? (Y/N) | Notes |
-|-|-|-|-|-|-|
-| Ex: `hallucination_basic` | "What AI safety practices..." | Faithfulness | Semantic similarity 0.62 vs threshold 0.75 | ? | Output paraphrased but was accurate. False positive? |
-| | | | | | |
-| | | | | | |
+- What was the query?
+- What did the bot output?
+- Which metric caused the failure?
+- Is the bot's answer semantically correct, even if phrased differently?
 
-### Step 3: Identify False Positives & Negatives
-
-- **False Positive:** A test flagged as failing but the chatbot's answer was actually correct.
-  - *Example:* Semantic similarity scored low because the output paraphrased the knowledge base in a different style.
-- **False Negative:** A test passed but the answer was actually bad.
-  - *Example:* A hallucination slipped through because the made-up claim was semantically similar to a real one.
-
-**Key Question:** "If the model phrasing changed slightly but the meaning remained true, would the test still pass?"
-
-### Step 4: Document Gaps
-
-Based on your failures:
-
-1. **Which evaluation layer is weakest?** (Deterministic, Semantic, or LLM-as-Judge)
-2. **What type of failure does the framework not catch well?**
-   - Off-topic refusals?
-   - Subtle hallucinations (high semantic similarity to parts of the knowledge base but not valid inferences)?
-   - Length or verbosity issues?
-   - Missing citations where required?
-
----
-
-## Part B: Propose & Implement a Fix (20-30 minutes)
-
-Choose **one** of the following approaches to strengthen the evaluation framework:
-
-### Option 1: Add a Deterministic Heuristic
-
-**Goal:** Catch obvious failures with a simple rule.
-
-**Examples:**
-- **Refusal Detection:** Check if the response contains "I don't have information about" or "beyond my knowledge base" for out-of-domain queries. Flag it as PASS if present, FAIL if absent.
-- **Length Guardrail:** Ensure responses are between 50 and 500 tokens. Flag excessively verbose or truncated outputs.
-- **Citation Requirement:** Does the response include a reference to the knowledge base documents (e.g., "according to the GenAI Testing Guide...")? Flag if absent for certain query types.
-- **Keyword Detector:** For queries about "safety" or "hallucinations," ensure the response mentions at least one of these keywords.
-
-**Deliverable:** Pseudo-code or Python snippet that implements the heuristic.
-
-```python
-# Example: Check for refusal on out-of-scope queries
-def check_refusal_on_oob(query: str, response: str) -> bool:
-    """Returns True if response appropriately refuses out-of-scope query."""
-    oob_terms = ["python", "recipe", "code golf"]  # Adjust per knowledge base
-    
-    is_oob = any(term in query.lower() for term in oob_terms)
-    has_refusal = "don't have information" in response.lower()
-    
-    if is_oob:
-        return has_refusal  # Should refuse if out-of-scope
-    return True  # In-scope queries don't require refusal
+**Example:**
+```
+❌ FAILED: faithfulness_metric
+Query: "What is exploratory testing?"
+Expected: "simultaneous learning, test design and execution"
+Actual: "learning, designing, and executing tests at the same time"
+Metric: Exact string match
+Reality: ✅ The bot's answer is correct—just different phrasing!
+This is a FALSE POSITIVE.
 ```
 
-### Option 2: Adjust a Semantic Threshold
+#### Find a False Negative
 
-**Goal:** Tune the embedding-based similarity score for fewer false positives or false negatives.
+Look for a **test that passed, but the bot's answer was actually poor or incomplete**. Ask:
 
-**Examples:**
-- **Looser Threshold:** Change similarity threshold from 0.75 to 0.70 if too many correct answers are flagged as failures.
-- **Response vs. Query Alignment:** Create a new metric that measures semantic alignment between the query intent and response content (separate from faithfulness).
-- **Context Utilization:** Check that the response genuinely incorporates multiple documents from the knowledge base (not just one).
+- What was the query?
+- What did the bot output?
+- Which metric allowed it to pass?
+- Does the answer lack detail, citations, or contain subtle errors?
 
-**Deliverable:** Justification for the threshold change and re-run test results.
-
-```python
-# Example: Calculate semantic alignment between query and response
-from app.rag_pipeline import RAGPipeline
-
-pipeline = RAGPipeline()
-query = "What are best practices for evaluating GenAI?"
-response = "Based on the knowledge base, here are key practices: ..."
-
-# Embed both
-query_embedding = pipeline.embedder.embed_query(query)
-response_embedding = pipeline.embedder.embed_query(response)
-
-# Cosine similarity (higher = more aligned)
-similarity = cosine_similarity([query_embedding], [response_embedding])[0][0]
-print(f"Query-Response Alignment: {similarity:.2f}")
-
-# Propose new rule: Alignment must be > 0.80
-if similarity > 0.80:
-    print("PASS: Response is well-aligned to query intent")
-else:
-    print("FAIL: Response drifts from query intent")
+**Example:**
+```
+✅ PASSED: keyword_detector
+Query: "What are best practices for testing GenAI systems?"
+Actual: "You should use testing. Testing is important for systems."
+Metric: Keyword match (looking for "testing" and "systems")
+Reality: ❌ The bot's answer is vague and unhelpful—just repeats keywords!
+This is a FALSE NEGATIVE.
 ```
 
-### Option 3: Propose a Custom Citation Rule
+### Step 3: Document Your Findings
 
-**Goal:** Ensure responses cite or reference their sources.
+Create a simple worksheet and fill it out with your table:
 
-**Examples:**
-- **Explicit Citation:** For claims about hallucination or safety, the response must mention "GenAI Testing Guide" or "Production Best Practices."
-- **Knowledge Base Traceability:** Flag responses that claim facts not explicitly in the knowledge base documents.
-- **Disclosure Requirement:** Responses should include a footer like "Sources: GenAI Testing Guide, FAQ" summarizing which documents were used.
+| Finding | Test ID | Query | Bot Output | Metric | Why It's Wrong | Type |
+|---------|---------|-------|-----------|--------|----------------|------|
+| Example | keyword_check_1 | "What is XYZ?" | "XYZ is when you..." | Simple regex for "is" | Passed even though response is incomplete | False Negative |
+| False Positive |  |  |  |  |  |  |
+| False Negative |  |  |  |  |  |  |
 
-**Deliverable:** A new rule in the evaluation framework that validates citations.
+**Key Question:** "What is the current framework missing that would have caught this bug?"
 
+---
+
+## Part B: Extend the Framework with Copilot (20 minutes)
+
+Now that you've identified weak spots, you'll use GitHub Copilot to add a new evaluation rule to catch the bugs you found.
+
+### Step 1: Open Copilot Chat
+
+In your Codespace, open the Copilot Chat panel (Ctrl+Shift+I or Cmd+Shift+I).
+
+### Step 2: Choose a New Metric to Add
+
+Pick one of the following approaches, or create your own based on the gap you found:
+
+#### Option A: JSON Validator
+
+**Prompt:**
+> Write a Python evaluation function that checks if the AI's output contains a valid JSON array of test cases. The function should return True if the response contains valid JSON, False otherwise.
+
+**What it catches:** Responses that claim to provide structured data (like test arrays) but deliver malformed JSON.
+
+**Copilot will likely generate:**
 ```python
-# Example: Check for explicit citation
-def require_citation_for_safety_topics(query: str, response: str) -> bool:
-    """Ensure safety-related responses cite the knowledge base."""
-    safety_keywords = ["hallucination", "best practice", "safety", "evaluation"]
+import json
+import re
+
+def validate_json_structure(response: str) -> bool:
+    """Check if response contains valid JSON."""
+    # Extract JSON-like patterns from response
+    json_patterns = re.findall(r'\[.*\]|\{.*\}', response, re.DOTALL)
     
-    is_safety_query = any(kw in query.lower() for kw in safety_keywords)
-    has_citation = any(doc in response for doc in 
-        ["GenAI Testing Guide", "Production Best Practices", "Evaluation"])
+    if not json_patterns:
+        return False  # No JSON found
     
-    if is_safety_query:
-        return has_citation
-    return True  # Non-safety queries don't require citations
+    for pattern in json_patterns:
+        try:
+            json.loads(pattern)
+            return True  # Valid JSON found
+        except json.JSONDecodeError:
+            continue
+    
+    return False  # No valid JSON
 ```
 
+#### Option B: PII Detector
+
+**Prompt:**
+> Write a Python regex evaluator that fails the test if the AI includes any PII like an email address, phone number, or Social Security Number. Return False if PII is found, True otherwise.
+
+**What it catches:** Accidental leaks of personally identifiable information.
+
+**Copilot will likely generate:**
+```python
+import re
+
+def check_no_pii(response: str) -> bool:
+    """Ensure response doesn't contain PII."""
+    pii_patterns = {
+        'email': r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
+        'phone': r'\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b',
+        'ssn': r'\b\d{3}-\d{2}-\d{4}\b',
+    }
+    
+    for pii_type, pattern in pii_patterns.items():
+        if re.search(pattern, response):
+            print(f"PII detected: {pii_type}")
+            return False
+    
+    return True
+```
+
+#### Option C: Professionalism Grader (LLM-as-Judge)
+
+**Prompt:**
+> Write an evaluator using the Cohere API that asks an LLM to grade whether the bot's answer was 'professional' or 'rude'. Return True if professional, False if rude.
+
+**What it catches:** Responses that are technically correct but unprofessional in tone.
+
+**Copilot will likely generate:**
+```python
+import cohere
+
+def check_professionalism(response: str) -> bool:
+    """Use LLM to evaluate if response is professional."""
+    client = cohere.Client(api_key="YOUR_COHERE_API_KEY")
+    
+    prompt = f"""Rate the professionalism of this response on a scale:
+Response: {response}
+
+Is this response professional? Answer only with 'professional' or 'rude'."""
+    
+    result = client.generate(
+        model="command-xlarge-nightly",
+        prompt=prompt,
+        max_tokens=5
+    )
+    
+    output = result.generations[0].text.strip().lower()
+    return "professional" in output
+```
+
+#### Option D: Citation Checker
+
+**Prompt:**
+> Write an evaluator that checks if the response includes at least one citation or source reference. Look for phrases like "according to", "based on", "from the documentation", or explicit source names.
+
+**What it catches:** Responses that make claims without attributing sources.
+
+**Copilot will likely generate:**
+```python
+import re
+
+def check_citations(response: str, required: bool = True) -> bool:
+    """Check if response includes citations."""
+    citation_indicators = [
+        r'according to',
+        r'based on',
+        r'from the',
+        r'documentation',
+        r'guide',
+        r'reference',
+        r'\[.*\]',  # Bracketed references
+    ]
+    
+    has_citation = any(
+        re.search(pattern, response, re.IGNORECASE) 
+        for pattern in citation_indicators
+    )
+    
+    return has_citation if required else True
+```
+
+For the timed version of this lab, the fastest options are usually **Option B** or **Option D**. Use Option A or C only if your instructor explicitly asks you to.
+
+### Step 3: Copy Copilot's Code
+
+1. In Copilot Chat, copy the generated function
+2. Open the [tests/evaluation_framework.py](../tests/evaluation_framework.py) file
+3. Paste the function at the end of the file (or in an appropriate section)
+
+### Step 4: Wire It Into Your Test Suite
+
+Add your new metric to one of your test cases. For example, in [tests/evaluation_framework.py](../tests/evaluation_framework.py) or your test runner:
+
+```python
+from tests.evaluation_framework import check_citations  # or your function
+
+def test_citations_included():
+    """Test: Bot includes proper citations."""
+    query = "What are best practices for evaluating GenAI?"
+    response = get_bot_response(query)
+    
+    # Wire in the new metric
+    assert check_citations(response), "Response missing citations"
+```
+
+### Step 5: Run a Targeted Smoke Test
+
+Run one targeted check to see whether your new metric behaves the way you expect:
+
+```bash
+pytest tests/evaluation_framework.py -v
+```
+
+Or your custom runner:
+
+```bash
+python -m regression_testing.regression_testing --quick
+```
+
+**Questions to answer:**
+- ✅ Did your new metric address the gap you identified earlier?
+- ✅ Did it create any new false positives?
+- ✅ Did Copilot's code work on the first try, or did you have to tweak it?
+
+### Step 6: Quick Table Share
+
+Turn your screen to your table and show them:
+1. The metric Copilot wrote for you
+2. How you integrated it
+3. The targeted result (did it catch the gap? any regressions?)
+4. Any tweaks you made to Copilot's generated code
+
+**Table Discussion:**
+- Did different people get different code from Copilot for the same prompt?
+- Which metric is most valuable for catching real bugs?
+- Did the generated code need debugging, or did it work as-is?
+
 ---
 
-## Part C: Test Your Fix (10-15 minutes)
+## Part C: Wrap-Up & Deliverables (5-10 minutes)
 
-Once you've proposed a heuristic, semantic adjustment, or citation rule:
+### Document Your Audit Findings
 
-1. **Implement it** (or write clear pseudo-code if implementing feels too ambitious).
-2. **Re-run the regression suite** with your new rule enabled.
-3. **Document the impact:**
-   - How many previously failing tests now pass?
-   - How many previously passing tests now fail? (These are new false positives-investigate!)
-4. **Propose an adjustment** if needed.
+Create a summary report with the following sections:
+
+**1. Framework Audit Report**
+
+List the cases you inspected and categorize them:
+
+| Metric | Total Tests | Passed | Failed | False Positives? | False Negatives? | Assessment |
+|--------|-------------|--------|--------|------------------|------------------|------------|
+| Keyword Detector | 5 | 4 | 1 | ? | ? | Weak—catches nothing |
+| Regex Check | 3 | 2 | 1 | ? | ? | Too strict? |
+| Length Guardrail | 4 | 3 | 1 | ? | ? | Reasonable |
+
+**2. New Metric Integration Report**
+
+Document your new metric:
+
+- **Type:** (JSON Validator / PII Detector / Professionalism / Citation Checker / Other)
+- **Copilot Prompt Used:** (your exact prompt)
+- **Code Changes:** (list files modified)
+- **Targeted Validation:** 
+    - Gap addressed: __
+    - Example checked: __
+    - Did the metric behave as expected? __
+    - Any regressions observed? __
+
+**3. Show & Tell Reflection**
+
+Answer these questions:
+
+- Did Copilot's code work on the first try?
+- What tweaks (if any) did you make?
+- Did your new metric address the gap you identified in Part A?
+- Would you keep this metric in production? Why or why not?
+
+### Deliverables Checklist
+
+- [ ] Regression output reviewed and key evidence captured
+- [ ] At least one false positive identified and documented
+- [ ] At least one false negative identified and documented
+- [ ] New evaluation metric prototyped (via Copilot)
+- [ ] New metric integrated into one targeted check
+- [ ] Targeted validation result documented
+- [ ] Code shown to table and feedback collected
+
+### Submission Format
+
+Submit one file named `exercise3_submission.md` containing:
+
+1. **Audit Findings Worksheet** (from Part A)
+   - List of false positives with explanations
+   - List of false negatives with explanations
+   
+2. **Metric Validation Notes**
+    - What gap the metric is meant to catch
+    - One targeted example used to check it
+
+3. **New Metric Code** (the function Copilot generated)
+
+4. **Integration Notes**
+   - Where did you add the code?
+   - How did you wire it into the test suite?
+   
+5. **Test Results**
+    - Output of the targeted smoke test or validation run
+    - Whether the metric helped, hurt, or stayed neutral on the chosen case
+
+6. **Reflection** (3-4 sentences)
+   - What did Copilot do well?
+   - What had to be fixed?
+   - Would you recommend this metric to other teams?
 
 ---
 
-## Deliverable Checklist
+## Key Takeaway
 
-- [ ] Worksheet completed with all failing tests identified and categorized.
-- [ ] At least one false positive and one false negative identified.
-- [ ] One of the three approaches chosen (Deterministic, Semantic, or Citation).
-- [ ] Pseudo-code or implementation written.
-- [ ] Regression suite re-run with new rule.
-- [ ] Impact analysis documented (how many tests changed status?).
+**Evaluation metrics are not perfect—they're constantly evolving tools.** You don't need to be a senior automation engineer to add sophisticated new metrics to your test framework. By using **GitHub Copilot to rapidly prototype evaluation functions**, you can:
 
-## Submission Format (VM)
-Submit one file named `exercise3_submission.md` (or PDF) containing:
-1. Your completed worksheet.
-2. The chosen approach and pseudo-code/implementation notes.
-3. Before/after test impact summary.
+- ✅ Identify gaps in existing metrics (false positives & false negatives)
+- ✅ Extend the framework with semantic checks, structure validators, or LLM-based judgments
+- ✅ Iterate quickly without writing boilerplate code from scratch
 
----
-
-## Reflection Questions
-
-1. **Metric vs. Implementation Gap:** Did the metric work in theory but fail in practice? Why?
-2. **Threshold Sensitivity:** How much does a small change in threshold dramatically shift pass/fail rates? What does that tell you about robustness?
-3. **Production Implication:** If you deployed this metric, what would be the cost of false positives vs. false negatives? Which is worse for a safety-critical chatbot?
-4. **Scaling Question:** As the golden dataset grows from 10 records to 1,000, does your rule scale? Will it catch subtle issues or only obvious ones?
+**The ability to audit and improve your test automation is a superpower in production AI systems—where perfect evaluation is impossible, but constantly improving evaluation is essential.**
 
 ---
 
@@ -235,11 +422,6 @@ Submit one file named `exercise3_submission.md` (or PDF) containing:
 
 - **Code Reference:** [regression_testing/regression_testing.py](../regression_testing/regression_testing.py)
 - **Evaluation Framework:** [tests/evaluation_framework.py](../tests/evaluation_framework.py)
-- **Knowledge Base:** [data/documents/](../data/documents/)
+- **Golden Records:** (Your Exercise 2 test cases)
+- **Copilot Documentation:** https://github.com/features/copilot
 - **Running Chatbot:** [http://localhost:5000](http://localhost:5000)
-
----
-
-## Key Takeaway
-
-Evaluation metrics are not oracles-they're tools you design and refine. **The best tests fail gracefully and tell you why.** By auditing your own metrics, you build the judgment needed for production AI systems where no perfect answer exists.

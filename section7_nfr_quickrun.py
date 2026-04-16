@@ -12,7 +12,7 @@ import os
 from datetime import datetime
 from typing import Any, Dict, List
 
-from app.main import app
+from app.exercise_local_client import get_exercise_test_client
 
 
 def _now_stamp() -> str:
@@ -114,7 +114,7 @@ def _evaluate(case: Dict[str, Any], payload: Dict[str, Any], status_code: int) -
 
 
 def run_suite(session_id: str, include_trace: bool, crew_mode: bool) -> Dict[str, Any]:
-    client = app.test_client()
+    client, transport = get_exercise_test_client()
     cases = _build_cases()
     results: List[Dict[str, Any]] = []
 
@@ -160,6 +160,7 @@ def run_suite(session_id: str, include_trace: bool, crew_mode: bool) -> Dict[str
     return {
         "run_meta": {
             "timestamp": datetime.now().isoformat(),
+            "transport": transport,
             "session_id": session_id,
             "include_trace": include_trace,
             "crew_mode": crew_mode,
@@ -238,6 +239,7 @@ def main() -> None:
 
     meta = report["run_meta"]
     print("Section 7 quick-run completed")
+    print(f"Transport: {meta['transport']}")
     print(f"Passed: {meta['passed_cases']} / {meta['total_cases']} ({meta['pass_rate']})")
     print(f"Avg response time: {meta['avg_response_time']}s | Worst: {meta['worst_response_time']}s")
     print(f"JSON report: {paths['json']}")

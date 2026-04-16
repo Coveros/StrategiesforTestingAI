@@ -14,6 +14,25 @@ The application is intentionally configured with realistic failure modes so stud
 - Student exercises: `docs/Exercise-1.md` to `docs/Exercise-9.md`
 - Instructor notes: `docs/Exercise-1-Instructor-Notes.md` to `docs/Exercise-9-Instructor-Notes.md`
 - Section transition deck text: `docs/Section-Bridge-RAG-to-Agentic.md`
+- Course pacing guide: `docs/Course-Schedule.md`
+
+## Recommended Course Timing
+
+The revised labs are paced so the full course can fit inside roughly **13-14 hours** of class time.
+
+| Exercise | Target Duration |
+|---|---|
+| Exercise 1 | 35-45 minutes |
+| Exercise 2 | 35-45 minutes |
+| Exercise 3 | 40-45 minutes |
+| Exercise 4 | 45-60 minutes |
+| Exercise 5 | 45-50 minutes |
+| Exercise 6 | 45-55 minutes |
+| Exercise 7 | 40-50 minutes |
+| Exercise 8 | 40-50 minutes |
+| Exercise 9 | 35-45 minutes |
+
+Exercise-only time is about **6.0 to 7.4 hours**. The remaining course time is intended for lecture, demos, transitions, debriefs, and breaks. See `docs/Course-Schedule.md` for a full recommended agenda.
 
 ## Architecture
 
@@ -214,6 +233,14 @@ python tests/evaluation_framework.py
 python -m regression_testing.regression_testing
 ```
 
+### Running Exercise 3 in Offline Fixture Mode
+If API credentials are unavailable in a classroom environment, run deterministic fixture mode:
+
+```bash
+python -m regression_testing.regression_testing --quick --offline
+python tests/evaluation_framework.py --offline
+```
+
 ### Running Exercise 4 Retrieval Tuning Support
 ```bash
 python experiments/retrieval_experiments.py
@@ -223,6 +250,51 @@ python experiments/retrieval_experiments.py
 ```bash
 python section7_nfr_quickrun.py
 python section9_agentic_test_suite.py
+```
+
+Both scripts support a local in-process fallback transport if Flask dependencies
+are unavailable in the current interpreter. This keeps Exercise 7 and 9 artifact
+generation runnable in constrained environments.
+
+### Preparing Precomputed Exercise Artifacts
+To generate in-repo snapshots for shortened exercises:
+
+```bash
+python prepare_exercise_artifacts.py
+```
+
+Artifacts are written to `artifacts/precomputed/` for instructor distribution.
+
+### Verifying Exercise Readiness (1-9)
+Run structural checks for all exercises:
+
+```bash
+python verify_exercise_readiness.py
+```
+
+Run with smoke commands enabled:
+
+```bash
+python verify_exercise_readiness.py --smoke
+```
+
+Reports are written to `artifacts/readiness/` as JSON and Markdown.
+
+### Resetting Agentic State Between Lab Runs
+Use the API reset endpoint to clear in-memory session state safely:
+
+```bash
+curl -X POST http://localhost:5000/api/reset \
+   -H "Content-Type: application/json" \
+   -d '{"scope":"session","session_id":"exercise7-team1","reset_circuit_breaker":true}'
+```
+
+Reset all in-memory sessions:
+
+```bash
+curl -X POST http://localhost:5000/api/reset \
+   -H "Content-Type: application/json" \
+   -d '{"scope":"all","reset_circuit_breaker":true}'
 ```
 
 ### Quality Assessment

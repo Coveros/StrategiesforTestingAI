@@ -1,0 +1,22 @@
+Section 7 NFR Quick-Run Summary
+====================================
+Timestamp: 2026-04-16T19:00:07.333550
+Session ID: section7-20260416_190006
+Crew Mode: True
+Include Trace: True
+Cases Passed: 8 / 9
+Pass Rate: 0.889
+Avg Response Time: 0.0s
+Worst Response Time: 0s
+
+Case Details
+------------------------------------
+dep_outage_1: PASS | degraded=True circuit_open=False steps=4 tools=0 loop_tax=0.0
+dep_outage_2: PASS | degraded=True circuit_open=True steps=4 tools=0 loop_tax=0.0
+breaker_block: PASS | degraded=True circuit_open=True steps=2 tools=0 loop_tax=0.0
+breaker_reset: PASS | degraded=False circuit_open=False steps=1 tools=0 loop_tax=0.0
+post_reset_normal: PASS | degraded=False circuit_open=False steps=4 tools=1 loop_tax=0.0
+timeout_case: PASS | degraded=True circuit_open=False steps=4 tools=0 loop_tax=0.0
+rate_limit_case: PASS | degraded=True circuit_open=True steps=4 tools=0 loop_tax=0.0
+empty_input: FAIL | degraded=False circuit_open=False steps=0 tools=0 loop_tax=0.0
+gibberish_input: PASS | degraded=True circuit_open=True steps=4 tools=1 loop_tax=0.0

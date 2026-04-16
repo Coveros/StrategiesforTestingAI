@@ -270,6 +270,44 @@ def get_stats():
         logger.error(f"Error getting stats: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+
+@app.route('/api/reset', methods=['POST'])
+def reset_state():
+    """Reset session or full agentic in-memory state for deterministic reruns."""
+    try:
+        data = request.get_json(silent=True) or {}
+        scope = str(data.get('scope', 'session')).strip().lower()
+        reset_breaker = bool(data.get('reset_circuit_breaker', True))
+
+        if scope not in ('session', 'all'):
+            return jsonify({
+                'error': "Invalid scope. Use 'session' or 'all'",
+                'status': 'error'
+            }), 400
+
+        if scope == 'session':
+            session_id = str(data.get('session_id', '')).strip()
+            if not session_id:
+                return jsonify({
+                    'error': "session_id is required when scope='session'",
+                    'status': 'error'
+                }), 400
+            result = agentic_pipeline.reset_session_state(session_id, reset_circuit_breaker=reset_breaker)
+        else:
+            result = agentic_pipeline.reset_all_state(reset_circuit_breaker=reset_breaker)
+
+        return jsonify({
+            'status': 'success',
+            'result': result,
+        })
+    except Exception as e:
+        logger.error(f"Error resetting state: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'error': str(e),
+            'status': 'error'
+        }), 500
+
 @app.errorhandler(404)
 def not_found(error):
     return jsonify({'error': 'Endpoint not found'}), 404

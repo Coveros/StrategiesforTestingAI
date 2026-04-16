@@ -4,6 +4,8 @@ import json
 from typing import Dict, List, Any, Optional
 import sys
 import os
+import argparse
+import uuid
 from dotenv import load_dotenv
 
 # Load environment variables for testing
@@ -13,6 +15,53 @@ load_dotenv()
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.rag_pipeline import RAGPipeline
+
+
+class OfflineRAGPipeline:
+    """Deterministic fixture pipeline for offline evaluation runs."""
+
+    def query(self, user_query: str, temperature: Optional[float] = None) -> Dict[str, Any]:
+        query = (user_query or "").strip()
+        lowered = query.lower()
+        start = time.time()
+
+        if not query:
+            response = "Please provide a question so I can help with GenAI testing topics."
+            sources = []
+        elif "hallucination" in lowered:
+            response = (
+                "Hallucination occurs when model output sounds plausible but is not grounded in facts or provided context. "
+                "Testing should include claim grounding checks and unsupported assertion detection."
+            )
+            sources = [{"source": "faq_genai_testing.md", "similarity": 0.9}]
+        elif "evaluation" in lowered or "metrics" in lowered:
+            response = (
+                "Evaluate RAG systems using retrieval relevance, faithfulness, answer quality, safety, and latency/cost metrics. "
+                "Track both aggregate trends and high-risk failure classes."
+            )
+            sources = [{"source": "evaluation_metrics.md", "similarity": 0.88}]
+        elif "off-topic" in lowered or "weather" in lowered or "pasta" in lowered:
+            response = (
+                "I focus on testing generative AI systems. I can help with test strategy, evaluation metrics, "
+                "and production quality controls."
+            )
+            sources = []
+        else:
+            response = (
+                "GenAI testing should combine exploratory testing, deterministic checks, regression suites, and "
+                "production monitoring for drift and safety issues."
+            )
+            sources = [{"source": "genai_testing_guide.md", "similarity": 0.83}]
+
+        retrieval_time = round(max(time.time() - start, 0.001), 3)
+        return {
+            "response": response,
+            "sources": sources,
+            "retrieval_time": retrieval_time,
+            "total_time": retrieval_time,
+            "query_id": str(uuid.uuid4()),
+            "temperature": 0.0 if temperature is None else float(temperature),
+        }
 
 class EvaluationFramework:
     """
@@ -30,6 +79,12 @@ class EvaluationFramework:
     def __init__(self, rag_pipeline: RAGPipeline):
         self.rag_pipeline = rag_pipeline
         self.evaluation_results = {}
+        self.delay_seconds = 0 if isinstance(rag_pipeline, OfflineRAGPipeline) else 7
+
+    def _sleep_between_calls(self):
+        if self.delay_seconds > 0:
+            print(f"\n")
+            time.sleep(self.delay_seconds)
     
     def evaluate_response_quality(self, queries_and_expected: List[Dict[str, str]]) -> Dict[str, Any]:
         """
@@ -87,8 +142,7 @@ class EvaluationFramework:
             
             # Add delay to respect rate limits (except for last query)
             if i < len(queries_and_expected) - 1:
-                print(f"\n")
-                time.sleep(7)
+                self._sleep_between_calls()
         
         results['average_response_time'] = total_time / len(queries_and_expected)
         results['average_quality_score'] = sum(results['quality_scores']) / len(results['quality_scores'])
@@ -161,9 +215,7 @@ class EvaluationFramework:
             })
             
             # Add delay to respect rate limits (Trial key: 10 calls/minute = 6 seconds between calls)
-            import time
-            print(f"\n")
-            time.sleep(7)
+            self._sleep_between_calls()
         
         results['average_retrieval_time'] = total_retrieval_time / len(test_queries)
         results['average_sources_returned'] = total_sources / len(test_queries)
@@ -247,8 +299,7 @@ class EvaluationFramework:
                 total_queries_remaining = sum(len(q) for cat, q in list(test_cases.items())[list(test_cases.keys()).index(category):])
                 current_query_index = i + 1
                 if not (category == list(test_cases.keys())[-1] and current_query_index == len(queries)):
-                    print(f"\n")
-                    time.sleep(7)
+                    self._sleep_between_calls()
             
             # Calculate success rates
             category_results['success_rate'] = (
@@ -290,9 +341,7 @@ class EvaluationFramework:
                 print(f"    Response length: {len(response_text)} chars")
                 
                 # Add delay to respect rate limits
-                import time
-                print(f"\n")
-                time.sleep(7)
+                self._sleep_between_calls()
             
             # Calculate consistency score (simplified approach)
             consistency_score = self._calculate_consistency_score(group_responses)
@@ -363,8 +412,7 @@ class EvaluationFramework:
             # Add delay to respect rate limits (except for last request)
             # This delay is NOT counted in performance metrics
             if i < num_requests - 1:
-                print(f"\n")
-                time.sleep(7)
+                self._sleep_between_calls()
         
         end_total = time.time()
         total_wall_time = end_total - start_total  # Includes delays
@@ -554,13 +602,17 @@ class EvaluationFramework:
         return report
 
 
-def run_comprehensive_evaluation():
+def run_comprehensive_evaluation(offline_mode: bool = False):
     """Run a comprehensive evaluation of the RAG system."""
     print("Starting comprehensive GenAI system evaluation...")
     
     try:
-        # Initialize RAG pipeline
-        rag_pipeline = RAGPipeline()
+        # Initialize pipeline
+        if offline_mode:
+            print("ℹ️  Running evaluation in offline fixture mode.")
+            rag_pipeline = OfflineRAGPipeline()
+        else:
+            rag_pipeline = RAGPipeline()
         evaluator = EvaluationFramework(rag_pipeline)
         
         # STUDENT: Test data
@@ -661,4 +713,7 @@ def run_comprehensive_evaluation():
 
 
 if __name__ == "__main__":
-    run_comprehensive_evaluation()
+    parser = argparse.ArgumentParser(description="Run comprehensive evaluation framework")
+    parser.add_argument("--offline", action="store_true", help="Use deterministic offline fixture mode")
+    args = parser.parse_args()
+    run_comprehensive_evaluation(offline_mode=args.offline)
