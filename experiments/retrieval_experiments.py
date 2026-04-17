@@ -185,8 +185,8 @@ def test_retrieval_strategy(n_results, similarity_threshold, description):
                 
                 # Add rate limiting delay between queries
                 if query_type != "Process":  # Don't wait after the last query
-                    print(f"   ⏳ Waiting 5s for rate limiting...")
-                    time.sleep(5)
+                    print(f"   ⏳ Waiting 10s for rate limiting...")
+                    time.sleep(10)
                     
             except Exception as e:
                 print(f"   ❌ Query failed: {str(e)}")
@@ -271,8 +271,8 @@ def run_retrieval_experiments():
             successful_results.append(result)
         
         # Longer pause between strategies to respect rate limits
-        print(f"⏳ Waiting 8s before next strategy...")
-        time.sleep(8)
+        print(f"⏳ Waiting 15s before next strategy...")
+        time.sleep(15)
     
     if not successful_results:
         print("❌ No retrieval strategies were successful.")

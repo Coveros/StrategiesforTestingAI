@@ -35,6 +35,9 @@ class RAGPipeline:
             'average_retrieval_time': 0,
             'errors': 0
         }
+        # Rate limiting tracking
+        self._last_cohere_call_time = 0
+        self._min_spacing = 1.5  # seconds between Cohere API calls
         
         self._initialize_components()
     
@@ -236,16 +239,40 @@ class RAGPipeline:
             logger.error(f"Failed to add documents to database: {str(e)}")
             raise
     
+    def _cohere_call_with_backoff(self, call_func, *args, **kwargs):
+        """Execute a Cohere API call with rate limiting and exponential backoff on 429."""
+        # Enforce minimum spacing between calls
+        elapsed = time.time() - self._last_cohere_call_time
+        if elapsed < self._min_spacing:
+            time.sleep(self._min_spacing - elapsed)
+        
+        # Exponential backoff for 429 errors
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                self._last_cohere_call_time = time.time()
+                return call_func(*args, **kwargs)
+            except Exception as e:
+                if "429" in str(e) and attempt < max_retries - 1:
+                    backoff_time = 2 ** (attempt + 1)  # 2s, 4s, 8s
+                    logger.warning(f"Rate limited (429), retry {attempt + 1}/{max_retries} after {backoff_time}s")
+                    time.sleep(backoff_time)
+                    self._last_cohere_call_time = time.time()
+                else:
+                    raise
+    
     def _generate_embeddings(self, texts: List[str]) -> List[List[float]]:
         """Generate embeddings for texts using Cohere."""
         try:
             # Using embed-english-v3.0 for consistent 1024-dimensional embeddings
-            response = self.cohere_client.embed(
-                texts=texts,
-                model="embed-english-v3.0",  # Latest model with 1024 dimensions
-                input_type="search_document"
-            )
+            def embed_call():
+                return self.cohere_client.embed(
+                    texts=texts,
+                    model="embed-english-v3.0",  # Latest model with 1024 dimensions
+                    input_type="search_document"
+                )
             
+            response = self._cohere_call_with_backoff(embed_call)
             return response.embeddings
             
         except Exception as e:
@@ -255,12 +282,14 @@ class RAGPipeline:
     def _generate_query_embedding(self, query: str) -> List[float]:
         """Generate embedding for a query."""
         try:
-            response = self.cohere_client.embed(
-                texts=[query],
-                model="embed-english-v3.0",  # Same model as document embeddings
-                input_type="search_query"
-            )
+            def query_embed_call():
+                return self.cohere_client.embed(
+                    texts=[query],
+                    model="embed-english-v3.0",  # Same model as document embeddings
+                    input_type="search_query"
+                )
             
+            response = self._cohere_call_with_backoff(query_embed_call)
             return response.embeddings[0]
             
         except Exception as e:
@@ -332,19 +361,20 @@ class RAGPipeline:
             context = "\n\n".join(context_docs[:3])  # Use top 3 documents
             effective_temperature = 0.7 if temperature is None else float(temperature)
             
-            # Generate response with Cohere Chat API
-            response = self.cohere_client.chat(
-                model="command-r-08-2024",  # Try a specific version that might still be available
-                message=f"""Question: {query}
+            def chat_call():
+                return self.cohere_client.chat(
+                    model="command-r-08-2024",  # Try a specific version that might still be available
+                    message=f"""Question: {query}
 
 Context:
 {context}
 
 Based on the provided context, please answer the user's question. Use only the information from the context provided. If the context doesn't contain relevant information to answer the question, say so clearly.""",
-                max_tokens=300,  # INTENTIONAL ISSUE: Sometimes too short for complete answers
-                temperature=effective_temperature,  # Defaults to legacy value unless overridden by API/demo
-            )
+                    max_tokens=300,  # INTENTIONAL ISSUE: Sometimes too short for complete answers
+                    temperature=effective_temperature,  # Defaults to legacy value unless overridden by API/demo
+                )
             
+            response = self._cohere_call_with_backoff(chat_call)
             return response.text.strip()
             
         except Exception as e:

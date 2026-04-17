@@ -491,6 +491,10 @@ class RegressionTestFramework:
                     'timestamp': datetime.now().isoformat()
                 }
                 results.append(error_evaluation)
+            
+            # Rate limit: pause between test queries to avoid 429 errors
+            if i < len(self.test_cases):
+                time.sleep(3)
         
         total_time = time.time() - start_time
         
