@@ -2,7 +2,7 @@
 
 ## Primary objective
 
-Support a live demonstration of agent-assisted application security analysis and remediation planning in this repository.
+Provide agent-assisted application security analysis and remediation for in this repository.
 
 ## Required behavior
 
@@ -18,7 +18,7 @@ Support a live demonstration of agent-assisted application security analysis and
 - Do not claim a vulnerability without concrete evidence in code.
 - Do not claim a fix is complete without a validation checklist.
 - Do not expose secrets or sensitive values in outputs.
-- Prefer deterministic, repeatable analysis steps suitable for a live talk.
+- Prefer deterministic, repeatable analysis steps.
 - For applied edits, list each changed file and provide rollback guidance.
 
 ## Output defaults
@@ -30,9 +30,3 @@ When asked for a security review:
 3. Standard mapping for each finding (control ID).
 4. Patch suggestion with minimal blast radius.
 5. Post-fix validation steps.
-
-When apply mode is requested:
-
-1. Make minimal reversible edits.
-2. Report changed files and rationale.
-3. Provide command-level rollback instructions.

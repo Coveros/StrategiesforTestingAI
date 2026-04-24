@@ -1,5 +1,5 @@
 ---
-description: "Use when performing application security analysis, vulnerability triage, or remediation planning in this repository for the AppSec demo talk. Includes evidence rules and standard mapping."
+description: "Use when performing application security analysis, vulnerability triage, or remediation planning in this repository. Includes evidence rules and standard mapping."
 applyTo: ["app/**/*.py", "static/js/**/*.js", "templates/**/*.html", "docs/**/*.md"]
 ---
 
