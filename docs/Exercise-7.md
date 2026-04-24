@@ -1,220 +1,85 @@
-# Exercise 7: Lab - Stress Testing / NFRs
+# Exercise 7: Stress Test the Assistant (NFRs)
 
-**Estimated Duration:** 40-50 minutes  
-**Prerequisites:** Exercises 5 and 6 completed; access to the assistant with traces, latency, and operational metadata visible  
-**Deliverable:** A table-wide Resilience Scorecard identifying the weakest non-functional requirement
+## Prerequisites
+1. App running locally (`python run.py`).
+2. Team of up to 5 people.
+3. Ability to use Agent mode in the UI.
 
----
+## Scenario
+You are testing reliability, not just correctness. The goal is to find the weakest non-functional area under stress.
 
-## Overview
+## How to run this in the UI
+1. Open `http://localhost:5000/?exercise=7`.
+2. Switch from **Ask** to **Agent** in the input bar.
+3. For NFR stress checks, use instructor controls so you can force trace/crew settings:
+	- Open `http://localhost:5000/?exercise=7&instructor=1`
+	- Enable **Agent Mode** and **Show Trace**
+	- Optional: enable **Crew Mode** to compare single-agent vs multi-agent resilience
+4. For each role test, send the exact simulation prompt listed below and capture evidence from response metadata.
 
-This lab shifts from workflow correctness to **non-functional reliability**. Your job is to validate how well the assistant behaves under failure, overload, malformed inputs, and operational cost pressure.
+## Student tasks
+1. Split 5 roles:
+	- Rate Limits
+	- Timeouts
+	- Boundary Inputs
+	- Gibberish/Fuzzing
+	- Latency Stability
+2. Each person runs 1 stress test (Person 5 runs 3 baseline queries).
+3. Record Pass/Fail/Mixed with one evidence note per role.
+4. Choose the weakest link and propose one fix.
 
-You are not asking only, "Did it answer correctly?" You are asking:
+## Simulation prompts by role (copy/paste)
 
-- Does it degrade gracefully?
-- Does it stay stable under stress?
-- Does it avoid blowing up latency or token cost?
-- Which non-functional requirement is the weakest link?
+### Rate Limits
+1. `run quick regression simulate rate limit`
+2. Run it twice in the same session and check if degraded mode/circuit behavior appears.
 
----
+### Timeouts
+1. `run quick regression simulate tool timeout`
+2. Check whether the response degrades safely instead of failing silently.
 
-## Scenario: Reliability and Operational Cost
+### Boundary Inputs
+1. Paste a very long prompt (for example, a repeated paragraph 20-30 times) and ask: `Summarize in 5 bullets.`
+2. Verify the system still returns a safe, bounded response.
 
-You are the QA team validating the assistant's **reliability under failure** and its **operational cost profile**.
+### Gibberish/Fuzzing
+1. `xqz@@##123###?? en espanol ??? ###`
+2. Verify the assistant handles malformed input gracefully (no crash, no unsafe action).
 
-In this lab, each person stress tests one specific **Non-Functional Requirement (NFR)**. After individual testing, the table combines results into one shared **Resilience Scorecard**.
+### Latency Stability
+1. Run these 3 baseline prompts in the same session:
+	- `run quick regression suite`
+	- `run quick regression suite retrieval`
+	- `run quick regression suite smoke`
+2. Compare response time consistency across the three runs.
 
----
+## What to capture as evidence
+For each role, capture:
+1. Prompt used
+2. Response summary
+3. `response_time`
+4. `trajectory_metrics.degraded_mode`
+5. `trajectory_metrics.circuit_open`
+6. `trajectory_metrics.steps` and `trajectory_metrics.tool_calls`
 
-## Group Setup
+Note: this UI currently surfaces response-time and trajectory metrics, not token-level billing fields.
 
-- **Table Exercise:** Each person owns one NFR pillar.
-- **Chaos Engineering Assignments:** Each person runs the stress cases for their assigned area.
-- **Resilience Scorecard:** The table combines findings and decides which NFR is the weakest link.
+## Optional automation path
+If you prefer scripted simulation evidence, run:
+- `python section7_nfr_quickrun.py`
+This generates JSON/TXT artifacts in `regression_test_results/`.
 
-Precomputed Section 7 artifacts for this lab are available at:
-
-- `artifacts/precomputed/section7/section7_quickrun_*.json`
-- `artifacts/precomputed/section7/section7_quickrun_*.txt`
-
-Regenerate snapshots with:
-
-```bash
-python prepare_exercise_artifacts.py
-```
-
----
-
-## Key Concepts
-
-### What Is an NFR in This Lab?
-
-You are testing system qualities that matter in production, even when the assistant is logically correct:
-
-1. Reliability under dependency failure
-2. Timeout tolerance and recovery behavior
-3. Stability under extreme or malformed input
-4. Robustness under fuzzed or nonsensical data
-5. Latency and token-cost efficiency
-
-### Failure Under Stress Is a Product Problem
-
-A system may still be unsafe or production-unready if it:
-
-- crashes on large inputs
-- hangs on slow tools
-- misbehaves during rate limits
-- becomes unstable on garbage input
-- consumes excessive latency or tokens for ordinary requests
-
-### Resilience Scorecard
-
-At the end of the lab, the table creates one shared scorecard summarizing:
-
-- what failed
-- how severe the weakness is
-- what should be fixed first
-
----
-
-## Part 1: Chaos Engineering Assignments
-
-Each person at the table takes one specific NFR pillar to stress test. In the timed version, run one deliberate stress case per pillar.
-
-### Person 1: Outage / Rate Limits
-
-**Goal:** Simulate API 429 errors and check for graceful degradation.
-
-Look for:
-
-- clear rate-limit communication
-- retry/backoff behavior
-- no crash or broken state after the failure
-
-### Person 2: Timeouts
-
-**Goal:** Simulate slow tool responses and check for circuit breaker or timeout behavior.
-
-Look for:
-
-- fail-fast behavior or safe fallback
-- no endless waiting loop
-- clear user communication about timeout or degraded mode
-
-### Person 3: Boundary Inputs
-
-**Goal:** Input massive text blocks and check for context window crashes or instability.
-
-Look for:
-
-- truncation or safe handling of very large input
-- no app crash or broken rendering
-- reasonable response instead of uncontrolled failure
-
-### Person 4: Gibberish / Fuzzing
-
-**Goal:** Input nonsensical or non-English data and check for stability.
-
-Look for:
-
-- no hallucinated tool usage
-- no system crash
-- safe clarification or controlled fallback behavior
-
-### Person 5: Cost / Latency
-
-**Goal:** Run **3 baseline queries** and calculate the average **TTFT** and **Token Cost**.
-
-Look for:
-
-- whether baseline latency is acceptable
-- whether token use is stable across similar queries
-- whether any run looks unusually expensive
-
-### Individual NFR Test Table
-
-| Person | NFR Pillar | Stress Case / Query | Expected Behavior | Actual Behavior | Evidence | Pass/Fail |
-|---|---|---|---|---|---|---|
-| Person 1 | Outage/Rate Limits |  |  |  |  |  |
-| Person 2 | Timeouts |  |  |  |  |  |
-| Person 3 | Boundary Inputs |  |  |  |  |  |
-| Person 4 | Gibberish/Fuzzing |  |  |  |  |  |
-| Person 5 | Cost/Latency | Query 1 |  |  |  |  |
-| Person 5 | Cost/Latency | Query 2 |  |  |  |  |
-| Person 5 | Cost/Latency | Query 3 |  |  |  |  |
-
-For Person 5, compute:
-
-- **Average TTFT**
-- **Average Token Cost**
-- **Highest TTFT observed**
-- **Highest Token Cost observed**
-
----
-
-## Part 2: The Resilience Scorecard
-
-Combine your findings into one table-wide **Resilience Scorecard**.
-
-For each NFR, discuss:
-
-1. Did the system remain usable?
-2. Did it degrade gracefully?
-3. Was the user informed clearly?
-4. How severe would this weakness be in production?
-
-### Resilience Scorecard Template
-
-| NFR Area | Owner | Pass / Fail / Mixed | Severity | Evidence Summary | Recommended Fix |
+## NFR scorecard
+| NFR Area | Expected Behavior | Actual Behavior | Pass/Fail/Mixed | Evidence | Recommended Fix |
 |---|---|---|---|---|---|
-| Outage / Rate Limits | Person 1 |  |  |  |  |
-| Timeouts | Person 2 |  |  |  |  |
-| Boundary Inputs | Person 3 |  |  |  |  |
-| Gibberish / Fuzzing | Person 4 |  |  |  |  |
-| Cost / Latency | Person 5 |  |  |  |  |
+| Rate Limits |  |  |  |  |  |
+| Timeouts |  |  |  |  |  |
+| Boundary Inputs |  |  |  |  |  |
+| Gibberish/Fuzzing |  |  |  |  |  |
+| Latency Stability |  |  |  |  |  |
 
-### Final Group Question
+## Team debrief questions
+1. Which failure mode is highest production risk?
+2. Did the system fail safely or silently?
+3. What resilience check should be automated first?
 
-Which NFR is the **weakest link** right now, and why?
-
-Your group must choose one.
-
----
-
-## Deliverables
-
-Submit one file named `exercise7_submission.md` containing:
-
-1. Individual NFR findings for all five pillars
-2. Person 5's TTFT and Token Cost calculations from 3 baseline queries
-3. The completed Resilience Scorecard
-4. The table's chosen weakest-link NFR
-5. One recommended fix for each NFR area
-
----
-
-## Reflection Questions
-
-1. Which NFR produced the highest production risk?
-2. Did the assistant fail safely, fail noisily, or fail silently?
-3. Was the weakest link caused more by poor recovery behavior or poor operational limits?
-4. If you could automate one resilience check first, which would you choose and why?
-
----
-
-## Optional Stretch
-
-If your table finishes early:
-
-1. Design one extra adversarial stress case for each NFR pillar.
-2. Define a target threshold for acceptable TTFT.
-3. Draft one automated resilience regression check you would add to CI.
-
----
-
-## Key Takeaway
-
-Stress testing is about operational trust, not just answer quality.
-
-A resilient assistant must degrade gracefully, remain stable under bad inputs and failures, and keep latency and cost within acceptable bounds.
