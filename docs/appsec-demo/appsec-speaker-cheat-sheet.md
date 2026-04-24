@@ -107,10 +107,15 @@ Say this:
 
 Use these prompts in order.
 
-1. "Use AppSec Triage Agent to scan app and static/js for top findings and map each to docs/appsec-demo/appsec-baseline-standard.md."
-2. "Use Remediation Coach Agent in apply mode for F-001, F-002, F-003, and F-004. Apply minimal reversible edits and list changed files."
-3. "Run remediation-validation against docs/appsec-demo/appsec-baseline-standard.md and report unresolved risk."
-4. "Provide rollback commands and rollback reasoning for all changed files."
+1. "[Agent selected: AppSec Triage Agent] Run /vulnerability-discovery for app and static/js, top 5 findings, and map each to docs/appsec-demo/appsec-baseline-standard.md."
+2. "[Agent selected: Remediation Coach Agent] Run /runtime-remediation in apply mode for F-001, F-002, F-003, and F-004. Apply minimal reversible edits and list changed files."
+3. "[Agent selected: Remediation Coach Agent] Run /remediation-validation against docs/appsec-demo/appsec-baseline-standard.md and report unresolved risk."
+4. "[Agent selected: Remediation Coach Agent] Provide rollback commands and rollback reasoning for all changed files."
+
+Invocation rule for live talks:
+
+- Always explicitly select the agent in the agent picker before sending prompts.
+- If your client supports explicit syntax (`@AgentName` or slash invocations), prefer that over name-only phrasing.
 
 ## Scripted Command Flow
 

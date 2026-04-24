@@ -9,6 +9,16 @@ applyTo: ["app/**/*.py", "static/js/**/*.js", "templates/**/*.html", "docs/**/*.
 
 Apply these rules when analyzing security posture or generating remediation guidance.
 
+## Invocation best practice
+
+- Prefer explicit agent selection over implicit name matching.
+- Prefer explicit skill invocation over passive inference.
+- In demos, use:
+	- `AppSec Triage Agent` + `/vulnerability-discovery` for discovery.
+	- `Remediation Coach Agent` + `/secure-patch-suggestion` for suggestion mode.
+	- `Remediation Coach Agent` + `/runtime-remediation` for apply mode.
+	- `Remediation Coach Agent` + `/remediation-validation` for re-validation.
+
 ## Findings format
 
 For each finding, include:

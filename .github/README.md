@@ -20,6 +20,11 @@ This folder contains reusable GitHub Copilot customization assets for a 1-hour A
 3. Optionally switch to apply mode for runtime edits with `runtime-remediation`.
 4. Re-check findings against the baseline standard in `docs/appsec-demo/appsec-baseline-standard.md`.
 
+Best practice for demos:
+
+- Explicitly select the target custom agent before each prompt.
+- Explicitly invoke skills (`/vulnerability-discovery`, `/secure-patch-suggestion`, `/runtime-remediation`, `/remediation-validation`) instead of relying on implicit routing.
+
 Scripted option for live runtime edits:
 
 - `python appsec_runtime_remediation_demo.py --mode assess`

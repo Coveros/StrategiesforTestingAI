@@ -19,6 +19,15 @@ Show how custom agents and skills can:
 - Baseline standard available at `docs/appsec-demo/appsec-baseline-standard.md`
 - Speaker cue card available at `docs/appsec-demo/appsec-speaker-cheat-sheet.md`
 
+## Invocation Best Practice
+
+Use explicit invocation in live demos to reduce routing drift:
+
+1. Select the custom agent in the Copilot agent picker before sending each prompt.
+2. If your client supports explicit invocation syntax, use it (for example `@AgentName` or slash invocation) instead of name-only wording.
+3. Invoke skills explicitly when needed (`/vulnerability-discovery`, `/secure-patch-suggestion`, `/runtime-remediation`, `/remediation-validation`).
+4. Avoid relying on plain text such as "use agent X" as the only routing signal.
+
 Optional scripted workflow:
 
 - `python appsec_runtime_remediation_demo.py --mode assess`
@@ -39,7 +48,7 @@ Optional scripted workflow:
 
 Prompt example:
 
-"Use AppSec Triage Agent to scan app and static/js for top 5 findings. Map each to docs/appsec-demo/appsec-baseline-standard.md controls and mark uncertain items as needs verification."
+"[Agent selected: AppSec Triage Agent] Run /vulnerability-discovery for app and static/js with max 5 findings. Map each finding to docs/appsec-demo/appsec-baseline-standard.md controls and mark uncertain items as needs verification."
 
 Expected output shape:
 
@@ -52,11 +61,11 @@ Expected output shape:
 
 Prompt example:
 
-"Use Remediation Coach Agent for findings F-001 and F-003. Provide minimal patch suggestions with validation and rollback notes."
+"[Agent selected: Remediation Coach Agent] Run /secure-patch-suggestion for findings F-001 and F-003. Provide minimal patch suggestions with validation and rollback notes."
 
 Apply-mode prompt example:
 
-"Use Remediation Coach Agent in apply mode for findings F-001 and F-003. Make minimal reversible edits, then list changed files and rollback commands."
+"[Agent selected: Remediation Coach Agent] Run /runtime-remediation in apply mode for findings F-001 and F-003. Make minimal reversible edits, then list changed files and rollback commands."
 
 Expected output shape:
 
@@ -69,7 +78,7 @@ Expected output shape:
 
 Prompt example:
 
-"Run runtime-remediation for the same findings. Confirm controls addressed, summarize changed files, and provide rollback commands."
+"[Agent selected: Remediation Coach Agent] Run /runtime-remediation for the same findings. Confirm controls addressed, summarize changed files, and provide rollback commands."
 
 Expected output shape:
 
@@ -82,7 +91,7 @@ Expected output shape:
 
 Prompt example:
 
-"Run remediation-validation for F-001 and F-003 against docs/appsec-demo/appsec-baseline-standard.md and report ready or not ready decision."
+"[Agent selected: Remediation Coach Agent] Run /remediation-validation for F-001 and F-003 against docs/appsec-demo/appsec-baseline-standard.md and report ready or not ready decision."
 
 Expected output shape:
 
