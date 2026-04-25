@@ -11,16 +11,13 @@ You are performing an initial exploratory testing session on a new GenAI testing
 
 ## Student tasks
 1. Split up your team and assign each person to one of five charters: 
-- Happy Path - test if assistant performs well on normal requests
-- Boundary - test how the assistant handles input at the limits of formatting, length, or complexity
-- Negative/Adversarial - test how the assistant handles out-of-scope, inappropriate, or adversarial requests
-- Robustness & Linguistic Variation - test how the assistant handles varied phrasing, synonyms, and linguistic nuances
-- Hallucination & Factuality - test whether the assistant generates false, misleading, or unverifiable information
-
+    - Happy Path - test if assistant performs well on normal requests
+    - Boundary - test how the assistant handles input at the limits of formatting, length, or complexity
+    - Negative/Adversarial - test how the assistant handles out-of-scope, inappropriate, or adversarial requests
+    - Robustness & Linguistic Variation - test how the assistant handles varied phrasing, synonyms, and linguistic nuances
+    - Hallucination & Factuality - test whether the assistant generates false, misleading, or unverifiable information
 2. Each person should run at least 2 test prompts for their charter and record observations.
-
 3. Record what happened for each test. Note whether the assistant's response was Acceptable, Needs Follow-up, Risky Behavior, or Out-of-Scope.
-
 4. Rerun each test and compare the results. How close are the results? How difficult would it be to write an evaluation metric that checks for correctness without being too brittle?
 
 ## Testing charters and sample test prompts

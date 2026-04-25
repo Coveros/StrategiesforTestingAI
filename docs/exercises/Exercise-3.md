@@ -1,18 +1,20 @@
 # Exercise 3: Audit Test Results and Improve a Metric
 
 ## Prerequisites
-1. Exercise 2 completed with your local 9-test regression suite (7 base + 2 of your own tests).
-2. Regression test results from your Exercise 2 run: `python regression_testing/regression_testing.py` (or check the saved results in `regression_test_results/`).
+1. Exercise 2 completed with your local 9-test regression suite.
+2. Regression test results from your Exercise 2 in `regression_test_results/`.
 3. Copilot Chat in Codespaces.
 
 ## Scenario
-Your team added 2 new tests to the golden suite. Now audit all 9 of your results and find evaluation issues. The framework uses weighted thresholds (semantic similarity 40%, keyword match 25%, etc.) that might be too strict or too loose. You'll find one false positive and one false negative, then propose a metric improvement.
+Your team added 2 new tests to the golden test suite during Exercise 2. Now audit all 9 of your test results and find evaluation issues. The framework uses weighted thresholds (semantic similarity 40%, keyword match 25%, etc.) that might be too strict or too loose. You'll find one false positive and one false negative, then propose a metric improvement.
 
 ## Student tasks
-1. Run your 9-test suite: `python regression_testing/regression_testing.py` and save the output.
-2. Find 1 false positive (test that failed but should have passed) and 1 false negative (test that passed but should have failed).
+1. Analyse your test results from Exercise 2 located in `regression_test_results/` using the **Analyzing Your Test Results** guide below this task list. 
+2. Look at the scores for each test and identify:
+   - One false positive: a test that failed but should have passed based on the response quality.
+   - One false negative: a test that passed but should have failed due to issues in the response.
 3. For each, document: Test ID, actual similarity/keyword scores, why the threshold decision was wrong.
-4. Use Copilot to draft 1 new metric that would catch that gap (e.g., PII detector, source citation checker, JSON validator).
+4. Use Copilot to draft 1 new metric that would catch that gap (e.g., PII detector, source citation checker, JSON validator). Use the **Sample Copilot prompts for new metrics** below if helpful.
 5. Propose where this metric would live in the framework and what threshold it should use.
 
 ## Analyzing Your Test Results
@@ -25,16 +27,15 @@ Look at each result in the test output:
 - **Performance** (5% weight): Response time < 15 sec?
 - **Content** (5% weight): Response > 50 chars?
 
-**False Positive Example (should pass but failed):**
-- Test "hallucination_basic" scored semantic similarity 0.78 (passes threshold 0.75)
-- But keyword match was 0.1 (failed threshold 0.6)
-- Result: Test fails overall even though semantic similarity is high
-- Question: Should keyword match be weighted 25% or 15%?
+**False Positive Pattern (should pass but failed):**
+- A test has strong semantic similarity, but one strict sub-score (for example, keyword match) drives the final decision to fail.
+- Use your own run data to decide whether the weighting or threshold was too strict.
 
-**False Negative Example (should fail but passed):**
-- Test "edge_case_irrelevant" passed because semantic similarity 0.9 and keyword match 0.8
-- But the response included irrelevant information mixed with proper refusal
-- Question: Do we need a "purity" metric to detect mixed-signal responses?
+**False Negative Pattern (should fail but passed):**
+- A test passes on aggregate scoring, but qualitative review shows a clear response quality issue (for example, mixed-signal, irrelevant, or unsafe content).
+- Use your own run data to identify why the current metrics missed it.
+
+Use findings from your own artifacts in `regression_test_results/`; do not reuse example IDs from this handout.
 
 Note: the framework attempts live API mode first and automatically falls back to deterministic offline mode if network or rate-limit errors occur.
 

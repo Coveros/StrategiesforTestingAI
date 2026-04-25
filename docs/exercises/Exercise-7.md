@@ -2,31 +2,29 @@
 
 ## Prerequisites
 1. App running locally (`python run.py`).
-2. Team of up to 5 people.
-3. Ability to use Agent mode in the UI.
+2. Copilot Chat in Codespaces.
+3. Ability to view tool calls or traces using Agent Mode in the UI.
+4. Instructor mode enabled to force trace visibility and crew mode when needed.
 
 ## Scenario
-You are testing reliability, not just correctness. The goal is to find the weakest non-functional area under stress.
-
-## How to run this in the UI
-1. Open `http://localhost:5000/?exercise=7`.
-2. Switch from **Ask** to **Agent** in the input bar.
-3. For NFR stress checks, use instructor controls so you can force trace/crew settings:
-	- Open `http://localhost:5000/?exercise=7&instructor=1`
-	- Enable **Agent Mode** and **Show Trace**
-	- Optional: enable **Crew Mode** to compare single-agent vs multi-agent resilience
-4. For each role test, send the exact simulation prompt listed below and capture evidence from response metadata.
+You are testing reliability, not just correctness. The goal is to find the weakest non-functional area under stress and compare single-agent vs crew resilience under the same prompts.
 
 ## Student tasks
-1. Split 5 roles:
+1. Open `http://localhost:5000/?exercise=7&instructor=1`.
+2. In instructor controls, enable **Agent Mode** and **Show Trace**.
+3. For each role prompt, run two passes in the same session:
+	- Pass A: **Crew Mode OFF** (single-agent baseline)
+	- Pass B: **Crew Mode ON** (multi-agent crew)
+4. Split 5 roles:
 	- Rate Limits
 	- Timeouts
 	- Boundary Inputs
 	- Gibberish/Fuzzing
 	- Latency Stability
-2. Each person runs 1 stress test (Person 5 runs 3 baseline queries).
-3. Record Pass/Fail/Mixed with one evidence note per role.
-4. Choose the weakest link and propose one fix.
+5. For each role test, send the exact simulation prompt listed below and capture evidence from response metadata for both passes.
+6. Each person runs 1 stress test (Person 5 runs 3 baseline queries), then repeats the same test with Crew Mode ON.
+7. Record Pass/Fail/Mixed for single-agent and crew with one evidence note per mode.
+8. Choose the weakest link and propose one fix.
 
 ## Simulation prompts by role (copy/paste)
 
@@ -54,29 +52,30 @@ You are testing reliability, not just correctness. The goal is to find the weake
 2. Compare response time consistency across the three runs.
 
 ## What to capture as evidence
-For each role, capture:
+For each role and for each mode (single-agent and crew), capture:
 1. Prompt used
 2. Response summary
 3. `response_time`
 4. `trajectory_metrics.degraded_mode`
 5. `trajectory_metrics.circuit_open`
 6. `trajectory_metrics.steps` and `trajectory_metrics.tool_calls`
+7. `handoffs` count (if present) and whether handoffs helped or hurt resilience
 
 Note: this UI currently surfaces response-time and trajectory metrics, not token-level billing fields.
 
-## Optional automation path
-If you prefer scripted simulation evidence, run:
-- `python section7_nfr_quickrun.py`
-This generates JSON/TXT artifacts in `regression_test_results/`.
-
 ## NFR scorecard
-| NFR Area | Expected Behavior | Actual Behavior | Pass/Fail/Mixed | Evidence | Recommended Fix |
-|---|---|---|---|---|---|
-| Rate Limits |  |  |  |  |  |
-| Timeouts |  |  |  |  |  |
-| Boundary Inputs |  |  |  |  |  |
-| Gibberish/Fuzzing |  |  |  |  |  |
-| Latency Stability |  |  |  |  |  |
+| NFR Area | Mode | Expected Behavior | Actual Behavior | Pass/Fail/Mixed | Evidence | Recommended Fix |
+|---|---|---|---|---|---|---|
+| Rate Limits | Single-agent |  |  |  |  |  |
+| Rate Limits | Crew |  |  |  |  |  |
+| Timeouts | Single-agent |  |  |  |  |  |
+| Timeouts | Crew |  |  |  |  |  |
+| Boundary Inputs | Single-agent |  |  |  |  |  |
+| Boundary Inputs | Crew |  |  |  |  |  |
+| Gibberish/Fuzzing | Single-agent |  |  |  |  |  |
+| Gibberish/Fuzzing | Crew |  |  |  |  |  |
+| Latency Stability | Single-agent |  |  |  |  |  |
+| Latency Stability | Crew |  |  |  |  |  |
 
 ## Team debrief questions
 1. Which failure mode is highest production risk?
