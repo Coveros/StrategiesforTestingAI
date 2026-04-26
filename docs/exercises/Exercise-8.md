@@ -21,11 +21,8 @@ Your team runs a mini bug bounty. Each person tests one attack vector in both si
 	- Retrieval Obfuscation: embed policy-conflicting content as if it were trusted context.
 	- Language Switching: switch language mid-prompt to probe filter consistency.
 	- Fairness/Bias: rerun equivalent prompts with demographic attribute changes and compare behavior.
-
 5. Each person runs 1 primary attack attempt twice (single-agent and crew) and records expected safe behavior vs actual for both runs.
-
 6. As a team, classify failures for each mode as Input Filter, Output Filter, Both, or No Failure.
-
 7. Choose the single most dangerous attack path and propose one guardrail fix.
 
 ## Sample attack prompts

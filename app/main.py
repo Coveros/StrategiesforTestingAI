@@ -81,7 +81,7 @@ def exercises_home():
     if requested_exercise < 1 or requested_exercise > 9:
         requested_exercise = 1
 
-    role = 'instructor' if instructor_flag else 'student'
+    role = 'student'
     if instructor_flag:
         return redirect(url_for('exercise_view', number=requested_exercise, role=role, instructor='1'))
     return redirect(url_for('exercise_view', number=requested_exercise, role=role))
@@ -92,18 +92,14 @@ def exercise_view(number: int):
     """Render exercise markdown as a clean in-app page."""
     env_instructor = os.getenv('EXERCISE_HUB_ENABLE_INSTRUCTOR', 'false').strip().lower() == 'true'
     query_instructor = is_truthy(request.args.get('instructor', '0'))
-    allow_instructor = env_instructor or query_instructor
-    role = str(request.args.get('role', 'student')).strip().lower()
-    if role not in ('student', 'instructor'):
-        role = 'student'
-    if role == 'instructor' and not allow_instructor:
-        role = 'student'
+    instructor_mode = env_instructor or query_instructor
+    role = 'student'
 
     row = next((x for x in EXERCISE_CATALOG if x['number'] == number), None)
     if row is None:
         abort(404)
 
-    target_path = row['student_file'] if role == 'student' else row['instructor_file']
+    target_path = row['student_file']
     if not target_path.exists():
         abort(404)
 
@@ -116,11 +112,12 @@ def exercise_view(number: int):
         'exercise_hub.html',
         exercise_number=number,
         role=role,
-        allow_instructor=allow_instructor,
+        allow_instructor=False,
+        instructor_mode=instructor_mode,
         instructor_query='1' if query_instructor else None,
         markdown_content=markdown_content,
         exercise_catalog=EXERCISE_CATALOG,
-        current_title=row['student_title'] if role == 'student' else row['instructor_title'],
+        current_title=row['student_title'],
         prev_num=prev_num,
         next_num=next_num,
     )

@@ -11,7 +11,7 @@ You are expanding your **golden regression test set** located here: `regression_
 
 ## Student tasks
 1. **Review and run the existing golden test set:** 
-`python regression_testing/regression_testing.py` 
+`` 
 to see baseline pass rate and example test structure.
 2. Pick 2 tests you created during Exercise 1 to automate and add to this regression testing suite.
 3. Use Copilot to generate the query, gold standard answer, keywords, and priority for each test in JSON format.
@@ -86,3 +86,4 @@ Keywords: ["hallucination", "harm", "real-world", "medical", "financial", "factu
 2. Did the existing 7-test baseline all pass, or were some failures expected?
 3. With your 9-test local pack, what is your confidence level as a "quick regression pack"?
 
+python regression_testing/regression_testing.py

@@ -262,7 +262,7 @@
 </head>
 <body>
     <div class="hub-shell">
-        {% if role == 'instructor' or allow_instructor %}
+        {% if instructor_mode %}
         {% set chat_href = url_for('index', instructor='1', exercise=exercise_number) %}
         {% elif exercise_number >= 5 %}
         {% set chat_href = url_for('index', agent='1', exercise=exercise_number) %}
