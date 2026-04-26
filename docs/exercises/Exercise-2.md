@@ -10,14 +10,11 @@
 You are expanding your **golden regression test set** located here: `regression_testing/regression_testing.py` by adding two new tests you created during Exercise 1.
 
 ## Student tasks
-1. **Review and run the existing golden test set:** 
-`` 
-to see baseline pass rate and example test structure.
-2. Pick 2 tests you created during Exercise 1 to automate and add to this regression testing suite.
-3. Use Copilot to generate the query, gold standard answer, keywords, and priority for each test in JSON format.
-4. Add your 2 new test cases to `regression_testing/regression_testing.py` in the `_load_test_cases()` method.
-5. Rerun the framework: `python regression_testing/regression_testing.py` and confirm your all the tests run
-6. Record pass rate, failed test IDs, and execution mode (Live API or Offline Fallback). Use the results table template below to capture your run outputs.
+1. Pick 2 tests you created during Exercise 1 to automate and add to this regression testing suite.
+2. Use Copilot to generate the query, gold standard answer, keywords, and priority for each test in JSON format.
+3. Add your 2 new test cases to `regression_testing/regression_testing.py` in the `_load_test_cases()` method.
+4. Rerun the framework: `python regression_testing/regression_testing.py` and confirm your all the tests run
+5. Record pass rate, failed test IDs, and execution mode (Live API or Offline Fallback). Use the results table template below to capture your run outputs.
 
 ## Results table template
 Use this table to capture your run outputs in a consistent format.
