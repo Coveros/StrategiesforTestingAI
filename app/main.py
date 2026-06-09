@@ -432,7 +432,11 @@ def trace_demo():
                 'next_step': 'Run: python trace_visualization_demo.py'
             }), 404
 
-        return send_file(html_files[0], mimetype='text/html')
+        response = send_file(html_files[0], mimetype='text/html')
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
     except Exception as e:
         logger.error(f"Error loading trace demo: {str(e)}")
         logger.error(traceback.format_exc())
