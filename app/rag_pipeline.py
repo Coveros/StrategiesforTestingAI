@@ -10,8 +10,9 @@ import cohere
 import chromadb
 from chromadb.config import Settings
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from project root for consistent behavior
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(dotenv_path=PROJECT_ROOT / '.env')
 
 logger = logging.getLogger(__name__)
 
@@ -69,11 +70,33 @@ class RAGPipeline:
             # Create persistent database
             db_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'chroma_db')
             os.makedirs(db_path, exist_ok=True)
-            
-            self.vector_db = chromadb.PersistentClient(
-                path=db_path,
-                settings=Settings(anonymized_telemetry=False)
-            )
+
+            try:
+                self.vector_db = chromadb.PersistentClient(
+                    path=db_path,
+                    settings=Settings(anonymized_telemetry=False)
+                )
+            except Exception as init_error:
+                # Recovery path for local Chroma metadata corruption/version drift.
+                if "default_tenant" in str(init_error):
+                    backup_path = f"{db_path}_backup_{int(time.time())}"
+                    logger.warning(
+                        "Chroma initialization failed with default_tenant issue; backing up DB to %s and rebuilding.",
+                        backup_path,
+                    )
+                    try:
+                        os.rename(db_path, backup_path)
+                    except Exception as rename_error:
+                        logger.error("Failed to backup corrupt Chroma directory: %s", rename_error)
+                        raise init_error
+
+                    os.makedirs(db_path, exist_ok=True)
+                    self.vector_db = chromadb.PersistentClient(
+                        path=db_path,
+                        settings=Settings(anonymized_telemetry=False)
+                    )
+                else:
+                    raise
             
             # Get or create collection with cosine similarity
             collection_name = "genai_testing_docs_v3"  # New collection name for v3 embeddings

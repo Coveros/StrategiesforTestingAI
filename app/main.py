@@ -1,17 +1,21 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, abort
+from flask import Flask, render_template, request, jsonify, redirect, url_for, abort, send_file
 from flask_cors import CORS
 import os
 import logging
 import uuid
+import hmac
 from pathlib import Path
 from dotenv import load_dotenv
 from app.rag_pipeline import RAGPipeline
 from app.agentic_testops import TestOpsAgent
 import time
 import traceback
+from collections import defaultdict, deque
+from functools import wraps
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from project root for consistent behavior
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(dotenv_path=PROJECT_ROOT / '.env')
 
 # Configure logging
 logging.basicConfig(level=getattr(logging, os.getenv('LOG_LEVEL', 'INFO')))
@@ -22,10 +26,26 @@ template_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'templat
 static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static')
 
 app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
-CORS(app)
+
+try:
+    _max_request_bytes = int(os.getenv('MAX_REQUEST_BYTES', '65536'))
+except ValueError:
+    _max_request_bytes = 65536
+app.config['MAX_CONTENT_LENGTH'] = min(max(_max_request_bytes, 1024), 1048576)
+
+try:
+    CHAT_MAX_CHARS = int(os.getenv('CHAT_MAX_CHARS', '2000'))
+except ValueError:
+    CHAT_MAX_CHARS = 2000
+
+# Restrict cross-origin API access to configured trusted origins.
+_cors_origins_raw = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:5000,http://127.0.0.1:5000')
+_cors_origins = [origin.strip() for origin in _cors_origins_raw.split(',') if origin.strip()]
+CORS(app, resources={r"/api/*": {"origins": _cors_origins}})
 
 DOCS_DIR = Path(os.path.dirname(os.path.dirname(__file__))) / 'docs'
 EXERCISE_DOCS_DIR = DOCS_DIR / 'exercises'
+TRACE_SAMPLES_DIR = Path(os.path.dirname(os.path.dirname(__file__))) / 'artifacts' / 'trace_samples'
 
 EXERCISE_CATALOG = [
     {
@@ -41,22 +61,105 @@ EXERCISE_CATALOG = [
 # Initialize RAG pipeline
 rag_pipeline = None
 agentic_pipeline = TestOpsAgent()
+_rate_limit_buckets = defaultdict(deque)
+_last_rag_init_error = None
 
 
 def is_truthy(value) -> bool:
     return str(value).strip().lower() in ('1', 'true', 'yes', 'on')
 
+
+def should_expose_diagnostics() -> bool:
+    return is_truthy(os.getenv('EXPOSE_DIAGNOSTIC_DETAILS', 'false'))
+
+
+def _client_ip() -> str:
+    forwarded_for = request.headers.get('X-Forwarded-For', '')
+    if forwarded_for:
+        return forwarded_for.split(',')[0].strip()
+    return request.remote_addr or 'unknown'
+
+
+def rate_limit(scope: str, max_requests: int, window_seconds: int):
+    """Simple in-memory per-IP limiter for exposed endpoints."""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            now = time.time()
+            key = f"{scope}:{_client_ip()}"
+            bucket = _rate_limit_buckets[key]
+
+            while bucket and now - bucket[0] > window_seconds:
+                bucket.popleft()
+
+            if len(bucket) >= max_requests:
+                retry_after = max(1, int(window_seconds - (now - bucket[0])))
+                return jsonify({
+                    'error': 'Rate limit exceeded. Please retry later.',
+                    'status': 'error',
+                    'retry_after_seconds': retry_after,
+                }), 429
+
+            bucket.append(now)
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
+def _extract_admin_token() -> str:
+    auth_header = request.headers.get('Authorization', '').strip()
+    if auth_header.lower().startswith('bearer '):
+        return auth_header[7:].strip()
+    return request.headers.get('X-Admin-Token', '').strip()
+
+
+def require_admin_token():
+    configured_token = os.getenv('APP_ADMIN_TOKEN', '').strip()
+    require_token = is_truthy(os.getenv('RESET_REQUIRE_ADMIN_TOKEN', 'true'))
+
+    if not configured_token:
+        if require_token:
+            logger.warning('APP_ADMIN_TOKEN is not configured; denying sensitive reset action')
+            return False, (jsonify({
+                'error': 'Sensitive action not configured',
+                'status': 'error',
+            }), 503)
+
+        logger.warning('APP_ADMIN_TOKEN is not configured; allowing reset because RESET_REQUIRE_ADMIN_TOKEN is false')
+        return True, None
+
+    presented_token = _extract_admin_token()
+    if not presented_token or not hmac.compare_digest(presented_token, configured_token):
+        return False, (jsonify({
+            'error': 'Unauthorized',
+            'status': 'error',
+        }), 401)
+
+    return True, None
+
 def initialize_rag():
     """Initialize the RAG pipeline with error handling."""
-    global rag_pipeline
+    global rag_pipeline, _last_rag_init_error
     try:
         rag_pipeline = RAGPipeline()
+        _last_rag_init_error = None
         logger.info("RAG pipeline initialized successfully")
         return True
     except Exception as e:
+        _last_rag_init_error = str(e)
         logger.error(f"Failed to initialize RAG pipeline: {str(e)}")
         logger.error(traceback.format_exc())
         return False
+
+
+@app.after_request
+def add_security_headers(response):
+    response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    response.headers.setdefault('X-Frame-Options', 'DENY')
+    response.headers.setdefault('Referrer-Policy', 'no-referrer')
+    if request.path.startswith('/api/'):
+        response.headers.setdefault('Cache-Control', 'no-store')
+    return response
 
 @app.route('/')
 def index():
@@ -123,12 +226,19 @@ def exercise_view(number: int):
     )
 
 @app.route('/api/chat', methods=['POST'])
+@rate_limit('chat', max_requests=30, window_seconds=60)
 def chat():
     """Handle chat requests and return responses."""
     start_time = time.time()
     
     try:
-        data = request.get_json()
+        if not request.is_json:
+            return jsonify({
+                'error': 'Content-Type must be application/json',
+                'status': 'error'
+            }), 415
+
+        data = request.get_json(silent=True)
         if not data or 'message' not in data:
             return jsonify({
                 'error': 'No message provided',
@@ -139,6 +249,12 @@ def chat():
         if not user_message:
             return jsonify({
                 'error': 'Empty message provided',
+                'status': 'error'
+            }), 400
+
+        if len(user_message) > CHAT_MAX_CHARS:
+            return jsonify({
+                'error': f'Message exceeds limit of {CHAT_MAX_CHARS} characters',
                 'status': 'error'
             }), 400
 
@@ -181,10 +297,14 @@ def chat():
             # Check if RAG pipeline is initialized
             if rag_pipeline is None:
                 if not initialize_rag():
-                    return jsonify({
+                    error_payload = {
                         'error': 'RAG pipeline not available',
+                        'next_step': 'Verify COHERE_API_KEY in .env and restart the app',
                         'status': 'error'
-                    }), 500
+                    }
+                    if should_expose_diagnostics() and _last_rag_init_error:
+                        error_payload['details'] = _last_rag_init_error
+                    return jsonify(error_payload), 500
             
             # Get response from RAG pipeline
             response_data = rag_pipeline.query(user_message, temperature=requested_temperature)
@@ -203,49 +323,67 @@ def chat():
         
     except Exception as e:
         response_time = time.time() - start_time
-        error_msg = f"Error processing query: {str(e)}"
-        logger.error(error_msg)
+        error_ref = uuid.uuid4().hex[:8]
+        logger.error(f"Error processing query [{error_ref}]: {str(e)}")
         logger.error(traceback.format_exc())
         
         return jsonify({
-            'error': error_msg,
+            'error': f'Request processing failed (ref: {error_ref})',
             'status': 'error',
             'response_time': round(response_time, 3)
         }), 500
 
 @app.route('/api/health', methods=['GET'])
+@rate_limit('health', max_requests=60, window_seconds=60)
 def health_check():
     """Health check endpoint."""
     try:
         # Check if RAG pipeline is working
         if rag_pipeline is None:
             if not initialize_rag():
-                return jsonify({
+                error_payload = {
                     'status': 'unhealthy',
                     'cohere_client': False,
                     'vector_db': False,
                     'collection': False,
                     'documents_loaded': False,
-                    'error': 'Failed to initialize RAG pipeline'
-                }), 500
+                    'error': 'Failed to initialize RAG pipeline',
+                }
+                if should_expose_diagnostics() and _last_rag_init_error:
+                    error_payload['details'] = _last_rag_init_error
+                return jsonify(error_payload), 500
         
         # Get detailed health status from RAG pipeline
         health_status = rag_pipeline.health_check()
-        health_status['status'] = 'healthy' if all(health_status.values()) else 'unhealthy'
+        # Connection status should represent core service connectivity, not content readiness.
+        core_connected = (
+            bool(health_status.get('cohere_client'))
+            and bool(health_status.get('vector_db'))
+            and bool(health_status.get('collection'))
+        )
+
+        health_status['status'] = 'healthy' if core_connected else 'unhealthy'
+        health_status['core_connected'] = core_connected
+        health_status['warnings'] = []
+
+        if core_connected and not bool(health_status.get('documents_loaded')):
+            health_status['warnings'].append('Knowledge base is empty; retrieval quality may be reduced.')
         
         return jsonify(health_status)
     except Exception as e:
         logger.error(f"Health check failed: {str(e)}")
+        logger.error(traceback.format_exc())
         return jsonify({
             'status': 'unhealthy',
             'cohere_client': False,
             'vector_db': False,
             'collection': False,
             'documents_loaded': False,
-            'error': str(e)
+            'error': 'Health check failed'
         }), 500
 
 @app.route('/api/stats', methods=['GET'])
+@rate_limit('stats', max_requests=30, window_seconds=60)
 def get_stats():
     """Get pipeline statistics for testing purposes."""
     try:
@@ -266,13 +404,59 @@ def get_stats():
         })
     except Exception as e:
         logger.error(f"Error getting stats: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(traceback.format_exc())
+        return jsonify({'error': 'Failed to retrieve stats'}), 500
+
+
+@app.route('/trace-demo', methods=['GET'])
+def trace_demo():
+    """Serve the most recent trace visualization HTML artifact."""
+    try:
+        if not TRACE_SAMPLES_DIR.exists():
+            return jsonify({
+                'status': 'error',
+                'error': 'Trace samples directory not found',
+                'next_step': 'Run: python trace_visualization_demo.py'
+            }), 404
+
+        html_files = sorted(
+            TRACE_SAMPLES_DIR.glob('trace_visualization_*.html'),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+
+        if not html_files:
+            return jsonify({
+                'status': 'error',
+                'error': 'No trace visualization report found',
+                'next_step': 'Run: python trace_visualization_demo.py'
+            }), 404
+
+        return send_file(html_files[0], mimetype='text/html')
+    except Exception as e:
+        logger.error(f"Error loading trace demo: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'status': 'error',
+            'error': 'Failed to load trace demo report'
+        }), 500
 
 
 @app.route('/api/reset', methods=['POST'])
+@rate_limit('reset', max_requests=5, window_seconds=60)
 def reset_state():
     """Reset session or full agentic in-memory state for deterministic reruns."""
     try:
+        if not request.is_json:
+            return jsonify({
+                'error': 'Content-Type must be application/json',
+                'status': 'error'
+            }), 415
+
+        authorized, denial_response = require_admin_token()
+        if not authorized:
+            return denial_response
+
         data = request.get_json(silent=True) or {}
         scope = str(data.get('scope', 'session')).strip().lower()
         reset_breaker = bool(data.get('reset_circuit_breaker', True))
@@ -302,7 +486,7 @@ def reset_state():
         logger.error(f"Error resetting state: {str(e)}")
         logger.error(traceback.format_exc())
         return jsonify({
-            'error': str(e),
+            'error': 'Failed to reset state',
             'status': 'error'
         }), 500
 
@@ -318,13 +502,19 @@ def internal_error(error):
 if __name__ == '__main__':
     # Initialize RAG pipeline on startup
     logger.info("Starting GenAI Testing Tutorial Application...")
+    logger.info(
+        "Runtime diagnostics: python=%s env_file=%s exists=%s",
+        os.sys.executable,
+        PROJECT_ROOT / '.env',
+        (PROJECT_ROOT / '.env').exists(),
+    )
     
     if not initialize_rag():
         logger.warning("RAG pipeline initialization failed, but starting server anyway")
     
     # Get configuration from environment
     port = int(os.getenv('FLASK_PORT', 5000))
-    debug = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
+    debug = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
     
     logger.info(f"Starting Flask server on port {port}")
     app.run(host='0.0.0.0', port=port, debug=debug)

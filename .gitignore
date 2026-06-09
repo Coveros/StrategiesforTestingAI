@@ -251,3 +251,16 @@ dependency_audit.py
 # Experiment Database Backups
 experiment_backups/
 vector_backups/
+
+# Runtime remediation and workshop-generated artifacts
+artifacts/trace_samples/trace_visualization_*.html
+artifacts/trace_samples/trace_visualization_*.json
+artifacts/readiness/readiness_report_*.json
+artifacts/readiness/readiness_report_*.md
+artifacts/precomputed/section7/section7_quickrun_*.json
+artifacts/precomputed/section7/section7_quickrun_summary_*.txt
+artifacts/precomputed/section9/section9_quickrun_*.json
+artifacts/precomputed/section9/section9_agentic_ci_*.json
+artifacts/precomputed/section9/section9_agentic_ci_summary_*.txt
+artifacts/precomputed/exercise3/regression_results_*.json
+artifacts/precomputed/exercise3/regression_summary_*.txt
