@@ -76,12 +76,22 @@ class RAGPipeline:
                     path=db_path,
                     settings=Settings(anonymized_telemetry=False)
                 )
-            except Exception as init_error:
-                # Recovery path for local Chroma metadata corruption/version drift.
-                if "default_tenant" in str(init_error):
+            except BaseException as init_error:
+                # Recovery path for local Chroma metadata corruption/version drift,
+                # including Rust sqlite panics seen on some existing local stores.
+                error_text = str(init_error)
+                recoverable_markers = (
+                    "default_tenant",
+                    "range start index",
+                    "out of range for slice",
+                    "PanicException",
+                )
+
+                if any(marker in error_text for marker in recoverable_markers):
                     backup_path = f"{db_path}_backup_{int(time.time())}"
                     logger.warning(
-                        "Chroma initialization failed with default_tenant issue; backing up DB to %s and rebuilding.",
+                        "Chroma initialization failed with recoverable local-store error (%s); backing up DB to %s and rebuilding.",
+                        error_text,
                         backup_path,
                     )
                     try:
