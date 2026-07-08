@@ -183,10 +183,7 @@ def test_retrieval_strategy(n_results, similarity_threshold, description):
                 elif result_data['max_similarity'] < 0.01:
                     print(f"   🎯 Low similarity scores - may need better chunking")
                 
-                # Add rate limiting delay between queries
-                if query_type != "Process":  # Don't wait after the last query
-                    print(f"   ⏳ Waiting 10s for rate limiting...")
-                    time.sleep(10)
+                # No provider delay needed for local Ollama execution.
                     
             except Exception as e:
                 print(f"   ❌ Query failed: {str(e)}")
@@ -237,8 +234,7 @@ def run_retrieval_experiments():
     print("🔍 RETRIEVAL STRATEGY EXPERIMENTS")
     print("=" * 80)
     print("Students: Optimize retrieval parameters for better relevance and performance!")
-    print("⏰ Note: This experiment includes rate limiting delays (5s between queries)")
-    print("   Total experiment time: ~10-15 minutes due to API rate limits")
+    print("⏰ Note: Runs against local Ollama by default (no external API throttling).")
     print()
     
     # STUDENTS: Different retrieval strategies to test
@@ -270,9 +266,7 @@ def run_retrieval_experiments():
         if result:
             successful_results.append(result)
         
-        # Longer pause between strategies to respect rate limits
-        print(f"⏳ Waiting 15s before next strategy...")
-        time.sleep(15)
+        # Keep strategy runs contiguous for faster classroom feedback.
     
     if not successful_results:
         print("❌ No retrieval strategies were successful.")

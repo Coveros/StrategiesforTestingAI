@@ -14,14 +14,14 @@ You are expanding your **golden regression test set** located here: `regression_
 2. Use Copilot to generate the query, gold standard answer, keywords, and priority for each test in JSON format.
 3. Add your 2 new test cases to `regression_testing/regression_testing.py` in the `_load_test_cases()` method.
 4. Rerun the framework: `python regression_testing/regression_testing.py` and confirm your all the tests run
-5. Record pass rate, failed test IDs, and execution mode (Live API or Offline Fallback). Use the results table template below to capture your run outputs.
+5. Record pass rate, failed test IDs, and execution mode (Local Ollama or Offline Fallback). Use the results table template below to capture your run outputs.
 
 ## Results table template
 Use this table to capture your run outputs in a consistent format.
 
 | Run Timestamp | Total Tests | Passed | Failed | Pass Rate | Failed Test IDs | Execution Mode | Notes |
 |---|---:|---:|---:|---:|---|---|---|
-|  |  |  |  |  |  | Live API / Offline Fallback |  |
+|  |  |  |  |  |  | Local Ollama / Offline Fallback |  |
 
 ## Sample test case structure (use as template)
 ```json

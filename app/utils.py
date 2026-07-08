@@ -25,7 +25,7 @@ def log_execution_time(func):
 
 def validate_config():
     """Validate required configuration settings."""
-    required_vars = ['COHERE_API_KEY']
+    required_vars = ['OLLAMA_HOST', 'OLLAMA_MODEL']
     missing_vars = []
     
     for var in required_vars:

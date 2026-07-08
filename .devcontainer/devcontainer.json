@@ -9,11 +9,12 @@
 	// "features": {},
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	"forwardPorts": [5000],
+	"forwardPorts": [5000, 11434],
 
 	// Use interpreter-bound pip to avoid PATH ambiguity.
-	"postCreateCommand": "python -m pip install -r requirements.txt",
+	"postCreateCommand": "bash .devcontainer/post-create.sh",
 	"updateContentCommand": "python -m pip install -r requirements.txt",
+	"postStartCommand": "bash .devcontainer/post-start.sh",
 
 	// Specify minimum host requirements for ML workloads (sentence-transformers, chromadb, etc.)
 	"hostRequirements": {

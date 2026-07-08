@@ -17,8 +17,8 @@ from app.rag_pipeline import RAGPipeline
 def run_demo(prompt: str, repeats: int, high_temp: float, low_temp: float, delay_seconds: float) -> None:
     load_dotenv()
 
-    if not os.getenv("COHERE_API_KEY"):
-        raise RuntimeError("COHERE_API_KEY is not set. Add it to .env before running this demo.")
+    if not os.getenv("OLLAMA_MODEL"):
+        raise RuntimeError("OLLAMA_MODEL is not set. Add it to .env before running this demo.")
 
     pipeline = RAGPipeline()
 
@@ -73,8 +73,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--delay-seconds",
         type=float,
-        default=7.0,
-        help="Delay between calls to reduce rate-limit issues for trial keys.",
+        default=0.5,
+        help="Delay between calls to keep outputs readable.",
     )
     return parser.parse_args()
 

@@ -37,7 +37,7 @@ Look at each result in the test output:
 
 Use findings from your own artifacts in `regression_test_results/`; do not reuse example IDs from this handout.
 
-Note: the framework attempts live API mode first and automatically falls back to deterministic offline mode if network or rate-limit errors occur.
+Note: the framework attempts local Ollama mode first and automatically falls back to deterministic offline mode if provider or connectivity errors occur.
 
 ## Evidence template
 | Finding Type | Test ID | Your Scores | Threshold Applied | Why Threshold is Wrong | Proposed Fix |

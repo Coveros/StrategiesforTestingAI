@@ -633,9 +633,9 @@ class ChatApp {
             <div class="health-check">
                 <h4 style="margin-bottom: 12px; color: #374151;">System Health</h4>
                 <div class="health-item">
-                    <span>Cohere API</span>
-                    <span class="health-status ${health.cohere_client ? 'healthy' : 'unhealthy'}">
-                        ${health.cohere_client ? 'Connected' : 'Disconnected'}
+                    <span>LLM Provider (Ollama)</span>
+                    <span class="health-status ${(health.provider_client ?? health.cohere_client) ? 'healthy' : 'unhealthy'}">
+                        ${(health.provider_client ?? health.cohere_client) ? 'Connected' : 'Disconnected'}
                     </span>
                 </div>
                 <div class="health-item">

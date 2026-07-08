@@ -299,7 +299,7 @@ def chat():
                 if not initialize_rag():
                     error_payload = {
                         'error': 'RAG pipeline not available',
-                        'next_step': 'Verify COHERE_API_KEY in .env and restart the app',
+                        'next_step': 'Verify Ollama is running, model is pulled, and restart the app',
                         'status': 'error'
                     }
                     if should_expose_diagnostics() and _last_rag_init_error:
@@ -343,7 +343,7 @@ def health_check():
             if not initialize_rag():
                 error_payload = {
                     'status': 'unhealthy',
-                    'cohere_client': False,
+                    'provider_client': False,
                     'vector_db': False,
                     'collection': False,
                     'documents_loaded': False,
@@ -357,7 +357,7 @@ def health_check():
         health_status = rag_pipeline.health_check()
         # Connection status should represent core service connectivity, not content readiness.
         core_connected = (
-            bool(health_status.get('cohere_client'))
+            bool(health_status.get('provider_client'))
             and bool(health_status.get('vector_db'))
             and bool(health_status.get('collection'))
         )
@@ -375,7 +375,7 @@ def health_check():
         logger.error(traceback.format_exc())
         return jsonify({
             'status': 'unhealthy',
-            'cohere_client': False,
+            'provider_client': False,
             'vector_db': False,
             'collection': False,
             'documents_loaded': False,

@@ -1,14 +1,15 @@
-import os
 import logging
+import os
 import time
 import traceback
-from typing import List, Dict, Any, Optional
 from pathlib import Path
-from dotenv import load_dotenv
+from typing import Any, Dict, List, Optional
 
-import cohere
 import chromadb
+import requests
 from chromadb.config import Settings
+from dotenv import load_dotenv
+from sentence_transformers import SentenceTransformer
 
 # Load environment variables from project root for consistent behavior
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -16,69 +17,106 @@ load_dotenv(dotenv_path=PROJECT_ROOT / '.env')
 
 logger = logging.getLogger(__name__)
 
+
 class RAGPipeline:
     """
-    Simplified Retrieval-Augmented Generation pipeline using Cohere and ChromaDB.
-    
+    Simplified Retrieval-Augmented Generation pipeline using local embeddings,
+    Ollama-hosted SLM generation, and ChromaDB.
+
     This class implements a complete RAG system with some intentional issues
     for students to discover during testing exercises.
     """
-    
+
     def __init__(self):
         """Initialize the RAG pipeline."""
-        self.cohere_client = None
+        self.provider_name = "ollama"
+        self.ollama_host = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434").rstrip("/")
+        self.ollama_model = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
+        self.embedding_model_name = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+
+        try:
+            self.ollama_timeout_seconds = max(15, int(os.getenv("OLLAMA_TIMEOUT_SECONDS", "120")))
+        except ValueError:
+            self.ollama_timeout_seconds = 120
+
+        self.provider_client: bool = False
+        self.embedding_client: Optional[SentenceTransformer] = None
         self.vector_db = None
         self.collection = None
+
         self.stats = {
-            'queries_processed': 0,
-            'total_response_time': 0,
-            'documents_loaded': 0,
-            'average_retrieval_time': 0,
-            'errors': 0
+            "queries_processed": 0,
+            "total_response_time": 0,
+            "documents_loaded": 0,
+            "average_retrieval_time": 0,
+            "errors": 0,
         }
-        # Rate limiting tracking
-        self._last_cohere_call_time = 0
-        self._min_spacing = 1.5  # seconds between Cohere API calls
-        
+
         self._initialize_components()
-    
+
     def _initialize_components(self):
         """Initialize all pipeline components."""
         try:
-            # Initialize Cohere client
-            api_key = os.getenv('COHERE_API_KEY')
-            if not api_key:
-                raise ValueError("COHERE_API_KEY environment variable not set")
-            
-            self.cohere_client = cohere.Client(api_key)
-            logger.info("Cohere client initialized successfully")
-            
-            # Initialize ChromaDB
+            self._initialize_embedding_model()
+            self._verify_ollama_connection()
             self._initialize_vector_db()
-            
-            # Load documents
             self._load_documents()
-            
         except Exception as e:
-            logger.error(f"Failed to initialize RAG pipeline: {str(e)}")
+            logger.error("Failed to initialize RAG pipeline: %s", str(e))
             logger.error(traceback.format_exc())
             raise
-    
+
+    def _initialize_embedding_model(self):
+        """Initialize the local sentence-transformer embedding model."""
+        try:
+            self.embedding_client = SentenceTransformer(self.embedding_model_name)
+            logger.info("Embedding model initialized successfully: %s", self.embedding_model_name)
+        except Exception as e:
+            raise RuntimeError(
+                "Failed to initialize local embedding model. "
+                f"EMBEDDING_MODEL={self.embedding_model_name}. Root cause: {e}"
+            ) from e
+
+    def _verify_ollama_connection(self):
+        """Verify Ollama service availability and record whether model is present."""
+        url = f"{self.ollama_host}/api/tags"
+        try:
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            payload = response.json()
+            models = payload.get("models", [])
+            names = {m.get("name", "") for m in models if isinstance(m, dict)}
+
+            if self.ollama_model in names:
+                self.provider_client = True
+                logger.info("Ollama model available: %s", self.ollama_model)
+            else:
+                self.provider_client = False
+                logger.warning(
+                    "Ollama is reachable but model '%s' is not pulled yet. "
+                    "Run: ollama pull %s",
+                    self.ollama_model,
+                    self.ollama_model,
+                )
+        except Exception as e:
+            raise RuntimeError(
+                "Could not connect to Ollama at "
+                f"{self.ollama_host}. Ensure Ollama is running and reachable. Root cause: {e}"
+            ) from e
+
     def _initialize_vector_db(self):
         """Initialize ChromaDB vector database."""
         try:
-            # Create persistent database
-            db_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'chroma_db')
+            db_path = os.path.join(os.path.dirname(__file__), "..", "data", "chroma_db")
             os.makedirs(db_path, exist_ok=True)
 
             try:
                 self.vector_db = chromadb.PersistentClient(
                     path=db_path,
-                    settings=Settings(anonymized_telemetry=False)
+                    settings=Settings(anonymized_telemetry=False),
                 )
             except BaseException as init_error:
-                # Recovery path for local Chroma metadata corruption/version drift,
-                # including Rust sqlite panics seen on some existing local stores.
+                # Recovery path for local Chroma metadata corruption/version drift.
                 error_text = str(init_error)
                 recoverable_markers = (
                     "default_tenant",
@@ -103,426 +141,397 @@ class RAGPipeline:
                     os.makedirs(db_path, exist_ok=True)
                     self.vector_db = chromadb.PersistentClient(
                         path=db_path,
-                        settings=Settings(anonymized_telemetry=False)
+                        settings=Settings(anonymized_telemetry=False),
                     )
                 else:
                     raise
-            
-            # Get or create collection with cosine similarity
-            collection_name = "genai_testing_docs_v3"  # New collection name for v3 embeddings
+
+            collection_name = os.getenv("VECTOR_COLLECTION", "genai_testing_docs_local_v1")
             try:
-                # Try to get existing collection
                 self.collection = self.vector_db.get_collection(collection_name)
-                
-                # Test if the collection works with current embedding model
+
+                # Test existing collection compatibility with current embedding dimensions.
                 try:
-                    # Test with actual embedding to catch dimension mismatches
-                    test_embedding = self.cohere_client.embed(
-                        texts=["test compatibility"],
-                        model="embed-english-v3.0",
-                        input_type="search_query"
-                    ).embeddings[0]
-                    
-                    # Try a query with the embedding
-                    test_query = self.collection.query(
-                        query_embeddings=[test_embedding],
-                        n_results=1
-                    )
-                    logger.info(f"Loaded existing collection: {collection_name}")
+                    test_embedding = self._generate_embeddings(["test compatibility"])[0]
+                    self.collection.query(query_embeddings=[test_embedding], n_results=1)
+                    logger.info("Loaded existing collection: %s", collection_name)
                 except Exception as query_error:
-                    # Collection exists but has incompatible embeddings - delete and recreate
-                    logger.info(f"Existing collection incompatible ({query_error}), recreating...")
+                    logger.info("Existing collection incompatible (%s), recreating...", query_error)
                     self.vector_db.delete_collection(collection_name)
-                    raise Exception("Need to recreate collection")
-                    
+                    raise RuntimeError("Need to recreate collection")
             except Exception:
-                # Collection doesn't exist or needs recreation - create with cosine similarity
                 try:
                     self.collection = self.vector_db.create_collection(
                         name=collection_name,
-                        metadata={"hnsw:space": "cosine", "description": "GenAI testing tutorial documents"}
+                        metadata={
+                            "hnsw:space": "cosine",
+                            "description": "GenAI testing tutorial documents (local embeddings)",
+                        },
                     )
                 except Exception as create_error:
                     if "already exists" in str(create_error):
-                        # Force delete and retry
-                        try:
-                            self.vector_db.delete_collection(collection_name)
-                            self.collection = self.vector_db.create_collection(
-                                name=collection_name,
-                                metadata={"hnsw:space": "cosine", "description": "GenAI testing tutorial documents"}
-                            )
-                        except Exception as retry_error:
-                            raise Exception(f"Failed to create collection after deletion: {retry_error}")
+                        self.vector_db.delete_collection(collection_name)
+                        self.collection = self.vector_db.create_collection(
+                            name=collection_name,
+                            metadata={
+                                "hnsw:space": "cosine",
+                                "description": "GenAI testing tutorial documents (local embeddings)",
+                            },
+                        )
                     else:
-                        raise create_error
-                logger.info(f"Created new collection: {collection_name}")
-                # Load documents into the new collection
+                        raise
+
+                logger.info("Created new collection: %s", collection_name)
                 self._load_documents()
-                
         except Exception as e:
-            logger.error(f"Failed to initialize vector database: {str(e)}")
+            logger.error("Failed to initialize vector database: %s", str(e))
             raise
-    
+
     def _load_documents(self):
         """Load and process documents into the vector database."""
         try:
-            docs_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'documents')
-            
+            docs_path = os.path.join(os.path.dirname(__file__), "..", "data", "documents")
+
             if not os.path.exists(docs_path):
-                logger.warning(f"Documents directory not found: {docs_path}")
+                logger.warning("Documents directory not found: %s", docs_path)
                 return
-            
-            # Check if documents are already loaded
+
             existing_count = self.collection.count()
             if existing_count > 0:
-                logger.info(f"Collection already contains {existing_count} documents")
-                self.stats['documents_loaded'] = existing_count
+                logger.info("Collection already contains %s documents", existing_count)
+                self.stats["documents_loaded"] = existing_count
                 return
-            
-            # Load documents manually
+
             documents = []
             for filename in os.listdir(docs_path):
-                if filename.endswith('.md'):
+                if filename.endswith(".md"):
                     filepath = os.path.join(docs_path, filename)
-                    with open(filepath, 'r', encoding='utf-8') as f:
+                    with open(filepath, "r", encoding="utf-8") as f:
                         content = f.read()
                         documents.append({
-                            'content': content,
-                            'metadata': {'source': filename}
+                            "content": content,
+                            "metadata": {"source": filename},
                         })
-            
-            logger.info(f"Loaded {len(documents)} documents")
-            
+
+            logger.info("Loaded %s documents", len(documents))
+
             if not documents:
                 logger.warning("No documents found to load")
                 return
-            
-            # Split documents into chunks
+
             doc_chunks = []
             for doc in documents:
-                chunks = self._split_text(doc['content'])
+                chunks = self._split_text(doc["content"])
                 for i, chunk in enumerate(chunks):
                     doc_chunks.append({
-                        'content': chunk,
-                        'metadata': {**doc['metadata'], 'chunk_id': i}
+                        "content": chunk,
+                        "metadata": {**doc["metadata"], "chunk_id": i},
                     })
-            
-            logger.info(f"Created {len(doc_chunks)} document chunks")
-            
-            # Process chunks and add to vector database
+
+            logger.info("Created %s document chunks", len(doc_chunks))
             self._add_documents_to_db(doc_chunks)
-            
-            self.stats['documents_loaded'] = len(doc_chunks)
+
+            self.stats["documents_loaded"] = len(doc_chunks)
             logger.info("Document loading completed successfully")
-            
         except Exception as e:
-            logger.error(f"Failed to load documents: {str(e)}")
+            logger.error("Failed to load documents: %s", str(e))
             logger.error(traceback.format_exc())
             raise
-    
+
     def _split_text(self, text: str, chunk_size: int = 2000, chunk_overlap: int = 200) -> List[str]:
         """Simple text splitting function."""
-        # INTENTIONAL ISSUE: Chunk size too large for optimal retrieval
+        # INTENTIONAL ISSUE: Chunk size too large for optimal retrieval.
         if len(text) <= chunk_size:
             return [text]
-        
+
         chunks = []
         start = 0
-        
+
         while start < len(text):
             end = start + chunk_size
-            
+
             if end < len(text):
-                # Try to split at sentence boundary
-                last_period = text.rfind('.', start, end)
+                last_period = text.rfind(".", start, end)
                 if last_period > start:
                     end = last_period + 1
-            
+
             chunk = text[start:end].strip()
             if chunk:
                 chunks.append(chunk)
-            
+
             start = max(start + chunk_size - chunk_overlap, end)
-        
+
         return chunks
-    
-    def _add_documents_to_db(self, documents: List[Dict]):
-        """Add documents to the vector database with embeddings."""
+
+    def _add_documents_to_db(self, documents: List[Dict[str, Any]]):
+        """Add documents to the vector database with local embeddings."""
         try:
-            texts = [doc['content'] for doc in documents]
-            metadatas = [doc['metadata'] for doc in documents]
-            
-            # Generate embeddings using Cohere
+            texts = [doc["content"] for doc in documents]
+            metadatas = [doc["metadata"] for doc in documents]
+
             embeddings = self._generate_embeddings(texts)
-            
-            # Create IDs for documents
             ids = [f"doc_{i}" for i in range(len(texts))]
-            
-            # Add to collection
+
             self.collection.add(
                 documents=texts,
                 embeddings=embeddings,
                 metadatas=metadatas,
-                ids=ids
+                ids=ids,
             )
-            
-            logger.info(f"Added {len(texts)} documents to vector database")
-            
+
+            logger.info("Added %s documents to vector database", len(texts))
         except Exception as e:
-            logger.error(f"Failed to add documents to database: {str(e)}")
+            logger.error("Failed to add documents to database: %s", str(e))
             raise
-    
-    def _cohere_call_with_backoff(self, call_func, *args, **kwargs):
-        """Execute a Cohere API call with rate limiting and exponential backoff on 429."""
-        # Enforce minimum spacing between calls
-        elapsed = time.time() - self._last_cohere_call_time
-        if elapsed < self._min_spacing:
-            time.sleep(self._min_spacing - elapsed)
-        
-        # Exponential backoff for 429 errors
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                self._last_cohere_call_time = time.time()
-                return call_func(*args, **kwargs)
-            except Exception as e:
-                if "429" in str(e) and attempt < max_retries - 1:
-                    backoff_time = 2 ** (attempt + 1)  # 2s, 4s, 8s
-                    logger.warning(f"Rate limited (429), retry {attempt + 1}/{max_retries} after {backoff_time}s")
-                    time.sleep(backoff_time)
-                    self._last_cohere_call_time = time.time()
-                else:
-                    raise
-    
+
     def _generate_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """Generate embeddings for texts using Cohere."""
+        """Generate normalized embeddings for texts using a local model."""
+        if not self.embedding_client:
+            raise RuntimeError("Embedding model is not initialized")
+
         try:
-            # Using embed-english-v3.0 for consistent 1024-dimensional embeddings
-            def embed_call():
-                return self.cohere_client.embed(
-                    texts=texts,
-                    model="embed-english-v3.0",  # Latest model with 1024 dimensions
-                    input_type="search_document"
-                )
-            
-            response = self._cohere_call_with_backoff(embed_call)
-            return response.embeddings
-            
+            vectors = self.embedding_client.encode(
+                texts,
+                normalize_embeddings=True,
+                show_progress_bar=False,
+            )
+            return vectors.tolist()
         except Exception as e:
-            logger.error(f"Failed to generate embeddings: {str(e)}")
+            logger.error("Failed to generate embeddings: %s", str(e))
             raise
-    
+
     def _generate_query_embedding(self, query: str) -> List[float]:
         """Generate embedding for a query."""
-        try:
-            def query_embed_call():
-                return self.cohere_client.embed(
-                    texts=[query],
-                    model="embed-english-v3.0",  # Same model as document embeddings
-                    input_type="search_query"
-                )
-            
-            response = self._cohere_call_with_backoff(query_embed_call)
-            return response.embeddings[0]
-            
-        except Exception as e:
-            logger.error(f"Failed to generate query embedding: {str(e)}")
-            raise
-    
+        embeddings = self._generate_embeddings([query])
+        return embeddings[0]
+
     def _create_smart_preview(self, text: str, max_length: int = 300) -> str:
         """Create a smart preview of text that avoids cutting off mid-word/sentence."""
         if len(text) <= max_length:
             return text
-        
-        # Try to find a good breaking point (sentence ending)
+
         truncated = text[:max_length]
-        
-        # Look for sentence endings within a reasonable range
-        for ending in ['. ', '.\n', '! ', '!\n', '? ', '?\n']:
+
+        for ending in [". ", ".\n", "! ", "!\n", "? ", "?\n"]:
             last_sentence = truncated.rfind(ending)
-            if last_sentence > max_length * 0.7:  # At least 70% of max length
-                return text[:last_sentence + 1] + "..."
-        
-        # Fall back to word boundary
-        last_space = truncated.rfind(' ')
-        if last_space > max_length * 0.8:  # At least 80% of max length
+            if last_sentence > max_length * 0.7:
+                return text[: last_sentence + 1] + "..."
+
+        last_space = truncated.rfind(" ")
+        if last_space > max_length * 0.8:
             return text[:last_space] + "..."
-        
-        # Final fallback: hard truncation with ellipsis
-        return text[:max_length - 3] + "..."
-    
+
+        return text[: max_length - 3] + "..."
+
     def _retrieve_documents(self, query: str, n_results: int = None) -> Dict[str, Any]:
         """Retrieve relevant documents for a query."""
         start_time = time.time()
-        
+
         try:
             if n_results is None:
-                n_results = int(os.getenv('MAX_RETRIEVAL_DOCS', 5))
-            
-            # Generate query embedding
+                n_results = int(os.getenv("MAX_RETRIEVAL_DOCS", "5"))
+
             query_embedding = self._generate_query_embedding(query)
-            
-            # Search vector database
             results = self.collection.query(
                 query_embeddings=[query_embedding],
                 n_results=n_results,
-                include=["documents", "metadatas", "distances"]
+                include=["documents", "metadatas", "distances"],
             )
-            
+
             retrieval_time = time.time() - start_time
-            self.stats['average_retrieval_time'] = (
-                (self.stats['average_retrieval_time'] * self.stats['queries_processed'] + retrieval_time) /
-                (self.stats['queries_processed'] + 1)
+            self.stats["average_retrieval_time"] = (
+                (self.stats["average_retrieval_time"] * self.stats["queries_processed"] + retrieval_time)
+                / (self.stats["queries_processed"] + 1)
             )
-            
+
             return {
-                'documents': results['documents'][0] if results['documents'] else [],
-                'metadatas': results['metadatas'][0] if results['metadatas'] else [],
-                'distances': results['distances'][0] if results['distances'] else [],
-                'retrieval_time': retrieval_time
+                "documents": results["documents"][0] if results["documents"] else [],
+                "metadatas": results["metadatas"][0] if results["metadatas"] else [],
+                "distances": results["distances"][0] if results["distances"] else [],
+                "retrieval_time": retrieval_time,
             }
-            
         except Exception as e:
-            logger.error(f"Failed to retrieve documents: {str(e)}")
-            self.stats['errors'] += 1
+            logger.error("Failed to retrieve documents: %s", str(e))
+            self.stats["errors"] += 1
             raise
-    
+
     def _generate_response(self, query: str, context_docs: List[str], temperature: Optional[float] = None) -> str:
-        """Generate response using Cohere with retrieved context."""
+        """Generate response using an Ollama-hosted SLM with retrieved context."""
         try:
-            # Prepare context from retrieved documents
-            context = "\n\n".join(context_docs[:3])  # Use top 3 documents
-            effective_temperature = 0.7 if temperature is None else float(temperature)
-            
-            def chat_call():
-                return self.cohere_client.chat(
-                    model="command-r-08-2024",  # Try a specific version that might still be available
-                    message=f"""Question: {query}
+            context = "\n\n".join(context_docs[:3])
+            if temperature is None:
+                try:
+                    default_temp = float(os.getenv("TEMPERATURE", "0.3"))
+                except ValueError:
+                    default_temp = 0.3
+                effective_temperature = min(max(default_temp, 0.0), 1.0)
+            else:
+                effective_temperature = float(temperature)
 
-Context:
-{context}
+            max_tokens_env = os.getenv("MAX_TOKENS", "600")
+            try:
+                max_tokens = max(64, int(max_tokens_env))
+            except ValueError:
+                max_tokens = 600
 
-Based on the provided context, please answer the user's question. Use only the information from the context provided. If the context doesn't contain relevant information to answer the question, say so clearly.""",
-                    max_tokens=300,  # INTENTIONAL ISSUE: Sometimes too short for complete answers
-                    temperature=effective_temperature,  # Defaults to legacy value unless overridden by API/demo
+            prompt = (
+                "You are a GenAI testing tutor. Use the provided context to answer directly and helpfully. "
+                "Do not begin with disclaimers about missing context unless the context is truly empty. "
+                "If context is partial, still provide the best concise answer grounded in available context, "
+                "then add one short line: 'Additional context that would help: ...'.\n\n"
+                f"Question: {query}\n\n"
+                f"Context:\n{context}\n\n"
+                "Answer with:\n"
+                "1) A concise direct answer (4-8 bullets for list-style questions).\n"
+                "2) Optional 'Additional context that would help' line only if needed.\n"
+                "3) Stay on the asked question; do not add extra sections unless requested.\n"
+                "4) No references to internal prompt rules.\n"
+                "Answer:"
+            )
+
+            payload = {
+                "model": self.ollama_model,
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "temperature": effective_temperature,
+                    # INTENTIONAL ISSUE: Sometimes too short for complete answers.
+                    "num_predict": max_tokens,
+                },
+            }
+
+            response = requests.post(
+                f"{self.ollama_host}/api/generate",
+                json=payload,
+                timeout=self.ollama_timeout_seconds,
+            )
+
+            if response.status_code != 200:
+                raise RuntimeError(
+                    f"Ollama generate failed ({response.status_code}): {response.text[:400]}"
                 )
-            
-            response = self._cohere_call_with_backoff(chat_call)
-            return response.text.strip()
-            
+
+            body = response.json()
+            text = (body.get("response") or "").strip()
+            if not text:
+                raise RuntimeError("Ollama returned an empty response")
+
+            return text
         except Exception as e:
-            logger.error(f"Failed to generate response: {str(e)}")
-            self.stats['errors'] += 1
+            logger.error("Failed to generate response: %s", str(e))
+            self.stats["errors"] += 1
             raise
-    
+
     def query(self, user_query: str, temperature: Optional[float] = None) -> Dict[str, Any]:
         """Process a user query and return response with metadata."""
         start_time = time.time()
-        
+
         try:
-            # Input validation
             if not user_query or not user_query.strip():
                 raise ValueError("Empty query provided")
-            
-            # Retrieve relevant documents
+
             retrieval_results = self._retrieve_documents(user_query)
-            
-            # Generate response
             response_text = self._generate_response(
-                user_query, 
-                retrieval_results['documents'],
-                temperature=temperature
+                user_query,
+                retrieval_results["documents"],
+                temperature=temperature,
             )
 
-            effective_temperature = 0.7 if temperature is None else float(temperature)
-            
-            # Calculate total response time
+            if temperature is None:
+                try:
+                    default_temp = float(os.getenv("TEMPERATURE", "0.3"))
+                except ValueError:
+                    default_temp = 0.3
+                effective_temperature = min(max(default_temp, 0.0), 1.0)
+            else:
+                effective_temperature = float(temperature)
             total_time = time.time() - start_time
-            
-            # Update statistics
-            self.stats['queries_processed'] += 1
-            self.stats['total_response_time'] += total_time
-            
-            # Prepare response data
-            response_data = {
-                'response': response_text,
-                'sources': [
+
+            self.stats["queries_processed"] += 1
+            self.stats["total_response_time"] += total_time
+
+            return {
+                "response": response_text,
+                "sources": [
                     {
-                        'content': self._create_smart_preview(doc),
-                        'metadata': meta,
-                        'similarity': round(max(0, (1 - dist) * 100), 1)  # Convert cosine distance to similarity percentage
+                        "content": self._create_smart_preview(doc),
+                        "metadata": meta,
+                        "similarity": round(max(0, (1 - dist) * 100), 1),
                     }
                     for doc, meta, dist in zip(
-                        retrieval_results['documents'][:3],
-                        retrieval_results['metadatas'][:3],
-                        retrieval_results['distances'][:3]
+                        retrieval_results["documents"][:3],
+                        retrieval_results["metadatas"][:3],
+                        retrieval_results["distances"][:3],
                     )
                 ],
-                'retrieval_time': retrieval_results['retrieval_time'],
-                'generation_time': total_time - retrieval_results['retrieval_time'],
-                'total_time': total_time,
-                'temperature': effective_temperature
+                "retrieval_time": retrieval_results["retrieval_time"],
+                "generation_time": total_time - retrieval_results["retrieval_time"],
+                "total_time": total_time,
+                "temperature": effective_temperature,
             }
-            
-            return response_data
-            
         except Exception as e:
             error_time = time.time() - start_time
-            self.stats['errors'] += 1
-            logger.error(f"Query processing failed: {str(e)}")
-            
+            self.stats["errors"] += 1
+            logger.error("Query processing failed: %s", str(e))
+
             return {
-                'response': f"I apologize, but I encountered an error processing your query: {str(e)}",
-                'sources': [],
-                'error': str(e),
-                'total_time': error_time
+                "response": f"I apologize, but I encountered an error processing your query: {str(e)}",
+                "sources": [],
+                "error": str(e),
+                "total_time": error_time,
             }
-    
+
     def get_stats(self) -> Dict[str, Any]:
         """Get pipeline statistics for monitoring."""
         avg_response_time = (
-            self.stats['total_response_time'] / self.stats['queries_processed']
-            if self.stats['queries_processed'] > 0 else 0
+            self.stats["total_response_time"] / self.stats["queries_processed"]
+            if self.stats["queries_processed"] > 0
+            else 0
         )
-        
+
         return {
-            'queries_processed': self.stats['queries_processed'],
-            'average_response_time': round(avg_response_time, 3),
-            'average_retrieval_time': round(self.stats['average_retrieval_time'], 3),
-            'documents_loaded': self.stats['documents_loaded'],
-            'error_count': self.stats['errors'],
-            'error_rate': (
-                self.stats['errors'] / self.stats['queries_processed']
-                if self.stats['queries_processed'] > 0 else 0
-            )
+            "queries_processed": self.stats["queries_processed"],
+            "average_response_time": round(avg_response_time, 3),
+            "average_retrieval_time": round(self.stats["average_retrieval_time"], 3),
+            "documents_loaded": self.stats["documents_loaded"],
+            "error_count": self.stats["errors"],
+            "error_rate": (
+                self.stats["errors"] / self.stats["queries_processed"]
+                if self.stats["queries_processed"] > 0
+                else 0
+            ),
+            "provider": self.provider_name,
+            "model": self.ollama_model,
         }
-    
+
     def health_check(self) -> Dict[str, Any]:
         """Perform a health check of all components."""
         health = {
-            'cohere_client': False,
-            'vector_db': False,
-            'collection': False,
-            'documents_loaded': False
+            "provider": self.provider_name,
+            "provider_client": False,
+            "vector_db": False,
+            "collection": False,
+            "documents_loaded": False,
+            "ollama_host": self.ollama_host,
+            "ollama_model": self.ollama_model,
+            # Backward-compatible key expected by existing UI/logic.
+            "cohere_client": False,
         }
-        
+
         try:
-            # Test Cohere client
-            if self.cohere_client:
-                test_response = self.cohere_client.embed(
-                    texts=["test"], 
-                    model="embed-english-v3.0",  # Same model as main embeddings
-                    input_type="search_query"
-                )
-                health['cohere_client'] = len(test_response.embeddings) > 0
-            
-            # Test vector database
+            tags_resp = requests.get(f"{self.ollama_host}/api/tags", timeout=10)
+            if tags_resp.status_code == 200:
+                models = tags_resp.json().get("models", [])
+                names = {m.get("name", "") for m in models if isinstance(m, dict)}
+                has_model = self.ollama_model in names
+                health["provider_client"] = has_model
+                health["cohere_client"] = has_model
+
             if self.vector_db and self.collection:
-                health['vector_db'] = True
-                health['collection'] = True
-                health['documents_loaded'] = self.collection.count() > 0
-            
+                health["vector_db"] = True
+                health["collection"] = True
+                health["documents_loaded"] = self.collection.count() > 0
         except Exception as e:
-            logger.error(f"Health check failed: {str(e)}")
-        
+            logger.error("Health check failed: %s", str(e))
+
         return health

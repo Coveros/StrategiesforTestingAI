@@ -71,15 +71,20 @@ class EvaluationFramework:
     GenAI system performance including response quality, retrieval
     accuracy, and system robustness.
     
-    NOTE: This framework includes rate limiting (7-second delays between API calls)
-    to respect Cohere API trial key limits (10 calls/minute). For faster evaluation,
-    consider upgrading to a Production API key.
+    NOTE: This framework defaults to local Ollama execution and does not enforce
+    provider rate-limit delays. Optional pacing can be added via EVAL_DELAY_SECONDS.
     """
     
     def __init__(self, rag_pipeline: RAGPipeline):
         self.rag_pipeline = rag_pipeline
         self.evaluation_results = {}
-        self.delay_seconds = 0 if isinstance(rag_pipeline, OfflineRAGPipeline) else 7
+        if isinstance(rag_pipeline, OfflineRAGPipeline):
+            self.delay_seconds = 0
+        else:
+            try:
+                self.delay_seconds = max(0, int(os.getenv('EVAL_DELAY_SECONDS', '0')))
+            except ValueError:
+                self.delay_seconds = 0
 
     def _sleep_between_calls(self):
         if self.delay_seconds > 0:
@@ -140,7 +145,7 @@ class EvaluationFramework:
             
             print(f"    Quality score: {quality_score:.3f}, Relevance: {relevance_score:.3f}")
             
-            # Add delay to respect rate limits (except for last query)
+            # Optional pacing between calls for classroom demos.
             if i < len(queries_and_expected) - 1:
                 self._sleep_between_calls()
         
@@ -214,7 +219,7 @@ class EvaluationFramework:
                 'average_similarity': similarity_scores[-1]
             })
             
-            # Add delay to respect rate limits (Trial key: 10 calls/minute = 6 seconds between calls)
+            # Optional pacing between calls for classroom demos.
             self._sleep_between_calls()
         
         results['average_retrieval_time'] = total_retrieval_time / len(test_queries)

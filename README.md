@@ -38,7 +38,7 @@ Exercise-only time is about **6.0 to 7.4 hours**. The remaining course time is i
 ## Architecture
 
 ```
-Frontend (HTML/CSS/JS) → Flask Backend → RAG Pipeline → Cohere API
+Frontend (HTML/CSS/JS) → Flask Backend → RAG Pipeline → Ollama (Local SLM)
                                     ↓
                                ChromaDB Vector Store
                                     ↑
@@ -49,7 +49,8 @@ Frontend (HTML/CSS/JS) → Flask Backend → RAG Pipeline → Cohere API
 
 ### Prerequisites
 - Python 3.8+
-- Cohere API key (get one at https://cohere.com/)
+- Ollama installed (https://ollama.com) or Codespaces devcontainer auto-setup enabled
+- Local SLM model pulled (default: `llama3.2:1b`)
 - 2GB+ RAM for vector database
 - Windows PowerShell (for Windows users)
 
@@ -75,7 +76,13 @@ Frontend (HTML/CSS/JS) → Flask Backend → RAG Pipeline → Cohere API
 4. **Configure Environment**
    ```bash
   copy .env.template .env
-   # Edit .env and add your Cohere API key
+   # Optional: adjust OLLAMA_MODEL in .env (default llama3.2:1b)
+   ```
+
+   Pull a model locally if not already present:
+   ```bash
+   ollama pull llama3.2:1b
+   # alternatives: llama3.2:3b or phi3.5:3.8b
    ```
 
    Exercise Hub defaults to Student View only. Set `EXERCISE_HUB_ENABLE_INSTRUCTOR=True` in `.env` only for instructor-led sessions.
@@ -123,7 +130,7 @@ TestingAITutorial/
 │   ├── __init__.py          # Python package initialization
 │   ├── agentic_testops.py   # Agentic backend used in Exercises 5-9
 │   ├── main.py              # Flask application and API endpoints
-│   ├── rag_pipeline.py      # RAG implementation with Cohere + ChromaDB
+│   ├── rag_pipeline.py      # RAG implementation with Ollama + local embeddings + ChromaDB
 │   └── utils.py             # Utility functions and helpers
 ├── static/
 │   ├── css/
@@ -171,7 +178,8 @@ TestingAITutorial/
 ## Features
 
 ### 🤖 **RAG Chatbot**
-- **Cohere Integration**: Uses Cohere's embeddings and Command model
+- **Local SLM Generation**: Uses Ollama-hosted SLMs (`llama3.2:*` or `phi3.5:*`)
+- **Local Embeddings**: Uses sentence-transformers for vector search
 - **ChromaDB Vector Store**: Local, persistent document storage
 - **Custom Python RAG Pipeline**: Purpose-built for classroom testing exercises
 - **Source Attribution**: Shows retrieved documents and similarity scores
@@ -219,7 +227,8 @@ TestingAITutorial/
 
 ### Environment Setup
 - Copy `.env.template` to `.env`
-- Set `COHERE_API_KEY` in `.env`
+- Confirm `OLLAMA_MODEL` and `OLLAMA_HOST` in `.env`
+- Ensure selected model is present locally: `ollama pull <model>`
 
 ## Usage Examples
 
@@ -370,7 +379,15 @@ print(f"Quality Gate: {'PASSED' if gate_passed else 'FAILED'}")
 - These issues have been FIXED in the test framework
 - Test data now includes all required keys for proper execution
 
-**"Import cohere could not be resolved"**
+**"Ollama is not reachable"**
+- Ensure Ollama is installed and running: `ollama serve`
+- Verify connectivity: `curl http://127.0.0.1:11434/api/tags`
+
+**"Model not found in Ollama"**
+- Pull the model referenced by `OLLAMA_MODEL` in `.env`
+- Example: `ollama pull llama3.2:1b`
+
+**"sentence-transformers import failed"**
 - Ensure virtual environment is activated: `training-env\Scripts\activate`
 - Run `pip install -r requirements.txt`
 - Use `python launch.py` to run exercise workflows consistently
@@ -380,9 +397,9 @@ print(f"Quality Gate: {'PASSED' if gate_passed else 'FAILED'}")
 - Install with `pip install sentence-transformers` (or `pip install -r requirements.txt`)
 - If unavailable, the regression framework still runs with reduced semantic checks
 
-**"COHERE_API_KEY not found"**
+**"OLLAMA_MODEL or OLLAMA_HOST missing"**
 - Copy `.env.template` to `.env`
-- Add your Cohere API key to the `.env` file
+- Ensure `OLLAMA_HOST` and `OLLAMA_MODEL` are set
 
 **"ChromaDB initialization failed"**
 - Ensure you have write permissions in the project directory

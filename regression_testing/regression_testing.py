@@ -111,9 +111,9 @@ class RegressionTestFramework:
         self.pipeline = None
         self.similarity_model = None
         self.semantic_similarity_available = SEMANTIC_SIMILARITY_AVAILABLE
-        self.using_live_api = False  # Track whether we're using live API
+        self.using_live_api = False  # Track whether we're using the live local provider
         self.fallback_triggered = False  # Track if we fell back to offline mid-suite
-        self.live_test_count = 0  # Track how many tests used live API
+        self.live_test_count = 0  # Track how many tests used live local provider
         self.offline_test_count = 0  # Track how many tests used offline mode
 
         if self.offline_mode:
@@ -123,7 +123,7 @@ class RegressionTestFramework:
         else:
             try:
                 self.pipeline = RAGPipeline()
-                print("✅ Live RAG pipeline initialized (Cohere API).")
+                print("✅ Live RAG pipeline initialized (Ollama local SLM).")
                 self.using_live_api = True
             except Exception as e:
                 print(f"⚠️  Live RAG pipeline unavailable at startup: {e}")
@@ -148,7 +148,7 @@ class RegressionTestFramework:
         self.config = {
             'semantic_similarity_threshold': 0.65,  # Semantic similarity pass threshold
             'length_tolerance': 0.3,  # ±30% length variation allowed
-            'response_time_threshold': 15.0,  # Increased from 5.0 to account for rate limiting
+            'response_time_threshold': 15.0,
             'minimum_response_length': 50,  # Minimum characters for valid response
             'keyword_match_threshold': 0.25,  # Lowered from 0.45 - more realistic for actual responses
             'sources_minimum': 1,  # Minimum number of sources required
@@ -341,7 +341,7 @@ class RegressionTestFramework:
         }
     
     def _trigger_fallback(self, error: Exception):
-        """Trigger fallback to offline mode when API failures occur."""
+        """Trigger fallback to offline mode when live provider failures occur."""
         if not self.fallback_triggered:
             self.fallback_triggered = True
             self.using_live_api = False
@@ -423,7 +423,7 @@ class RegressionTestFramework:
         # Determine pass/fail
         primary_pass = semantic_similarity >= self.config['semantic_similarity_threshold']
         secondary_pass = keyword_match >= self.config['keyword_match_threshold']
-        # Note: Removed time-based check since rate limiting sleeps are intentional
+        # Time-based check is non-blocking for this classroom framework.
         content_quality_pass = is_substantial
         
         test_passed = primary_pass and secondary_pass and content_quality_pass and not contains_error_message
@@ -454,7 +454,7 @@ class RegressionTestFramework:
         }
     
     def run_regression_tests(self, save_results: bool = True) -> Dict[str, Any]:
-        """Run complete regression test suite with automatic fallback to offline on API failures."""
+        """Run complete regression test suite with automatic fallback to offline on provider failures."""
         
         print("🧪 RUNNING REGRESSION TEST SUITE")
         print("=" * 70)
@@ -462,9 +462,9 @@ class RegressionTestFramework:
         print(f"🎯 Semantic Similarity Threshold: {self.config['semantic_similarity_threshold']}")
         print(f"🔑 Keyword Match Threshold: {self.config['keyword_match_threshold']}")
         if self.using_live_api:
-            print(f"🌐 API Mode: Live (Cohere) with automatic fallback to offline")
+            print(f"🌐 Provider Mode: Live (Ollama local) with automatic fallback to offline")
         else:
-            print(f"📦 API Mode: Offline (deterministic fixtures)")
+            print(f"📦 Provider Mode: Offline (deterministic fixtures)")
         print()
         
         results = []
@@ -649,7 +649,7 @@ class RegressionTestFramework:
                 'using_live_api': self.using_live_api,
                 'live_test_count': self.live_test_count,
                 'offline_test_count': self.offline_test_count,
-                'api_mode': 'Live (Cohere) with Offline Fallback' if not self.fallback_triggered and self.using_live_api else 'Offline (Fallback Active)' if self.fallback_triggered else 'Offline (Fixture Mode)'
+                'api_mode': 'Live (Ollama local) with Offline Fallback' if not self.fallback_triggered and self.using_live_api else 'Offline (Fallback Active)' if self.fallback_triggered else 'Offline (Fixture Mode)'
             }
         }
     

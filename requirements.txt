@@ -3,7 +3,6 @@ flask>=3.1.0
 flask-cors>=6.0.0
 
 # AI/ML APIs and models
-cohere>=6.0.0
 sentence-transformers>=5.0.0
 torch>=2.1.0
 
