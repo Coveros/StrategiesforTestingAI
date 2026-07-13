@@ -1,4 +1,4 @@
-# Exercise 8: Red Team the Current Agentic System
+﻿# Exercise 8 Instructor Notes: Red Team the Current Agentic System
 
 ## Prerequisites
 1. A running GenAI testing assistant in your Codespace at [http://localhost:5000](http://localhost:5000).
@@ -111,4 +111,5 @@ The second answer shifts style without changing the question. This is not a safe
 1. Which vector exposed the most actionable weakness?
 2. Which failures were guardrail problems versus orchestration problems?
 3. What one fix should be prioritized first: stronger blocking, better stop rules, or safer handoff contracts?
+
 

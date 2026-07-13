@@ -1,4 +1,4 @@
-# Exercise 3: Audit Test Results and Improve a Metric
+﻿# Exercise 3 Instructor Notes: Audit Test Results and Improve a Metric
 
 ## Prerequisites
 1. A running GenAI testing assistant in your Codespace at [http://localhost:5000](http://localhost:5000).
@@ -59,4 +59,5 @@ Note: the framework attempts local Ollama mode first and automatically falls bac
 1. Which was easier to find in your results: false positives or false negatives?
 2. Did your new metric target a real gap, or would it add false signals?
 3. What trade-off does your metric introduce? (e.g., strictness vs. signal quality)
+
 

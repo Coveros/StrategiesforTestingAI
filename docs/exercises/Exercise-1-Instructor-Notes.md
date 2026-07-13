@@ -1,4 +1,4 @@
-# Exercise 1: Exploratory Testing for a GenAI Testing Assistant
+﻿# Exercise 1 Instructor Notes: Exploratory Testing for a GenAI Testing Assistant
 
 ## Prerequisites
 1. A short architecture overview (frontend -> Flask API -> RAG pipeline -> LLM).
@@ -67,4 +67,5 @@ Suggested prompts:
 2. Which output variations were acceptable, and which crossed into risk?
 3. Why would exact string assertions create false failures here?
 4. Which judgments still require human review?
+
 

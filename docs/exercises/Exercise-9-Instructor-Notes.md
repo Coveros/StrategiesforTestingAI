@@ -1,4 +1,4 @@
-# Exercise 9: Make a Ship / No-Ship Release Decision
+﻿# Exercise 9 Instructor Notes: Make a Ship / No-Ship Release Decision
 
 ## Prerequisites
 1. A running GenAI testing assistant in your Codespace at [http://localhost:5000](http://localhost:5000).
@@ -77,4 +77,5 @@ Use this checklist to make your final decision:
 1. Which metric carried the most weight in your decision?
 2. Was the candidate rejected because of safety, orchestration quality, or style drift?
 3. What single condition would make you reverse the decision within 24 hours?
+
 

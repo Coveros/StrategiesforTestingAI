@@ -1,4 +1,4 @@
-# Exercise 7: Reliability and Overhead Across Modes
+﻿# Exercise 7 Instructor Notes: Reliability and Overhead Across Modes
 
 ## Prerequisites
 1. A running GenAI testing assistant in your Codespace at [http://localhost:5000](http://localhost:5000).
@@ -107,4 +107,5 @@ This generates JSON and TXT artifacts in `regression_test_results/` using the cu
 1. Which mode introduced the most overhead relative to the value it added?
 2. Did the system fail safely, fail noisily, or silently degrade?
 3. What one NFR check should be automated first in CI or smoke testing?
+
 

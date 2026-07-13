@@ -1,4 +1,4 @@
-# Exercise 2: Extend the Golden Test Set with New Tests
+﻿# Exercise 2 Instructor Notes: Extend the Golden Test Set with New Tests
 
 ## Prerequisites
 1. A running GenAI testing assistant in your Codespace at [http://localhost:5000](http://localhost:5000).
@@ -75,7 +75,7 @@ Keywords: ["hallucination", "harm", "real-world", "medical", "financial", "factu
 
 ## Copilot prompt starters for automated test case generate
 1. "Turn this test case description into JSON matching the regression framework structure. Use semantic similarity threshold 0.75, priority 'high'."
-2. "Check my gold standard answer—is it too long? Rewrite it to be 100-200 chars while keeping the core content."
+2. "Check my gold standard answerâ€”is it too long? Rewrite it to be 100-200 chars while keeping the core content."
 3. "Generate a rerun command and parse the results for pass rate and failed test IDs."
 
 ## Team debrief questions

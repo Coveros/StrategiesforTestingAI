@@ -1,4 +1,4 @@
-# Exercise 5: Single-Agent Trajectory Analysis
+﻿# Exercise 5 Instructor Notes: Single-Agent Trajectory Analysis
 
 ## Prerequisites
 1. A running GenAI testing assistant in your Codespace at [http://localhost:5000](http://localhost:5000).
@@ -44,4 +44,5 @@ In this exercise you test a real LangChain ReAct single-agent workflow in **Agen
 1. Where did span repetition begin in the looped run?
 2. What max-iteration, retry cap, or stop rule should be enforced?
 3. Which trajectory metric should be added to CI as a gate: span repetitions, redundant tool calls, or token-bloat?
+
 

@@ -1,4 +1,4 @@
-# Exercise 4: Ask Mode Trace Analysis
+﻿# Exercise 4 Instructor Notes: Ask Mode Trace Analysis
 
 ## Prerequisites
 1. A running GenAI testing assistant in your Codespace at [http://localhost:5000](http://localhost:5000).
@@ -8,7 +8,7 @@
 5. A GitHub Copilot demo has been completed.
 
 ## Scenario
-This exercise focuses on **Ask mode**, the deterministic RAG pipeline. A user asks one question, the app retrieves context from the vector database, and then sends the query plus context to the LLM in one straight shot. In Phoenix, students should see a clean linear trace with exactly 3 spans: **Chains → Retriever → LLM**.
+This exercise focuses on **Ask mode**, the deterministic RAG pipeline. A user asks one question, the app retrieves context from the vector database, and then sends the query plus context to the LLM in one straight shot. In Phoenix, students should see a clean linear trace with exactly 3 spans: **Chains â†’ Retriever â†’ LLM**.
 
 ## Student tasks
 1. Open the UI at `http://localhost:5000/?exercise=4` and stay in **Ask** mode.
@@ -58,4 +58,5 @@ Use precomputed evidence only when the live path is blocked (for example: local 
 1. Did every Ask mode run stay a 3-span linear trace? If not, where did it diverge?
 2. What trace evidence was most persuasive for separating retrieval issues from generation issues?
 3. Which single fix should be prioritized first?
+
 

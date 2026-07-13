@@ -1,4 +1,4 @@
-# Exercise 6: Multi-Agent Handoff and Trajectory Analysis
+﻿# Exercise 6 Instructor Notes: Multi-Agent Handoff and Trajectory Analysis
 
 ## Prerequisites
 1. A running GenAI testing assistant in your Codespace at [http://localhost:5000](http://localhost:5000).
@@ -46,4 +46,5 @@ You are auditing a real multi-agent flow in LangChain with three roles: **Triage
 1. What caused the worst inefficiency: loop, bad handoff, or over-delegation?
 2. Where exactly was input corrupted in the handoff chain?
 3. What orchestrator rule or schema check would prevent this next time?
+
 
