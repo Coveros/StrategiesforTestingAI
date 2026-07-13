@@ -101,10 +101,8 @@ class ChatApp {
             return;
         }
 
-        const saved = localStorage.getItem(this.modeStorageKey);
         const queryWantsAgent = this.queryParams.get('agent') === '1';
-        const defaultByExercise = this.exerciseNumber >= 5;
-        const initialMode = saved || (queryWantsAgent || defaultByExercise ? 'agent' : 'ask');
+        const initialMode = queryWantsAgent ? 'agent' : 'ask';
         this.setChatMode(initialMode, false);
 
         this.askModeBtn.addEventListener('click', () => this.setChatMode('ask', true));
@@ -147,8 +145,8 @@ class ChatApp {
 
     getExerciseDefaults() {
         return {
-            trace: this.exerciseNumber >= 6,
-            crew: this.exerciseNumber >= 8,
+            trace: this.exerciseNumber >= 5,
+            crew: this.exerciseNumber >= 6,
         };
     }
 

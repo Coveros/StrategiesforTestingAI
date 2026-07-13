@@ -9,7 +9,7 @@
 	// "features": {},
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	"forwardPorts": [5000, 11434],
+	"forwardPorts": [5000, 11434, 6006],
 
 	// Use interpreter-bound pip to avoid PATH ambiguity.
 	"postCreateCommand": "bash .devcontainer/post-create.sh",

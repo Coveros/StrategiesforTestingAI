@@ -51,6 +51,7 @@ Frontend (HTML/CSS/JS) → Flask Backend → RAG Pipeline → Ollama (Local SLM)
 - Python 3.8+
 - Ollama installed (https://ollama.com) or Codespaces devcontainer auto-setup enabled
 - Local SLM model pulled (default: `llama3.2:1b`)
+- Arize Phoenix available for trace and trajectory inspection in Exercises 4-6
 - 2GB+ RAM for vector database
 - Windows PowerShell (for Windows users)
 
@@ -89,6 +90,11 @@ Frontend (HTML/CSS/JS) → Flask Backend → RAG Pipeline → Ollama (Local SLM)
 
    Student agentic access is available via `?agent=1`. Exercise pages automatically pass exercise context back to chat for exercise-aware defaults.
 
+   Phoenix tracing is enabled by default for both Ask mode and Agent mode:
+   - `ENABLE_PHOENIX_ASK_TRACING=true`
+   - `ENABLE_PHOENIX_AGENT_TRACING=true`
+   - `PHOENIX_PROJECT_NAME=strategiesfortestingai`
+
 5. **Run Application**
    ```bash
    python run.py
@@ -99,11 +105,21 @@ Frontend (HTML/CSS/JS) → Flask Backend → RAG Pipeline → Ollama (Local SLM)
    python -m pip install -r requirements.txt
    ```
 
-6. **Access Application**
+6. **Start Phoenix (recommended for Exercises 4-6)**
+   ```bash
+   phoenix serve --host 0.0.0.0 --port 6006
+   ```
+
+   Then open:
+   - Chat app: http://localhost:5000
+   - Phoenix UI: http://localhost:6006
+
+7. **Access Application**
    - Open http://localhost:5000
    - Chat interface should load
    - Try: "What are the key challenges in testing GenAI applications?"
    - Use the bottom **Ask / Agent** toggle in chat to switch modes
+   - In Exercise 4, Ask mode is the intended path for Phoenix trace analysis
    - In Exercise 5-9 flows, Exercise Hub sends `exercise=<n>` so trace/crew defaults can auto-adjust by exercise context
 
 ## 🚀 Quick Start (Alternative)
@@ -117,7 +133,7 @@ python launch.py
 These provide menu-driven interfaces to:
 - Execute regression testing
 - Run evaluation framework checks
-- Run retrieval tuning support for Exercise 4
+- Run Ask-mode trace analysis support for Exercise 4
 - Start the Flask application
 - Run Section 7 and 9 automation suites
 - Access current exercise documentation
@@ -182,8 +198,15 @@ TestingAITutorial/
 - **Local Embeddings**: Uses sentence-transformers for vector search
 - **ChromaDB Vector Store**: Local, persistent document storage
 - **Custom Python RAG Pipeline**: Purpose-built for classroom testing exercises
+- **Ask-mode Phoenix tracing**: Linear `Chains -> Retriever -> LLM` spans for Exercise 4
 - **Source Attribution**: Shows retrieved documents and similarity scores
 - **Real-time Performance Metrics**: Response times and statistics
+
+### 🔭 **Phoenix Observability**
+- **Ask mode tracing**: Shows the deterministic RAG path for Exercise 4
+- **Single-agent trajectories**: Visualizes repeated tool loops for Exercise 5
+- **Multi-agent handoff graph**: Shows Triage -> Specialist -> Validator flow for Exercise 6
+- **Shared tracing setup**: Uses the same Phoenix project for Ask and Agent investigations
 
 ### 🎨 **Professional Frontend**
 - **Modern UI**: Clean, responsive design with animations
@@ -196,7 +219,7 @@ TestingAITutorial/
 ### 🧪 **Comprehensive Testing Suite**
 - **Exercise 3 evaluation framework**: `tests/evaluation_framework.py`
 - **Exercise 3 regression framework**: `regression_testing/regression_testing.py`
-- **Exercise 4 tuning support**: `experiments/retrieval_experiments.py`
+- **Exercise 4 optional retrieval experiment support**: `experiments/retrieval_experiments.py`
 - **Exercise 7 automation artifacts**: `section7_nfr_quickrun.py`
 - **Exercise 9 CI-style gate artifacts**: `section9_agentic_test_suite.py`
 
@@ -210,9 +233,14 @@ TestingAITutorial/
 ## Course Quick Reference
 
 ### Exercise Progression
-- Exercises 1-4: RAG testing (goldens, evaluation, diagnostics)
+- Exercises 1-3: RAG testing fundamentals (exploratory testing, goldens, evaluation)
+- Exercise 4: Ask-mode Phoenix trace analysis for deterministic RAG
 - Section bridge: `docs/Section-Bridge-RAG-to-Agentic.md`
-- Exercises 5-9: Agentic testing (routing, trajectories, NFR, red teaming, CI gating)
+- Exercise 5: Single-agent trajectory hacking and span repetition
+- Exercise 6: Multi-agent handoff corruption and Phoenix graph analysis
+- Exercise 7: Reliability and overhead across Ask, single-agent, and crew modes
+- Exercise 8: Red teaming the current agentic system
+- Exercise 9: Ship / No-Ship decision from current automation evidence
 
 ### Core Scripts
 - App: `python run.py`
@@ -224,11 +252,21 @@ TestingAITutorial/
 - `GET /` chat UI
 - `POST /api/chat` message processing
 - `GET /api/health` service health
+- `GET /trace-demo` latest trace demo artifact
 
 ### Environment Setup
 - Copy `.env.template` to `.env`
 - Confirm `OLLAMA_MODEL` and `OLLAMA_HOST` in `.env`
+- Confirm `ENABLE_PHOENIX_ASK_TRACING=true` and `ENABLE_PHOENIX_AGENT_TRACING=true`
 - Ensure selected model is present locally: `ollama pull <model>`
+
+### Phoenix Setup
+- Start Phoenix locally: `phoenix serve --host 0.0.0.0 --port 6006`
+- Open Phoenix UI: http://localhost:6006
+- Use Phoenix in:
+   - Exercise 4 for Ask-mode traces
+   - Exercise 5 for single-agent trajectories
+   - Exercise 6 for multi-agent handoff graphs
 
 ## Usage Examples
 
@@ -256,10 +294,13 @@ python -m regression_testing.regression_testing --quick --offline
 python tests/evaluation_framework.py --offline
 ```
 
-### Running Exercise 4 Retrieval Tuning Support
+### Running Exercise 4 Optional Retrieval Experiment Support
 ```bash
 python experiments/retrieval_experiments.py
 ```
+
+Exercise 4 itself is now centered on Phoenix-based Ask-mode trace analysis.
+Use `experiments/retrieval_experiments.py` only as optional follow-up support if you want to investigate retrieval behavior more deeply after the trace review.
 
 ### Running Exercise 7 and 9 Automation
 ```bash
@@ -270,6 +311,16 @@ python section9_agentic_test_suite.py
 Both scripts support a local in-process fallback transport if Flask dependencies
 are unavailable in the current interpreter. This keeps Exercise 7 and 9 artifact
 generation runnable in constrained environments.
+
+Section 7 now compares Ask mode, single-agent mode, and crew mode using
+currently supported prompts.
+
+Section 9 now gates the current system on:
+- routed factual answering
+- general-chat routing
+- harmful-content blocking
+- handoff-corruption observability
+- candidate style drift (pirate persona)
 
 ### Preparing Precomputed Exercise Artifacts
 To generate in-repo snapshots for shortened exercises:
@@ -353,7 +404,8 @@ print(f"Quality Gate: {'PASSED' if gate_passed else 'FAILED'}")
 1. Complete student labs in order: Exercise 1 -> 4 (RAG section)
 2. Deliver the section bridge before starting Exercise 5
 3. Complete Exercise 5 -> 9 (agentic section)
-4. Use Section 7 and 9 automation scripts for standardized evidence
+4. Use Phoenix in Exercises 4-6 for trace and trajectory analysis
+5. Use Section 7 and 9 automation scripts for standardized evidence
 
 ### 🔬 **Intermediate Track**  
 1. Map each exercise deliverable to one reusable rubric/checklist
@@ -382,6 +434,11 @@ print(f"Quality Gate: {'PASSED' if gate_passed else 'FAILED'}")
 **"Ollama is not reachable"**
 - Ensure Ollama is installed and running: `ollama serve`
 - Verify connectivity: `curl http://127.0.0.1:11434/api/tags`
+
+**"Phoenix UI is not reachable"**
+- Start Phoenix manually: `phoenix serve --host 0.0.0.0 --port 6006`
+- Verify the port is open at http://localhost:6006
+- Keep `ENABLE_PHOENIX_ASK_TRACING` and `ENABLE_PHOENIX_AGENT_TRACING` enabled in `.env`
 
 **"Model not found in Ollama"**
 - Pull the model referenced by `OLLAMA_MODEL` in `.env`

@@ -85,6 +85,9 @@ def rate_limit(scope: str, max_requests: int, window_seconds: int):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
+            if not is_truthy(os.getenv('ENABLE_RATE_LIMITING', 'true')):
+                return func(*args, **kwargs)
+
             now = time.time()
             key = f"{scope}:{_client_ip()}"
             bucket = _rate_limit_buckets[key]

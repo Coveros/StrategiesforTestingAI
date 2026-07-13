@@ -5,6 +5,11 @@ cd "$(dirname "$0")/.."
 
 python -m pip install -r requirements.txt
 
+echo "Verifying Arize Phoenix installation..."
+python -c "import phoenix" >/dev/null 2>&1 || {
+  echo "Warning: Arize Phoenix import check failed. Retry with: python -m pip install -r requirements.txt"
+}
+
 if ! command -v ollama >/dev/null 2>&1; then
   echo "Installing Ollama..."
   curl -fsSL https://ollama.com/install.sh | sh

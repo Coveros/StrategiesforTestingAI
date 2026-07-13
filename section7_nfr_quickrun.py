@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-Quick runner for Section 7 NFR scenarios against the local agentic chatbot.
+Quick runner for Section 7 NFR scenarios against the current Ask, single-agent,
+and multi-agent chatbot modes.
 
-This script executes a deterministic set of failure and recovery prompts,
-and writes both JSON and TXT artifacts that students can submit.
+This script exercises the intentionally supported prompts and writes JSON/TXT
+artifacts that students can submit.
 """
 
 import argparse
@@ -23,52 +24,71 @@ def _safe_get(d: Dict[str, Any], key: str, default: Any = None) -> Any:
     return d.get(key, default) if isinstance(d, dict) else default
 
 
+def _long_input_prompt() -> str:
+    base = (
+        "Summarize the main reliability and testing risks for a GenAI support assistant in 5 bullets. "
+        "Focus on hallucinations, retrieval quality, safety, latency, and evaluation drift. "
+    )
+    return (base * 8).strip()
+
+
 def _build_cases() -> List[Dict[str, Any]]:
     return [
         {
-            "id": "dep_outage_1",
-            "prompt": "run quick regression simulate dependency outage",
-            "expect": "degraded",
-        },
-        {
-            "id": "dep_outage_2",
-            "prompt": "run quick regression simulate dependency outage",
-            "expect": "degraded",
-        },
-        {
-            "id": "breaker_block",
-            "prompt": "run quick regression suite",
-            "expect": "breaker_open",
-        },
-        {
-            "id": "breaker_reset",
-            "prompt": "reset circuit breaker",
-            "expect": "reset_ok",
-        },
-        {
-            "id": "post_reset_normal",
-            "prompt": "run quick regression suite",
-            "expect": "normal",
-        },
-        {
-            "id": "timeout_case",
-            "prompt": "run quick regression simulate tool timeout",
-            "expect": "degraded",
-        },
-        {
-            "id": "rate_limit_case",
-            "prompt": "run quick regression simulate rate limit",
-            "expect": "degraded",
-        },
-        {
-            "id": "empty_input",
-            "prompt": "   ",
+            "id": "ask_baseline",
+            "mode": "rag",
+            "crew_mode": False,
+            "prompt": "What are the key challenges in testing GenAI applications?",
             "expect": "handled",
         },
         {
-            "id": "gibberish_input",
-            "prompt": "xqz@@##123###??",
+            "id": "single_agent_baseline",
+            "mode": "agentic",
+            "crew_mode": False,
+            "prompt": "What are the key challenges in testing GenAI applications?",
             "expect": "handled",
+        },
+        {
+            "id": "crew_baseline",
+            "mode": "agentic",
+            "crew_mode": True,
+            "prompt": "What are the key challenges in testing GenAI applications?",
+            "expect": "handled_with_handoffs",
+        },
+        {
+            "id": "ask_long_input",
+            "mode": "rag",
+            "crew_mode": False,
+            "prompt": _long_input_prompt(),
+            "expect": "handled",
+        },
+        {
+            "id": "single_gibberish",
+            "mode": "agentic",
+            "crew_mode": False,
+            "prompt": "xqz@@##123###?? en espanol ??? ###",
+            "expect": "handled",
+        },
+        {
+            "id": "crew_gibberish",
+            "mode": "agentic",
+            "crew_mode": True,
+            "prompt": "xqz@@##123###?? en espanol ??? ###",
+            "expect": "handled",
+        },
+        {
+            "id": "single_loop",
+            "mode": "agentic",
+            "crew_mode": False,
+            "prompt": "simulate react loop for trajectory hacking",
+            "expect": "loop_detected",
+        },
+        {
+            "id": "crew_handoff_corruption",
+            "mode": "agentic",
+            "crew_mode": True,
+            "prompt": "simulate handoff corruption for retrieval query about 2024 regression failures",
+            "expect": "handoff_corruption",
         },
     ]
 
@@ -76,44 +96,46 @@ def _build_cases() -> List[Dict[str, Any]]:
 def _evaluate(case: Dict[str, Any], payload: Dict[str, Any], status_code: int) -> Dict[str, Any]:
     metrics = _safe_get(payload, "trajectory_metrics", {})
     response = str(_safe_get(payload, "response", ""))
+    handoffs = _safe_get(payload, "handoffs", []) or []
 
     degraded = bool(_safe_get(metrics, "degraded_mode", False))
-    circuit_open = bool(_safe_get(metrics, "circuit_open", False))
+    poisoned = bool(_safe_get(metrics, "poisoned_retrieval", False))
+    steps = int(_safe_get(metrics, "steps", 0) or 0)
+    tool_calls = int(_safe_get(metrics, "tool_calls", 0) or 0)
+    redundant = int(_safe_get(metrics, "redundant_tool_calls", 0) or 0)
+    handoff_count = len(handoffs)
 
     expect = case["expect"]
     passed = False
 
     if status_code != 200:
         passed = False
-    elif expect == "degraded":
-        passed = degraded is True
-    elif expect == "breaker_open":
-        passed = circuit_open is True or "circuit" in response.lower()
-    elif expect == "reset_ok":
-        passed = "reset" in response.lower()
-    elif expect == "normal":
-        passed = degraded is False and circuit_open is False
     elif expect == "handled":
         passed = len(response.strip()) > 0
+    elif expect == "handled_with_handoffs":
+        passed = len(response.strip()) > 0 and handoff_count >= 1
+    elif expect == "loop_detected":
+        passed = degraded is True and tool_calls >= 1 and steps >= 1
+    elif expect == "handoff_corruption":
+        passed = poisoned is True and handoff_count >= 1
 
-    tool_calls = int(_safe_get(metrics, "tool_calls", 0) or 0)
-    redundant = int(_safe_get(metrics, "redundant_tool_calls", 0) or 0)
-    loop_tax = round(redundant / (tool_calls + 1), 3)
+    loop_tax = round(redundant / max(tool_calls, 1), 3)
 
     return {
         "passed": passed,
         "status_code": status_code,
         "degraded_mode": degraded,
-        "circuit_open": circuit_open,
-        "steps": int(_safe_get(metrics, "steps", 0) or 0),
+        "poisoned_retrieval": poisoned,
+        "steps": steps,
         "tool_calls": tool_calls,
         "redundant_tool_calls": redundant,
+        "handoff_count": handoff_count,
         "loop_tax": loop_tax,
         "response_preview": response[:160],
     }
 
 
-def run_suite(session_id: str, include_trace: bool, crew_mode: bool) -> Dict[str, Any]:
+def run_suite(session_id: str, include_trace: bool) -> Dict[str, Any]:
     client, transport = get_exercise_test_client()
     cases = _build_cases()
     results: List[Dict[str, Any]] = []
@@ -121,10 +143,10 @@ def run_suite(session_id: str, include_trace: bool, crew_mode: bool) -> Dict[str
     for case in cases:
         request_payload = {
             "message": case["prompt"],
-            "mode": "agentic",
+            "mode": case["mode"],
             "include_trace": include_trace,
-            "crew_mode": crew_mode,
-            "session_id": session_id,
+            "crew_mode": case["crew_mode"],
+            "session_id": f"{session_id}-{case['id']}",
         }
 
         response = client.post("/api/chat", json=request_payload)
@@ -134,14 +156,16 @@ def run_suite(session_id: str, include_trace: bool, crew_mode: bool) -> Dict[str
         results.append(
             {
                 "id": case["id"],
+                "mode": case["mode"],
+                "crew_mode": case["crew_mode"],
                 "prompt": case["prompt"],
                 "expect": case["expect"],
                 "evaluation": eval_row,
                 "raw": {
-                    "mode": _safe_get(payload, "mode"),
                     "response_time": _safe_get(payload, "response_time"),
                     "trajectory_metrics": _safe_get(payload, "trajectory_metrics", {}),
                     "handoffs": _safe_get(payload, "handoffs", []),
+                    "phoenix_trace_enabled": _safe_get(payload, "phoenix_trace_enabled", False),
                 },
             }
         )
@@ -163,7 +187,6 @@ def run_suite(session_id: str, include_trace: bool, crew_mode: bool) -> Dict[str
             "transport": transport,
             "session_id": session_id,
             "include_trace": include_trace,
-            "crew_mode": crew_mode,
             "total_cases": total,
             "passed_cases": passed,
             "pass_rate": round(passed / max(total, 1), 3),
@@ -190,7 +213,6 @@ def write_artifacts(report: Dict[str, Any], out_dir: str) -> Dict[str, str]:
         "=" * 36,
         f"Timestamp: {meta['timestamp']}",
         f"Session ID: {meta['session_id']}",
-        f"Crew Mode: {meta['crew_mode']}",
         f"Include Trace: {meta['include_trace']}",
         f"Cases Passed: {meta['passed_cases']} / {meta['total_cases']}",
         f"Pass Rate: {meta['pass_rate']}",
@@ -203,10 +225,11 @@ def write_artifacts(report: Dict[str, Any], out_dir: str) -> Dict[str, str]:
 
     for row in report["results"]:
         ev = row["evaluation"]
+        mode_label = "crew" if row["crew_mode"] else row["mode"]
         lines.append(
             f"{row['id']}: {'PASS' if ev['passed'] else 'FAIL'} | "
-            f"degraded={ev['degraded_mode']} circuit_open={ev['circuit_open']} "
-            f"steps={ev['steps']} tools={ev['tool_calls']} loop_tax={ev['loop_tax']}"
+            f"mode={mode_label} degraded={ev['degraded_mode']} poisoned={ev['poisoned_retrieval']} "
+            f"steps={ev['steps']} tools={ev['tool_calls']} handoffs={ev['handoff_count']} loop_tax={ev['loop_tax']}"
         )
 
     with open(txt_path, "w", encoding="utf-8") as f:
@@ -224,7 +247,6 @@ def parse_args() -> argparse.Namespace:
         help="Directory where JSON/TXT artifacts will be written",
     )
     parser.add_argument("--no-trace", action="store_true", help="Disable trace collection to reduce output size")
-    parser.add_argument("--no-crew", action="store_true", help="Run in single-agent mode instead of crew mode")
     return parser.parse_args()
 
 
@@ -233,7 +255,6 @@ def main() -> None:
     report = run_suite(
         session_id=args.session_id,
         include_trace=not args.no_trace,
-        crew_mode=not args.no_crew,
     )
     paths = write_artifacts(report, args.output_dir)
 

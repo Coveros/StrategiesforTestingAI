@@ -5,6 +5,11 @@ flask-cors>=6.0.0
 # AI/ML APIs and models
 sentence-transformers>=5.0.0
 torch>=2.1.0
+langchain>=0.3.0
+langchain-ollama>=0.2.0
+
+# LLM observability (local, open-source)
+arize-phoenix
 
 # Vector database
 chromadb>=1.5.0

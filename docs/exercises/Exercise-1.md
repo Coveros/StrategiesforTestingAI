@@ -4,10 +4,9 @@
 1. A running GenAI testing assistant at http://localhost:5000.
 2. A short architecture overview (frontend -> Flask API -> RAG pipeline -> LLM).
 3. A demo of the GenAI Testing Assistant's capabilities and intended use cases.
-4. A demo of using Copilot Chat in a Codespace to generate test prompts and evaluation criteria.
 
 ## Scenario
-You are performing an initial exploratory testing session on a new GenAI testing assistant. Your mission is to expose the limits of traditional black-box testing on probabilistic models. Leverage GitHub Copilot Chat to help you generate test prompts and evaluation criteria, but remember that the assistant's output may be variable and not always perfectly reliable.
+You are performing an initial exploratory testing session on a new GenAI testing assistant. Your mission is to expose the limits of traditional black-box testing on probabilistic models. Use your team's exploratory prompts and evaluation criteria, and remember that the assistant's output may be variable and not always perfectly reliable.
 
 ## Student tasks
 1. Split up your team and assign each person to one of five charters: 
