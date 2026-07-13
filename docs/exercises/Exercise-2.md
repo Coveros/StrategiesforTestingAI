@@ -2,7 +2,7 @@
 
 ## Prerequisites
 1. A running GenAI testing assistant at http://localhost:5000.
-2. A GitHub Copilot demo has been completed.
+2. A GitHub Copilot demo has been completed and Copilot has been activated in Visual Studio Code.
 3. Your new tests from Exercise 1.
 
 ## Scenario
