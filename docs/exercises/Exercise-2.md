@@ -2,9 +2,8 @@
 
 ## Prerequisites
 1. A running GenAI testing assistant at http://localhost:5000.
-2. GitHub Copilot Chat available in Codespaces.
-4. Your new tests from Exercise 1.
-5. Python environment with `sentence-transformers` installed (for semantic similarity scoring).
+2. A GitHub Copilot demo has been completed.
+3. Your new tests from Exercise 1.
 
 ## Scenario
 You are expanding your **golden regression test set** located here: `regression_testing/regression_testing.py` by adding two new tests you created during Exercise 1.
