@@ -20,12 +20,14 @@ Your team added 2 new tests to the golden test suite during Exercise 2. Now audi
 ## Analyzing Your Test Results
 
 Look at each result in the test output:
-- **Semantic Similarity** (40% weight): How close to gold standard? Threshold: 0.65 (dev) or 0.75 (staging)
-- **Keyword Match** (25% weight): % of expected keywords found? Threshold: 0.25 (dev) or 0.6 (staging)
+- **Semantic Similarity** (40% weight): How close to gold standard? Threshold for this exercise: 0.65
+- **Keyword Match** (25% weight): % of expected keywords found? Threshold for this exercise: 0.25
 - **Length** (15% weight): Does response length fall in expected range?
 - **Sources** (10% weight): Does response cite at least 1 source?
 - **Performance** (5% weight): Response time < 15 sec?
 - **Content** (5% weight): Response > 50 chars?
+
+Use these fixed lab thresholds for all submissions: Semantic Similarity 0.65 and Keyword Match 0.25.
 
 **False Positive Pattern (should pass but failed):**
 - A test has strong semantic similarity, but one strict sub-score (for example, keyword match) drives the final decision to fail.
