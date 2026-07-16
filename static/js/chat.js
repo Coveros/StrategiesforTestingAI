@@ -344,7 +344,9 @@ class ChatApp {
                 stateSnapshot: data.state_snapshot,
                 handoffs: data.handoffs,
                 trajectoryMetrics: data.trajectory_metrics,
-                crewMode: data.crew_mode
+                crewMode: data.crew_mode,
+                bootstrapApplied: data.bootstrap_applied,
+                bootstrapReason: data.bootstrap_reason
             });
             
             // Store in history
@@ -427,6 +429,9 @@ class ChatApp {
         if (metadata.crewMode) {
             metaInfo += ' • crew';
         }
+        if (metadata.bootstrapApplied) {
+            metaInfo += ' • bootstrap';
+        }
         if (metadata.error) {
             metaInfo += ' • Error';
         }
@@ -455,12 +460,16 @@ class ChatApp {
 
             const metrics = metadata.trajectoryMetrics || {};
             const metricsLine = `steps=${metrics.steps || 0}, tools=${metrics.tool_calls || 0}, handoffs=${metrics.handoffs || 0}, redundant=${metrics.redundant_tool_calls || 0}`;
+            const bootstrapLine = metadata.bootstrapApplied
+                ? `Bootstrap: applied (${this.escapeHtml(metadata.bootstrapReason || 'unspecified')})`
+                : 'Bootstrap: not applied';
 
             agentBlock = `
                 <div class="agent-debug-block">
                     <div class="agent-debug-header">Agent Execution</div>
                     <div class="agent-debug-state">${stateSummary}</div>
                     <div class="agent-debug-state">Trajectory: ${metricsLine}</div>
+                    <div class="agent-debug-state">${bootstrapLine}</div>
                     ${tools ? `<div class="agent-debug-section"><div class="agent-debug-label">Tools Called</div><ol>${tools}</ol></div>` : ''}
                     ${handoffs ? `<div class="agent-debug-section"><div class="agent-debug-label">Handoffs</div><ol>${handoffs}</ol></div>` : ''}
                     ${trace ? `<div class="agent-debug-section"><div class="agent-debug-label">Trace</div><ol>${trace}</ol></div>` : ''}

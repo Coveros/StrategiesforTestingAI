@@ -37,9 +37,19 @@ class TestOpsAgent:
         }
 
         self.ollama_host = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
-        self.model_name = os.getenv("AGENT_MODEL", os.getenv("OLLAMA_MODEL", "llama3.2:1b"))
+        self.model_name = os.getenv("AGENT_MODEL", os.getenv("OLLAMA_MODEL", "llama3:8b"))
         self.temperature = self._safe_float(os.getenv("AGENT_TEMPERATURE", "0.2"), default=0.2)
         self.max_iterations = int(self._safe_float(os.getenv("AGENT_MAX_ITERATIONS", "10"), default=10))
+        self.request_timeout_seconds = int(self._safe_float(os.getenv("AGENT_REQUEST_TIMEOUT_SECONDS", "300"), default=300))
+        bootstrap_mode = str(os.getenv("AGENT_BOOTSTRAP_ON_ZERO_TOOLS", "auto")).strip().lower()
+        instructor_mode = self._is_truthy(os.getenv("EXERCISE_HUB_ENABLE_INSTRUCTOR", "false"))
+        if bootstrap_mode in {"1", "true", "yes", "on"}:
+            self.bootstrap_on_zero_tools = True
+        elif bootstrap_mode in {"0", "false", "no", "off"}:
+            self.bootstrap_on_zero_tools = False
+        else:
+            # Auto mode defaults to student-friendly recovery and stays off for instructor-led runs.
+            self.bootstrap_on_zero_tools = not instructor_mode
 
         self.llm: Optional[Any] = None
 
@@ -58,6 +68,9 @@ class TestOpsAgent:
         except (TypeError, ValueError):
             return default
 
+    def _is_truthy(self, value: Any) -> bool:
+        return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
     def _get_llm(self):
         if self.llm is None:
             from langchain_ollama import ChatOllama
@@ -66,6 +79,8 @@ class TestOpsAgent:
                 model=self.model_name,
                 base_url=self.ollama_host,
                 temperature=self.temperature,
+                sync_client_kwargs={"timeout": self.request_timeout_seconds},
+                async_client_kwargs={"timeout": self.request_timeout_seconds},
             )
         return self.llm
 
@@ -625,6 +640,16 @@ class TestOpsAgent:
             else:
                 payload = self._run_single_agent(message, session_id, include_trace, force_loop_bug=force_loop_bug)
 
+            if self._should_apply_bootstrap(payload):
+                payload = self._apply_bootstrap_recovery(
+                    payload=payload,
+                    message=message,
+                    session_id=session_id,
+                    include_trace=include_trace,
+                    crew_mode=crew_mode,
+                )
+                self.stats["fallback_responses"] += 1
+
             if state.get("persona") == "pirate":
                 payload["response"] = f"Ahoy matey. {payload['response']} Arrr."
 
@@ -647,6 +672,167 @@ class TestOpsAgent:
                 crew_mode=crew_mode,
             )
 
+    def _should_apply_bootstrap(self, payload: Dict[str, Any]) -> bool:
+        if not self.bootstrap_on_zero_tools:
+            return False
+
+        if payload.get("bootstrap_applied"):
+            return False
+
+        metrics = payload.get("trajectory_metrics") or {}
+        return int(metrics.get("tool_calls", 0) or 0) == 0
+
+    def _apply_bootstrap_recovery(
+        self,
+        payload: Dict[str, Any],
+        message: str,
+        session_id: str,
+        include_trace: bool,
+        crew_mode: bool,
+    ) -> Dict[str, Any]:
+        if crew_mode:
+            recovered = self._bootstrap_multi_agent(message)
+        else:
+            recovered = self._bootstrap_single_agent(message)
+
+        merged = dict(payload)
+        merged["response"] = recovered["response"]
+
+        merged_tool_calls = list(merged.get("tool_calls", []) or [])
+        merged_tool_calls.extend(recovered.get("tool_calls", []) or [])
+        merged["tool_calls"] = merged_tool_calls
+
+        merged_handoffs = list(merged.get("handoffs", []) or [])
+        merged_handoffs.extend(recovered.get("handoffs", []) or [])
+        merged["handoffs"] = merged_handoffs
+
+        orig_metrics = dict(merged.get("trajectory_metrics") or {})
+        rec_metrics = recovered.get("trajectory_metrics") or {}
+        orig_metrics["steps"] = int(orig_metrics.get("steps", 0) or 0) + int(rec_metrics.get("steps", 0) or 0)
+        orig_metrics["tool_calls"] = int(orig_metrics.get("tool_calls", 0) or 0) + int(rec_metrics.get("tool_calls", 0) or 0)
+        orig_metrics["handoffs"] = int(orig_metrics.get("handoffs", 0) or 0) + int(rec_metrics.get("handoffs", 0) or 0)
+        orig_metrics["redundant_tool_calls"] = int(orig_metrics.get("redundant_tool_calls", 0) or 0) + int(
+            rec_metrics.get("redundant_tool_calls", 0) or 0
+        )
+        orig_metrics["early_termination"] = False
+        orig_metrics["degraded_mode"] = True
+        merged["trajectory_metrics"] = orig_metrics
+
+        if include_trace:
+            merged_trace = list(merged.get("agent_trace", []) or [])
+            merged_trace.extend(recovered.get("agent_trace", []) or [])
+            merged["agent_trace"] = merged_trace
+
+        merged["bootstrap_applied"] = True
+        merged["bootstrap_reason"] = "zero_tool_calls"
+        merged["bootstrap_mode"] = "multi" if crew_mode else "single"
+        return merged
+
+    def _bootstrap_single_agent(self, message: str) -> Dict[str, Any]:
+        kb = self._kb_lookup(message, k=3)
+        docs = kb.get("documents", [])
+        context = "\n\n".join(docs[:2])
+
+        prompt = (
+            "You are a testing assistant. Use only the provided context when possible, "
+            "and acknowledge missing evidence when context is insufficient.\n\n"
+            f"Question: {message}\n\n"
+            f"Context:\n{context}"
+        )
+
+        with start_span(
+            self.tracer,
+            "Bootstrap query_knowledge_base",
+            span_kind="TOOL",
+            attrs={"bootstrap.applied": True},
+        ):
+            llm_response = self._get_llm().invoke(prompt)
+
+        response_text = getattr(llm_response, "content", str(llm_response)).strip()
+        tool_call = {
+            "tool": "query_knowledge_base",
+            "query": message,
+            "result_count": len(docs),
+            "result_preview": [doc[:180] for doc in docs[:2]],
+            "bootstrap": True,
+        }
+        trace = [
+            {"phase": "bootstrap", "content": "Applied bootstrap recovery after zero tool calls"},
+            {"phase": "action", "content": f"tool=query_knowledge_base input={message}"},
+            {"phase": "observation", "content": response_text[:280]},
+        ]
+
+        metrics = self._empty_trajectory_metrics()
+        metrics["steps"] = len(trace)
+        metrics["tool_calls"] = 1
+        metrics["early_termination"] = False
+        metrics["degraded_mode"] = True
+
+        return {
+            "response": response_text,
+            "tool_calls": [tool_call],
+            "handoffs": [],
+            "agent_trace": trace,
+            "trajectory_metrics": metrics,
+        }
+
+    def _bootstrap_multi_agent(self, message: str) -> Dict[str, Any]:
+        kb = self._kb_lookup(message, k=3)
+        docs = kb.get("documents", [])
+        context = "\n\n".join(docs[:2])
+
+        prompt = (
+            "You are the RAG specialist in a multi-agent test workflow. "
+            "Answer using context and call out uncertainty when needed.\n\n"
+            f"Question: {message}\n\n"
+            f"Context:\n{context}"
+        )
+
+        with start_span(
+            self.tracer,
+            "Bootstrap RAG Specialist",
+            span_kind="AGENT",
+            attrs={"bootstrap.applied": True},
+        ):
+            llm_response = self._get_llm().invoke(prompt)
+
+        response_text = getattr(llm_response, "content", str(llm_response)).strip()
+        handoff = {
+            "from": "TriageAgent",
+            "to": "RAGSpecialist",
+            "purpose": "Bootstrap recovery after zero tool calls",
+            "bootstrap": True,
+            "original_query": message,
+            "routed_query": message,
+        }
+        tool_call = {
+            "tool": "query_knowledge_base",
+            "query": message,
+            "result_count": len(docs),
+            "result_preview": [doc[:180] for doc in docs[:2]],
+            "bootstrap": True,
+        }
+        trace = [
+            {"phase": "bootstrap", "content": "Applied bootstrap recovery after zero tool calls"},
+            {"phase": "action", "content": f"triage_tool=rag_agent_tool input={message}"},
+            {"phase": "observation", "content": response_text[:280]},
+        ]
+
+        metrics = self._empty_trajectory_metrics()
+        metrics["steps"] = len(trace)
+        metrics["tool_calls"] = 1
+        metrics["handoffs"] = 1
+        metrics["early_termination"] = False
+        metrics["degraded_mode"] = True
+
+        return {
+            "response": response_text,
+            "tool_calls": [tool_call],
+            "handoffs": [handoff],
+            "agent_trace": trace,
+            "trajectory_metrics": metrics,
+        }
+
     def _response_payload(
         self,
         response: str,
@@ -657,6 +843,8 @@ class TestOpsAgent:
         handoffs: List[Dict[str, Any]],
         trajectory_metrics: Dict[str, Any],
         crew_mode: bool,
+        bootstrap_applied: bool = False,
+        bootstrap_reason: Optional[str] = None,
     ) -> Dict[str, Any]:
         payload = {
             "response": response,
@@ -667,6 +855,8 @@ class TestOpsAgent:
             "tool_calls": tool_calls,
             "handoffs": handoffs,
             "trajectory_metrics": trajectory_metrics,
+            "bootstrap_applied": bootstrap_applied,
+            "bootstrap_reason": bootstrap_reason,
             "state_snapshot": {
                 "tracked_failure": self.session_state.get(session_id, {}).get("tracked_failure"),
                 "persona": self.session_state.get(session_id, {}).get("persona", "default"),

@@ -77,14 +77,20 @@ Frontend (HTML/CSS/JS) → Flask Backend → RAG Pipeline → Ollama (Local SLM)
 4. **Configure Environment**
    ```bash
   copy .env.template .env
-   # Optional: adjust OLLAMA_MODEL in .env (default llama3.2:1b)
+   # Optional: adjust OLLAMA_MODEL and AGENT_MODEL in .env
    ```
 
    Pull a model locally if not already present:
    ```bash
-   ollama pull llama3.2:1b
-   # alternatives: llama3.2:3b or phi3.5:3.8b
+   ollama pull llama3:8b
+   # alternatives for lower-resource systems: llama3.2:3b or llama3.2:1b
    ```
+
+   Agent-mode reliability controls for Exercises 5-6:
+   - `AGENT_MODEL=llama3:8b` (recommended)
+   - `AGENT_REQUEST_TIMEOUT_SECONDS=300` to avoid client-side timeouts on local CPU inference
+   - `AGENT_BOOTSTRAP_ON_ZERO_TOOLS=auto` enables a transparent one-step bootstrap in student mode only
+   - Set `AGENT_BOOTSTRAP_ON_ZERO_TOOLS=false` for pure-autonomy instructor demonstrations
 
    Exercise Hub defaults to Student View only. Set `EXERCISE_HUB_ENABLE_INSTRUCTOR=True` in `.env` only for instructor-led sessions.
 
