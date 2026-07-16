@@ -6,9 +6,10 @@ from typing import List, Dict, Any, Optional
 from pathlib import Path
 from dotenv import load_dotenv
 
-import cohere
 import chromadb
+import requests
 from chromadb.config import Settings
+from sentence_transformers import SentenceTransformer
 
 # Load environment variables from project root for consistent behavior
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -18,7 +19,8 @@ logger = logging.getLogger(__name__)
 
 class RAGPipeline:
     """
-    Simplified Retrieval-Augmented Generation pipeline using Cohere and ChromaDB.
+    Simplified Retrieval-Augmented Generation pipeline using local embeddings,
+    ChromaDB, and Ollama for generation.
     
     This class implements a complete RAG system with some intentional issues
     for students to discover during testing exercises.
@@ -26,9 +28,12 @@ class RAGPipeline:
     
     def __init__(self):
         """Initialize the RAG pipeline."""
-        self.cohere_client = None
+        self.embedding_model = None
         self.vector_db = None
         self.collection = None
+        self.ollama_host = os.getenv('OLLAMA_HOST', 'http://127.0.0.1:11434').rstrip('/')
+        self.ollama_model = os.getenv('OLLAMA_MODEL', 'llama3.2:1b')
+        self.ollama_timeout_seconds = int(os.getenv('OLLAMA_TIMEOUT_SECONDS', '120'))
         self.stats = {
             'queries_processed': 0,
             'total_response_time': 0,
@@ -37,21 +42,15 @@ class RAGPipeline:
             'errors': 0
         }
         # Rate limiting tracking
-        self._last_cohere_call_time = 0
-        self._min_spacing = 1.5  # seconds between Cohere API calls
+        self._last_provider_call_time = 0
+        self._min_spacing = 0.1  # spacing between local provider calls
         
         self._initialize_components()
     
     def _initialize_components(self):
         """Initialize all pipeline components."""
         try:
-            # Initialize Cohere client
-            api_key = os.getenv('COHERE_API_KEY')
-            if not api_key:
-                raise ValueError("COHERE_API_KEY environment variable not set")
-            
-            self.cohere_client = cohere.Client(api_key)
-            logger.info("Cohere client initialized successfully")
+            self._initialize_embedding_model()
             
             # Initialize ChromaDB
             self._initialize_vector_db()
@@ -62,6 +61,16 @@ class RAGPipeline:
         except Exception as e:
             logger.error(f"Failed to initialize RAG pipeline: {str(e)}")
             logger.error(traceback.format_exc())
+            raise
+
+    def _initialize_embedding_model(self):
+        """Initialize local sentence-transformer embedding model."""
+        embedding_model_name = os.getenv('EMBEDDING_MODEL', 'all-MiniLM-L6-v2')
+        try:
+            self.embedding_model = SentenceTransformer(embedding_model_name)
+            logger.info("Embedding model initialized successfully: %s", embedding_model_name)
+        except Exception as e:
+            logger.error("Failed to initialize embedding model %s: %s", embedding_model_name, e)
             raise
     
     def _initialize_vector_db(self):
@@ -117,11 +126,7 @@ class RAGPipeline:
                 # Test if the collection works with current embedding model
                 try:
                     # Test with actual embedding to catch dimension mismatches
-                    test_embedding = self.cohere_client.embed(
-                        texts=["test compatibility"],
-                        model="embed-english-v3.0",
-                        input_type="search_query"
-                    ).embeddings[0]
+                    test_embedding = self._generate_query_embedding("test compatibility")
                     
                     # Try a query with the embedding
                     test_query = self.collection.query(
@@ -252,7 +257,7 @@ class RAGPipeline:
             texts = [doc['content'] for doc in documents]
             metadatas = [doc['metadata'] for doc in documents]
             
-            # Generate embeddings using Cohere
+            # Generate local embeddings
             embeddings = self._generate_embeddings(texts)
             
             # Create IDs for documents
@@ -272,41 +277,41 @@ class RAGPipeline:
             logger.error(f"Failed to add documents to database: {str(e)}")
             raise
     
-    def _cohere_call_with_backoff(self, call_func, *args, **kwargs):
-        """Execute a Cohere API call with rate limiting and exponential backoff on 429."""
+    def _provider_call_with_backoff(self, call_func, *args, **kwargs):
+        """Execute a provider call with simple spacing and backoff on transient failures."""
         # Enforce minimum spacing between calls
-        elapsed = time.time() - self._last_cohere_call_time
+        elapsed = time.time() - self._last_provider_call_time
         if elapsed < self._min_spacing:
             time.sleep(self._min_spacing - elapsed)
         
-        # Exponential backoff for 429 errors
+        # Exponential backoff for transient failures
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                self._last_cohere_call_time = time.time()
+                self._last_provider_call_time = time.time()
                 return call_func(*args, **kwargs)
             except Exception as e:
-                if "429" in str(e) and attempt < max_retries - 1:
+                error_text = str(e)
+                if attempt < max_retries - 1 and any(marker in error_text for marker in ("429", "503", "504", "ConnectionError", "Read timed out")):
                     backoff_time = 2 ** (attempt + 1)  # 2s, 4s, 8s
-                    logger.warning(f"Rate limited (429), retry {attempt + 1}/{max_retries} after {backoff_time}s")
+                    logger.warning(f"Provider transient error, retry {attempt + 1}/{max_retries} after {backoff_time}s")
                     time.sleep(backoff_time)
-                    self._last_cohere_call_time = time.time()
+                    self._last_provider_call_time = time.time()
                 else:
                     raise
     
     def _generate_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """Generate embeddings for texts using Cohere."""
+        """Generate embeddings for texts using a local sentence-transformer model."""
         try:
-            # Using embed-english-v3.0 for consistent 1024-dimensional embeddings
-            def embed_call():
-                return self.cohere_client.embed(
-                    texts=texts,
-                    model="embed-english-v3.0",  # Latest model with 1024 dimensions
-                    input_type="search_document"
-                )
-            
-            response = self._cohere_call_with_backoff(embed_call)
-            return response.embeddings
+            if not self.embedding_model:
+                raise RuntimeError("Embedding model is not initialized")
+
+            embeddings = self.embedding_model.encode(
+                texts,
+                normalize_embeddings=True,
+                show_progress_bar=False,
+            )
+            return embeddings.tolist()
             
         except Exception as e:
             logger.error(f"Failed to generate embeddings: {str(e)}")
@@ -315,15 +320,7 @@ class RAGPipeline:
     def _generate_query_embedding(self, query: str) -> List[float]:
         """Generate embedding for a query."""
         try:
-            def query_embed_call():
-                return self.cohere_client.embed(
-                    texts=[query],
-                    model="embed-english-v3.0",  # Same model as document embeddings
-                    input_type="search_query"
-                )
-            
-            response = self._cohere_call_with_backoff(query_embed_call)
-            return response.embeddings[0]
+            return self._generate_embeddings([query])[0]
             
         except Exception as e:
             logger.error(f"Failed to generate query embedding: {str(e)}")
@@ -388,27 +385,38 @@ class RAGPipeline:
             raise
     
     def _generate_response(self, query: str, context_docs: List[str], temperature: Optional[float] = None) -> str:
-        """Generate response using Cohere with retrieved context."""
+        """Generate response using Ollama with retrieved context."""
         try:
             # Prepare context from retrieved documents
             context = "\n\n".join(context_docs[:3])  # Use top 3 documents
             effective_temperature = 0.7 if temperature is None else float(temperature)
-            
-            def chat_call():
-                return self.cohere_client.chat(
-                    model="command-r-08-2024",  # Try a specific version that might still be available
-                    message=f"""Question: {query}
 
-Context:
-{context}
+            prompt = (
+                f"Question: {query}\n\n"
+                f"Context:\n{context}\n\n"
+                "Based on the provided context, answer the question using only that context. "
+                "If the context does not contain relevant information, say so clearly."
+            )
 
-Based on the provided context, please answer the user's question. Use only the information from the context provided. If the context doesn't contain relevant information to answer the question, say so clearly.""",
-                    max_tokens=300,  # INTENTIONAL ISSUE: Sometimes too short for complete answers
-                    temperature=effective_temperature,  # Defaults to legacy value unless overridden by API/demo
+            def generate_call():
+                response = requests.post(
+                    f"{self.ollama_host}/api/generate",
+                    json={
+                        "model": self.ollama_model,
+                        "prompt": prompt,
+                        "stream": False,
+                        "options": {
+                            "temperature": effective_temperature,
+                            "num_predict": int(os.getenv('MAX_TOKENS', '600')),
+                        },
+                    },
+                    timeout=self.ollama_timeout_seconds,
                 )
-            
-            response = self._cohere_call_with_backoff(chat_call)
-            return response.text.strip()
+                response.raise_for_status()
+                return response.json()
+
+            payload = self._provider_call_with_backoff(generate_call)
+            return str(payload.get('response', '')).strip()
             
         except Exception as e:
             logger.error(f"Failed to generate response: {str(e)}")
@@ -500,21 +508,26 @@ Based on the provided context, please answer the user's question. Use only the i
     def health_check(self) -> Dict[str, Any]:
         """Perform a health check of all components."""
         health = {
-            'cohere_client': False,
+            'provider_client': False,
+            'ollama_host': self.ollama_host,
+            'ollama_model': self.ollama_model,
+            'model_present': False,
             'vector_db': False,
             'collection': False,
             'documents_loaded': False
         }
         
         try:
-            # Test Cohere client
-            if self.cohere_client:
-                test_response = self.cohere_client.embed(
-                    texts=["test"], 
-                    model="embed-english-v3.0",  # Same model as main embeddings
-                    input_type="search_query"
-                )
-                health['cohere_client'] = len(test_response.embeddings) > 0
+            # Test local Ollama provider
+            response = requests.get(
+                f"{self.ollama_host}/api/tags",
+                timeout=min(10, self.ollama_timeout_seconds),
+            )
+            response.raise_for_status()
+            models = response.json().get('models', [])
+            health['provider_client'] = isinstance(models, list)
+            model_names = {m.get('name') for m in models if isinstance(m, dict)}
+            health['model_present'] = self.ollama_model in model_names
             
             # Test vector database
             if self.vector_db and self.collection:

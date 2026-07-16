@@ -632,8 +632,20 @@ class ChatApp {
                 <h4 style="margin-bottom: 12px; color: #374151;">System Health</h4>
                 <div class="health-item">
                     <span>LLM Provider (Ollama)</span>
-                    <span class="health-status ${(health.provider_client ?? health.cohere_client) ? 'healthy' : 'unhealthy'}">
-                        ${(health.provider_client ?? health.cohere_client) ? 'Connected' : 'Disconnected'}
+                    <span class="health-status ${health.provider_client ? 'healthy' : 'unhealthy'}">
+                        ${health.provider_client ? 'Connected' : 'Disconnected'}
+                    </span>
+                </div>
+                <div class="health-item">
+                    <span>Ollama Host</span>
+                    <span style="font-size: 0.8rem; color: #6b7280; max-width: 55%; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${health.ollama_host || 'unknown'}">
+                        ${health.ollama_host || 'unknown'}
+                    </span>
+                </div>
+                <div class="health-item">
+                    <span>Configured Model</span>
+                    <span class="health-status ${health.model_present ? 'healthy' : 'unhealthy'}">
+                        ${health.ollama_model || 'unknown'} ${health.model_present ? '(available)' : '(missing)'}
                     </span>
                 </div>
                 <div class="health-item">

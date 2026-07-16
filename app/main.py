@@ -361,6 +361,7 @@ def health_check():
         # Connection status should represent core service connectivity, not content readiness.
         core_connected = (
             bool(health_status.get('provider_client'))
+            and bool(health_status.get('model_present'))
             and bool(health_status.get('vector_db'))
             and bool(health_status.get('collection'))
         )
@@ -371,6 +372,11 @@ def health_check():
 
         if core_connected and not bool(health_status.get('documents_loaded')):
             health_status['warnings'].append('Knowledge base is empty; retrieval quality may be reduced.')
+
+        if bool(health_status.get('provider_client')) and not bool(health_status.get('model_present')):
+            health_status['warnings'].append(
+                f"Configured Ollama model '{health_status.get('ollama_model')}' is not available. Pull it with: ollama pull {health_status.get('ollama_model')}"
+            )
         
         return jsonify(health_status)
     except Exception as e:

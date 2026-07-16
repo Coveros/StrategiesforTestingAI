@@ -7,6 +7,7 @@ Entry point for running the Flask application
 import os
 import sys
 import subprocess
+import requests
 
 # Add the app directory to the Python path
 sys.path.insert(0, os.path.dirname(__file__))
@@ -60,6 +61,29 @@ def maybe_relaunch_with_project_venv():
     sys.exit(rc)
 
 
+def preflight_ollama(ollama_host: str, ollama_model: str):
+    """Perform a quick connectivity check to Ollama before app startup."""
+    tags_url = f"{ollama_host.rstrip('/')}/api/tags"
+    try:
+        response = requests.get(tags_url, timeout=8)
+        response.raise_for_status()
+        models = response.json().get("models", [])
+        model_names = {m.get("name") for m in models if isinstance(m, dict)}
+
+        if ollama_model not in model_names:
+            print("⚠️ Ollama is reachable, but configured model was not found:")
+            print(f"   - Configured model: {ollama_model}")
+            print("   - Next step: run `ollama pull " + ollama_model + "`")
+        else:
+            print(f"✅ Ollama preflight passed: {ollama_model} is available")
+
+    except Exception as exc:
+        print("⚠️ Ollama preflight warning: unable to reach configured OLLAMA_HOST")
+        print(f"   - Host: {ollama_host}")
+        print(f"   - Details: {exc}")
+        print("   - Next step: ensure Ollama is running and OLLAMA_HOST is correct")
+
+
 if __name__ == '__main__':
     maybe_relaunch_with_project_venv()
 
@@ -110,6 +134,8 @@ if __name__ == '__main__':
     # Local-first runtime: Ollama defaults come from .env but do not require secrets.
     ollama_model = os.getenv('OLLAMA_MODEL', 'llama3.2:1b')
     ollama_host = os.getenv('OLLAMA_HOST', 'http://127.0.0.1:11434')
+
+    preflight_ollama(ollama_host, ollama_model)
 
     print("🚀 Starting GenAI Testing Tutorial Application...")
     print(f"📚 Documents directory: {os.path.join(os.path.dirname(__file__), 'data', 'documents')}")
