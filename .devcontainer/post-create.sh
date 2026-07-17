@@ -30,18 +30,49 @@ ensure_ollama_prerequisites() {
   fi
 
   echo "Installing Ollama prerequisite: zstd"
-  if command -v apt-get >/dev/null 2>&1; then
+
+  install_zstd_with_apt() {
     if command -v sudo >/dev/null 2>&1; then
-      sudo apt-get update -y && sudo apt-get install -y zstd || {
-        echo "Warning: failed to install zstd via apt-get."
+      if sudo apt-get install -y zstd; then
+        return 0
+      fi
+
+      # Retry with Debian base sources only to avoid broken third-party repo entries.
+      if [ -f /etc/apt/sources.list.d/debian.sources ]; then
+        sudo apt-get update -y \
+          -o Dir::Etc::sourcelist=/etc/apt/sources.list.d/debian.sources \
+          -o Dir::Etc::sourceparts=- && sudo apt-get install -y zstd
+      elif [ -f /etc/apt/sources.list ]; then
+        sudo apt-get update -y \
+          -o Dir::Etc::sourcelist=/etc/apt/sources.list \
+          -o Dir::Etc::sourceparts=- && sudo apt-get install -y zstd
+      else
         return 1
-      }
+      fi
     else
-      apt-get update -y && apt-get install -y zstd || {
-        echo "Warning: failed to install zstd via apt-get."
+      if apt-get install -y zstd; then
+        return 0
+      fi
+
+      if [ -f /etc/apt/sources.list.d/debian.sources ]; then
+        apt-get update -y \
+          -o Dir::Etc::sourcelist=/etc/apt/sources.list.d/debian.sources \
+          -o Dir::Etc::sourceparts=- && apt-get install -y zstd
+      elif [ -f /etc/apt/sources.list ]; then
+        apt-get update -y \
+          -o Dir::Etc::sourcelist=/etc/apt/sources.list \
+          -o Dir::Etc::sourceparts=- && apt-get install -y zstd
+      else
         return 1
-      }
+      fi
     fi
+  }
+
+  if command -v apt-get >/dev/null 2>&1; then
+    install_zstd_with_apt || {
+      echo "Warning: failed to install zstd via apt-get (including Debian-only fallback)."
+      return 1
+    }
   else
     echo "Warning: apt-get not found; install zstd manually before installing Ollama."
     return 1
