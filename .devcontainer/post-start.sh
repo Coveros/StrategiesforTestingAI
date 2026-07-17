@@ -4,11 +4,17 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 if [ -f .env ]; then
-  # Export .env values when present so startup aligns with repository config.
+  # Export .env values when present; don't fail startup on malformed .env lines.
+  set +e
   set -a
   # shellcheck disable=SC1091
   . ./.env
+  ENV_LOAD_RC=$?
   set +a
+  set -e
+  if [ "${ENV_LOAD_RC}" -ne 0 ]; then
+    echo "Warning: .env could not be fully parsed; continuing with defaults where needed."
+  fi
 fi
 
 MODEL="${OLLAMA_MODEL:-llama3:8b}"
@@ -19,17 +25,30 @@ ensure_ollama_installed() {
   fi
 
   echo "Ollama is missing; attempting installation..."
+  local install_rc=1
   if command -v curl >/dev/null 2>&1; then
-    curl -fsSL https://ollama.com/install.sh | sh
+    if curl -fsSL https://ollama.com/install.sh | sh; then
+      install_rc=0
+    fi
   elif command -v wget >/dev/null 2>&1; then
-    wget -qO- https://ollama.com/install.sh | sh
+    if wget -qO- https://ollama.com/install.sh | sh; then
+      install_rc=0
+    fi
   else
     echo "Warning: neither curl nor wget is available; cannot auto-install Ollama."
     return 1
   fi
 
+  if [ "${install_rc}" -ne 0 ]; then
+    echo "Warning: Ollama install script failed (likely transient network issue)."
+    return 1
+  fi
+
   if ! command -v ollama >/dev/null 2>&1 && [ -x /usr/local/bin/ollama ]; then
     export PATH="/usr/local/bin:${PATH}"
+    if ! grep -q '/usr/local/bin' "${HOME}/.bashrc" 2>/dev/null; then
+      echo 'export PATH="/usr/local/bin:${PATH}"' >> "${HOME}/.bashrc"
+    fi
   fi
 
   command -v ollama >/dev/null 2>&1
