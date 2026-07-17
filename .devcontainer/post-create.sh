@@ -3,6 +3,14 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+if [ -f .env ]; then
+  # Export .env values when present so MODEL selection honors repository config.
+  set -a
+  # shellcheck disable=SC1091
+  . ./.env
+  set +a
+fi
+
 python -m pip install -r requirements.txt
 
 echo "Verifying Arize Phoenix installation..."
@@ -10,24 +18,101 @@ python -c "import phoenix" >/dev/null 2>&1 || {
   echo "Warning: Arize Phoenix import check failed. Retry with: python -m pip install -r requirements.txt"
 }
 
-if ! command -v ollama >/dev/null 2>&1; then
+ensure_ollama_installed() {
+  if command -v ollama >/dev/null 2>&1; then
+    return 0
+  fi
+
   echo "Installing Ollama..."
-  curl -fsSL https://ollama.com/install.sh | sh
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL https://ollama.com/install.sh | sh
+  elif command -v wget >/dev/null 2>&1; then
+    wget -qO- https://ollama.com/install.sh | sh
+  else
+    echo "Warning: neither curl nor wget is available; cannot auto-install Ollama."
+    return 1
+  fi
+
+  if ! command -v ollama >/dev/null 2>&1; then
+    # Common install location when PATH has not been refreshed in current shell.
+    if [ -x /usr/local/bin/ollama ]; then
+      export PATH="/usr/local/bin:${PATH}"
+    fi
+  fi
+
+  command -v ollama >/dev/null 2>&1
+}
+
+start_ollama_if_needed() {
+  if ! pgrep -f "ollama serve" >/dev/null 2>&1; then
+    echo "Starting Ollama service..."
+    nohup ollama serve >/tmp/ollama.log 2>&1 &
+  fi
+}
+
+wait_for_ollama() {
+  for i in {1..60}; do
+    if ollama list >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+print_status_summary() {
+  local phoenix_cli="no"
+  local phoenix_running="no"
+  local ollama_cli="no"
+  local ollama_running="no"
+  local model_ready="no"
+
+  if command -v phoenix >/dev/null 2>&1; then
+    phoenix_cli="yes"
+  fi
+
+  if pgrep -f "phoenix.*serve" >/dev/null 2>&1; then
+    phoenix_running="yes"
+  fi
+
+  if command -v ollama >/dev/null 2>&1; then
+    ollama_cli="yes"
+    if pgrep -f "ollama serve" >/dev/null 2>&1; then
+      ollama_running="yes"
+    fi
+
+    if ollama list 2>/dev/null | awk '{print $1}' | grep -qx "${MODEL}"; then
+      model_ready="yes"
+    fi
+  fi
+
+  echo ""
+  echo "========== Devcontainer Setup Status =========="
+  echo "Phoenix CLI available : ${phoenix_cli}"
+  echo "Phoenix running       : ${phoenix_running}"
+  echo "Ollama CLI available  : ${ollama_cli}"
+  echo "Ollama running        : ${ollama_running}"
+  echo "Model (${MODEL}) ready : ${model_ready}"
+  echo "App URL               : http://localhost:5000"
+  echo "Phoenix URL           : http://localhost:6006"
+  echo "Logs                  : /tmp/ollama.log, /tmp/phoenix.log"
+  echo "==============================================="
+}
+
+MODEL="${OLLAMA_MODEL:-llama3:8b}"
+
+if ensure_ollama_installed; then
+  start_ollama_if_needed
+
+  if wait_for_ollama; then
+    echo "Ensuring model is present: ${MODEL}"
+    ollama pull "${MODEL}" || echo "Warning: model pull failed during post-create. You can retry with: ollama pull ${MODEL}"
+  else
+    echo "Warning: Ollama did not become ready during post-create. See /tmp/ollama.log"
+  fi
+else
+  echo "Warning: Ollama installation failed in post-create. Startup will retry in post-start."
 fi
 
-MODEL="${OLLAMA_MODEL:-llama3.2:1b}"
-
-echo "Starting Ollama service for initial model pull..."
-nohup ollama serve >/tmp/ollama.log 2>&1 &
-
-for i in {1..30}; do
-  if ollama list >/dev/null 2>&1; then
-    break
-  fi
-  sleep 1
-done
-
-echo "Ensuring model is present: ${MODEL}"
-ollama pull "${MODEL}" || echo "Warning: model pull failed during post-create. You can retry with: ollama pull ${MODEL}"
-
 echo "Devcontainer setup complete."
+print_status_summary
