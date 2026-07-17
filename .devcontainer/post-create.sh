@@ -24,6 +24,32 @@ python -c "import phoenix" >/dev/null 2>&1 || {
   echo "Warning: Arize Phoenix import check failed. Retry with: python -m pip install -r requirements.txt"
 }
 
+ensure_ollama_prerequisites() {
+  if command -v zstd >/dev/null 2>&1; then
+    return 0
+  fi
+
+  echo "Installing Ollama prerequisite: zstd"
+  if command -v apt-get >/dev/null 2>&1; then
+    if command -v sudo >/dev/null 2>&1; then
+      sudo apt-get update -y && sudo apt-get install -y zstd || {
+        echo "Warning: failed to install zstd via apt-get."
+        return 1
+      }
+    else
+      apt-get update -y && apt-get install -y zstd || {
+        echo "Warning: failed to install zstd via apt-get."
+        return 1
+      }
+    fi
+  else
+    echo "Warning: apt-get not found; install zstd manually before installing Ollama."
+    return 1
+  fi
+
+  command -v zstd >/dev/null 2>&1
+}
+
 ensure_ollama_installed() {
   if command -v ollama >/dev/null 2>&1; then
     return 0
@@ -32,12 +58,24 @@ ensure_ollama_installed() {
   echo "Installing Ollama..."
   local install_rc=1
   if command -v curl >/dev/null 2>&1; then
-    if curl -fsSL https://ollama.com/install.sh | sh; then
-      install_rc=0
+    if command -v sudo >/dev/null 2>&1; then
+      if curl -fsSL https://ollama.com/install.sh | sudo -E sh; then
+        install_rc=0
+      fi
+    else
+      if curl -fsSL https://ollama.com/install.sh | sh; then
+        install_rc=0
+      fi
     fi
   elif command -v wget >/dev/null 2>&1; then
-    if wget -qO- https://ollama.com/install.sh | sh; then
-      install_rc=0
+    if command -v sudo >/dev/null 2>&1; then
+      if wget -qO- https://ollama.com/install.sh | sudo -E sh; then
+        install_rc=0
+      fi
+    else
+      if wget -qO- https://ollama.com/install.sh | sh; then
+        install_rc=0
+      fi
     fi
   else
     echo "Warning: neither curl nor wget is available; cannot auto-install Ollama."
@@ -45,7 +83,9 @@ ensure_ollama_installed() {
   fi
 
   if [ "${install_rc}" -ne 0 ]; then
-    echo "Warning: Ollama install script failed (likely transient network issue)."
+    echo "Warning: Ollama install script failed."
+    echo "Hint: in Codespaces, verify sudo/network by running:"
+    echo "  curl -fsSL https://ollama.com/install.sh | sudo -E sh"
     return 1
   fi
 
@@ -56,6 +96,13 @@ ensure_ollama_installed() {
       # Persist path fix for future interactive terminals.
       if ! grep -q '/usr/local/bin' "${HOME}/.bashrc" 2>/dev/null; then
         echo 'export PATH="/usr/local/bin:${PATH}"' >> "${HOME}/.bashrc"
+      fi
+    fi
+
+    if ! command -v ollama >/dev/null 2>&1 && [ -x /usr/bin/ollama ]; then
+      export PATH="/usr/bin:${PATH}"
+      if ! grep -q '/usr/bin' "${HOME}/.bashrc" 2>/dev/null; then
+        echo 'export PATH="/usr/bin:${PATH}"' >> "${HOME}/.bashrc"
       fi
     fi
   fi
@@ -121,7 +168,7 @@ print_status_summary() {
 
 MODEL="${OLLAMA_MODEL:-llama3:8b}"
 
-if ensure_ollama_installed; then
+if ensure_ollama_prerequisites && ensure_ollama_installed; then
   start_ollama_if_needed
 
   if wait_for_ollama; then
@@ -131,7 +178,7 @@ if ensure_ollama_installed; then
     echo "Warning: Ollama did not become ready during post-create. See /tmp/ollama.log"
   fi
 else
-  echo "Warning: Ollama installation failed in post-create. Startup will retry in post-start."
+  echo "Warning: Ollama setup failed in post-create. Startup will retry in post-start."
 fi
 
 echo "Devcontainer setup complete."
