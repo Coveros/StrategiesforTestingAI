@@ -1,6 +1,7 @@
 import logging
 import os
 from contextlib import contextmanager, nullcontext
+from urllib.parse import urlparse
 from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,22 @@ def _set_span_attribute(span: Any, key: str, value: Any) -> None:
     span.set_attribute(key, str(value))
 
 
+def _normalize_collector_endpoint(endpoint: str, protocol: str) -> str:
+    """Normalize collector endpoint for the selected transport protocol."""
+    normalized = (endpoint or "").strip()
+    if not normalized:
+        return normalized
+
+    if protocol == "http/protobuf":
+        parsed = urlparse(normalized)
+        if parsed.scheme in {"http", "https"}:
+            path = (parsed.path or "").rstrip("/")
+            if path == "":
+                return normalized.rstrip("/") + "/v1/traces"
+
+    return normalized
+
+
 def _register_once(project_name: str) -> bool:
     global _REGISTERED, _REGISTER_FAILED
 
@@ -39,6 +56,7 @@ def _register_once(project_name: str) -> bool:
         collector_protocol = os.getenv("PHOENIX_COLLECTOR_PROTOCOL", "http/protobuf").strip().lower()
         if collector_protocol not in {"http/protobuf", "grpc"}:
             collector_protocol = "http/protobuf"
+        collector_endpoint = _normalize_collector_endpoint(collector_endpoint, collector_protocol)
 
         register(
             project_name=project_name,
