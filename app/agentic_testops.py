@@ -86,7 +86,7 @@ class TestOpsAgent:
         return self.llm
 
     def _resolve_langchain_agent_runtime(self):
-        """Resolve AgentExecutor/create_react_agent across LangChain package layouts."""
+        """Resolve ReAct runtime across classic LangChain and modern LangGraph layouts."""
         agent_executor_cls = None
         create_react_agent_fn = None
 
@@ -118,13 +118,125 @@ class TestOpsAgent:
             except Exception:
                 continue
 
-        if agent_executor_cls is None or create_react_agent_fn is None:
-            raise ImportError(
-                "LangChain agent runtime imports failed. Ensure AgentExecutor and create_react_agent are available "
-                "for your installed LangChain version."
-            )
+        if agent_executor_cls is not None and create_react_agent_fn is not None:
+            return {
+                "kind": "classic",
+                "AgentExecutor": agent_executor_cls,
+                "create_react_agent": create_react_agent_fn,
+            }
 
-        return agent_executor_cls, create_react_agent_fn
+        # Newer LangChain versions use LangGraph prebuilt ReAct agents.
+        try:
+            module = importlib.import_module("langgraph.prebuilt")
+            langgraph_create_react_agent = getattr(module, "create_react_agent", None)
+            if langgraph_create_react_agent is not None:
+                return {
+                    "kind": "langgraph",
+                    "create_react_agent": langgraph_create_react_agent,
+                }
+        except Exception:
+            pass
+
+        raise ImportError(
+            "LangChain agent runtime imports failed. Ensure create_react_agent is available from "
+            "langchain/langchain_classic or langgraph.prebuilt in your installed version."
+        )
+
+    def _message_text(self, message: Any) -> str:
+        """Normalize message content to plain text across LangChain/LangGraph message types."""
+        content = getattr(message, "content", message)
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            chunks: List[str] = []
+            for part in content:
+                if isinstance(part, dict):
+                    text = part.get("text")
+                    if text:
+                        chunks.append(str(text))
+                elif part is not None:
+                    chunks.append(str(part))
+            return " ".join(chunks).strip()
+        return str(content).strip()
+
+    def _invoke_langgraph_react(self, create_react_agent_fn, llm, tools, system_text: str, user_input: str) -> Dict[str, Any]:
+        """Execute LangGraph prebuilt ReAct agent and extract output/trajectory."""
+        agent = None
+        for constructor in (
+            lambda: create_react_agent_fn(model=llm, tools=tools, prompt=system_text),
+            lambda: create_react_agent_fn(llm, tools, prompt=system_text),
+            lambda: create_react_agent_fn(llm, tools),
+        ):
+            try:
+                agent = constructor()
+                break
+            except TypeError:
+                continue
+
+        if agent is None:
+            raise RuntimeError("Unable to construct LangGraph ReAct agent with available signatures")
+
+        result = None
+        last_error = None
+        for payload in (
+            {"messages": [("user", user_input)]},
+            {"messages": [{"role": "user", "content": user_input}]},
+            {"input": user_input},
+        ):
+            try:
+                result = agent.invoke(payload)
+                break
+            except Exception as exc:
+                last_error = exc
+                continue
+
+        if result is None:
+            if last_error is not None:
+                raise last_error
+            raise RuntimeError("LangGraph ReAct invocation failed")
+
+        trace: List[Dict[str, str]] = []
+        output = ""
+        messages = result.get("messages", []) if isinstance(result, dict) else []
+
+        for msg in messages:
+            msg_type = str(getattr(msg, "type", "")).lower()
+            text = self._message_text(msg)
+
+            if msg_type == "ai":
+                output = text or output
+                tool_calls = getattr(msg, "tool_calls", None) or []
+                for tool_call in tool_calls:
+                    if isinstance(tool_call, dict):
+                        tool_name = str(tool_call.get("name", "unknown"))
+                        tool_input = tool_call.get("args", tool_call.get("input", ""))
+                    else:
+                        tool_name = str(tool_call)
+                        tool_input = ""
+                    trace.append({
+                        "phase": "action",
+                        "content": f"tool={tool_name} input={tool_input}",
+                    })
+            elif msg_type == "tool":
+                trace.append({
+                    "phase": "observation",
+                    "content": text[:280],
+                })
+
+        if not output:
+            for msg in reversed(messages):
+                text = self._message_text(msg)
+                if text:
+                    output = text
+                    break
+
+        if not output and isinstance(result, dict):
+            output = str(result.get("output", "")).strip()
+
+        return {
+            "output": output.strip(),
+            "trace": trace,
+        }
 
     def _span(self, name: str, attrs: Optional[Dict[str, Any]] = None):
         return start_span(self.tracer, name, attrs=attrs)
@@ -243,7 +355,37 @@ class TestOpsAgent:
     ) -> Dict[str, Any]:
         from langchain_core.tools import tool
 
-        AgentExecutor, create_react_agent = self._resolve_langchain_agent_runtime()
+        try:
+            runtime = self._resolve_langchain_agent_runtime()
+        except ImportError as import_error:
+            logger.warning("Agent runtime unavailable; using bootstrap single-agent fallback: %s", import_error)
+            recovered = self._bootstrap_single_agent(message)
+            if include_trace:
+                recovered_trace = list(recovered.get("agent_trace", []))
+                recovered_trace.insert(
+                    0,
+                    {
+                        "phase": "fallback",
+                        "content": "LangChain runtime unavailable; executed bootstrap single-agent path",
+                    },
+                )
+                recovered["agent_trace"] = recovered_trace
+
+            payload = self._response_payload(
+                response=recovered.get("response", "I could not produce a response."),
+                trace=recovered.get("agent_trace", []),
+                tool_calls=recovered.get("tool_calls", []),
+                session_id=session_id,
+                include_trace=include_trace,
+                handoffs=recovered.get("handoffs", []),
+                trajectory_metrics=recovered.get("trajectory_metrics", self._empty_trajectory_metrics()),
+                crew_mode=False,
+                exercise_number=exercise_number,
+                bootstrap_applied=True,
+                bootstrap_reason="agent_runtime_import_failure",
+            )
+            payload["agent_runtime_fallback"] = True
+            return payload
 
         trace: List[Dict[str, str]] = []
         tool_calls: List[Dict[str, Any]] = []
@@ -295,15 +437,6 @@ class TestOpsAgent:
 
         prompt = self._build_react_prompt(system_text)
         llm = self._get_llm()
-        agent = create_react_agent(llm, tools, prompt)
-        executor = AgentExecutor(
-            agent=agent,
-            tools=tools,
-            max_iterations=self.max_iterations,
-            handle_parsing_errors=True,
-            return_intermediate_steps=True,
-            verbose=False,
-        )
 
         with start_span(
             self.tracer,
@@ -317,29 +450,51 @@ class TestOpsAgent:
                 "agent.loop_bug": force_loop_bug,
             },
         ):
-            result = executor.invoke({"input": message})
+            if runtime["kind"] == "classic":
+                AgentExecutor = runtime["AgentExecutor"]
+                create_react_agent = runtime["create_react_agent"]
+                agent = create_react_agent(llm, tools, prompt)
+                executor = AgentExecutor(
+                    agent=agent,
+                    tools=tools,
+                    max_iterations=self.max_iterations,
+                    handle_parsing_errors=True,
+                    return_intermediate_steps=True,
+                    verbose=False,
+                )
+                result = executor.invoke({"input": message})
+                output = str(result.get("output", "")).strip()
 
-        output = str(result.get("output", "")).strip()
+                for step in result.get("intermediate_steps", []):
+                    try:
+                        action, observation = step
+                        trace.append(
+                            {
+                                "phase": "action",
+                                "content": f"tool={action.tool} input={action.tool_input}",
+                            }
+                        )
+                        trace.append(
+                            {
+                                "phase": "observation",
+                                "content": str(observation)[:280],
+                            }
+                        )
+                    except Exception:
+                        continue
+            else:
+                langgraph_result = self._invoke_langgraph_react(
+                    runtime["create_react_agent"],
+                    llm,
+                    tools,
+                    system_text,
+                    message,
+                )
+                output = str(langgraph_result.get("output", "")).strip()
+                trace.extend(langgraph_result.get("trace", []))
+
         if not output:
             output = "I could not produce an answer from the available context."
-
-        for step in result.get("intermediate_steps", []):
-            try:
-                action, observation = step
-                trace.append(
-                    {
-                        "phase": "action",
-                        "content": f"tool={action.tool} input={action.tool_input}",
-                    }
-                )
-                trace.append(
-                    {
-                        "phase": "observation",
-                        "content": str(observation)[:280],
-                    }
-                )
-            except Exception:
-                continue
 
         query_counter = Counter((call.get("tool"), call.get("query")) for call in tool_calls)
         redundant = sum(count - 1 for count in query_counter.values() if count > 1)
@@ -377,7 +532,37 @@ class TestOpsAgent:
     ) -> Dict[str, Any]:
         from langchain_core.tools import tool
 
-        AgentExecutor, create_react_agent = self._resolve_langchain_agent_runtime()
+        try:
+            runtime = self._resolve_langchain_agent_runtime()
+        except ImportError as import_error:
+            logger.warning("Agent runtime unavailable; using bootstrap multi-agent fallback: %s", import_error)
+            recovered = self._bootstrap_multi_agent(message)
+            if include_trace:
+                recovered_trace = list(recovered.get("agent_trace", []))
+                recovered_trace.insert(
+                    0,
+                    {
+                        "phase": "fallback",
+                        "content": "LangChain runtime unavailable; executed bootstrap multi-agent path",
+                    },
+                )
+                recovered["agent_trace"] = recovered_trace
+
+            payload = self._response_payload(
+                response=recovered.get("response", "I could not produce a response."),
+                trace=recovered.get("agent_trace", []),
+                tool_calls=recovered.get("tool_calls", []),
+                session_id=session_id,
+                include_trace=include_trace,
+                handoffs=recovered.get("handoffs", []),
+                trajectory_metrics=recovered.get("trajectory_metrics", self._empty_trajectory_metrics()),
+                crew_mode=True,
+                exercise_number=exercise_number,
+                bootstrap_applied=True,
+                bootstrap_reason="agent_runtime_import_failure",
+            )
+            payload["agent_runtime_fallback"] = True
+            return payload
 
         trace: List[Dict[str, str]] = []
         tool_calls: List[Dict[str, Any]] = []
@@ -508,21 +693,13 @@ class TestOpsAgent:
             return getattr(response, "content", str(response))
 
         tools = [rag_agent_tool, general_chat_agent, validator_agent_tool]
-        prompt = self._build_react_prompt(
+        orchestration_system_text = (
             "You are the TriageAgent orchestrator. Choose exactly one specialist tool at a time. "
             "For factual/product/testing-content questions prefer rag_agent_tool, then optionally call validator_agent_tool. "
             "For casual greetings/help use general_chat_agent."
         )
+        prompt = self._build_react_prompt(orchestration_system_text)
         llm = self._get_llm()
-        agent = create_react_agent(llm, tools, prompt)
-        executor = AgentExecutor(
-            agent=agent,
-            tools=tools,
-            max_iterations=self.max_iterations,
-            handle_parsing_errors=True,
-            return_intermediate_steps=True,
-            verbose=False,
-        )
 
         with start_span(
             self.tracer,
@@ -535,29 +712,58 @@ class TestOpsAgent:
                 "agent.mode": "multi",
             },
         ):
-            result = executor.invoke({"input": message})
+            if runtime["kind"] == "classic":
+                AgentExecutor = runtime["AgentExecutor"]
+                create_react_agent = runtime["create_react_agent"]
+                agent = create_react_agent(llm, tools, prompt)
+                executor = AgentExecutor(
+                    agent=agent,
+                    tools=tools,
+                    max_iterations=self.max_iterations,
+                    handle_parsing_errors=True,
+                    return_intermediate_steps=True,
+                    verbose=False,
+                )
+                result = executor.invoke({"input": message})
+                output = str(result.get("output", "")).strip()
 
-        output = str(result.get("output", "")).strip()
+                for step in result.get("intermediate_steps", []):
+                    try:
+                        action, observation = step
+                        trace.append(
+                            {
+                                "phase": "action",
+                                "content": f"triage_tool={action.tool} input={action.tool_input}",
+                            }
+                        )
+                        trace.append(
+                            {
+                                "phase": "observation",
+                                "content": str(observation)[:280],
+                            }
+                        )
+                    except Exception:
+                        continue
+            else:
+                langgraph_result = self._invoke_langgraph_react(
+                    runtime["create_react_agent"],
+                    llm,
+                    tools,
+                    orchestration_system_text,
+                    message,
+                )
+                output = str(langgraph_result.get("output", "")).strip()
+                for item in langgraph_result.get("trace", []):
+                    content = str(item.get("content", ""))
+                    if content.startswith("tool="):
+                        content = content.replace("tool=", "triage_tool=", 1)
+                    trace.append({
+                        "phase": item.get("phase", "action"),
+                        "content": content,
+                    })
+
         if not output:
             output = "I could not produce a multi-agent answer for that request."
-
-        for step in result.get("intermediate_steps", []):
-            try:
-                action, observation = step
-                trace.append(
-                    {
-                        "phase": "action",
-                        "content": f"triage_tool={action.tool} input={action.tool_input}",
-                    }
-                )
-                trace.append(
-                    {
-                        "phase": "observation",
-                        "content": str(observation)[:280],
-                    }
-                )
-            except Exception:
-                continue
 
         query_counter = Counter((call.get("tool"), call.get("query")) for call in tool_calls)
         redundant = sum(count - 1 for count in query_counter.values() if count > 1)
