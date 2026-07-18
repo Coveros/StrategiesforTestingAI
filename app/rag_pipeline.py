@@ -10,6 +10,7 @@ import chromadb
 import requests
 from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
+from app.phoenix_tracing import get_tracer, start_span
 
 # Load environment variables from project root for consistent behavior
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -34,12 +35,19 @@ class RAGPipeline:
         self.ollama_host = os.getenv('OLLAMA_HOST', 'http://127.0.0.1:11434').rstrip('/')
         self.ollama_model = os.getenv('OLLAMA_MODEL', 'llama3.2:1b')
         self.ollama_timeout_seconds = int(os.getenv('OLLAMA_TIMEOUT_SECONDS', '120'))
+        self.tracer, self.phoenix_enabled = get_tracer(
+            "strategiesfortestingai.rag",
+            enable_env="ENABLE_PHOENIX_ASK_TRACING",
+            default_enabled=True,
+            default_project_name="strategiesfortestingai",
+        )
         self.stats = {
             'queries_processed': 0,
             'total_response_time': 0,
             'documents_loaded': 0,
             'average_retrieval_time': 0,
             'errors': 0,
+            'phoenix_ask_tracing_enabled': self.phoenix_enabled,
             'warmup_enabled': False,
             'warmup_completed': False,
             'warmup_time': 0.0,
@@ -408,16 +416,25 @@ class RAGPipeline:
         try:
             if n_results is None:
                 n_results = int(os.getenv('MAX_RETRIEVAL_DOCS', 5))
-            
-            # Generate query embedding
-            query_embedding = self._generate_query_embedding(query)
-            
-            # Search vector database
-            results = self.collection.query(
-                query_embeddings=[query_embedding],
-                n_results=n_results,
-                include=["documents", "metadatas", "distances"]
-            )
+
+            with start_span(
+                self.tracer,
+                "rag.retrieve",
+                span_kind="RETRIEVER",
+                attrs={
+                    "rag.query": query,
+                    "rag.n_results": n_results,
+                },
+            ):
+                # Generate query embedding
+                query_embedding = self._generate_query_embedding(query)
+
+                # Search vector database
+                results = self.collection.query(
+                    query_embeddings=[query_embedding],
+                    n_results=n_results,
+                    include=["documents", "metadatas", "distances"]
+                )
             
             retrieval_time = time.time() - start_time
             self.stats['average_retrieval_time'] = (
@@ -462,25 +479,35 @@ class RAGPipeline:
                 "Answer:"
             )
 
-            def generate_call():
-                response = requests.post(
-                    f"{self.ollama_host}/api/generate",
-                    json={
-                        "model": self.ollama_model,
-                        "prompt": prompt,
-                        "stream": False,
-                        "options": {
-                            "temperature": effective_temperature,
-                            "num_predict": int(os.getenv('MAX_TOKENS', '600')),
+            with start_span(
+                self.tracer,
+                "rag.generate",
+                span_kind="LLM",
+                attrs={
+                    "llm.model_name": self.ollama_model,
+                    "llm.temperature": effective_temperature,
+                    "rag.context_docs_used": min(3, len(context_docs)),
+                },
+            ):
+                def generate_call():
+                    response = requests.post(
+                        f"{self.ollama_host}/api/generate",
+                        json={
+                            "model": self.ollama_model,
+                            "prompt": prompt,
+                            "stream": False,
+                            "options": {
+                                "temperature": effective_temperature,
+                                "num_predict": int(os.getenv('MAX_TOKENS', '600')),
+                            },
                         },
-                    },
-                    timeout=self.ollama_timeout_seconds,
-                )
-                response.raise_for_status()
-                return response.json()
+                        timeout=self.ollama_timeout_seconds,
+                    )
+                    response.raise_for_status()
+                    return response.json()
 
-            payload = self._provider_call_with_backoff(generate_call)
-            return str(payload.get('response', '')).strip()
+                payload = self._provider_call_with_backoff(generate_call)
+                return str(payload.get('response', '')).strip()
             
         except Exception as e:
             logger.error(f"Failed to generate response: {str(e)}")
@@ -492,52 +519,61 @@ class RAGPipeline:
         start_time = time.time()
         
         try:
-            # Input validation
-            if not user_query or not user_query.strip():
-                raise ValueError("Empty query provided")
-            
-            # Retrieve relevant documents
-            retrieval_results = self._retrieve_documents(user_query)
-            
-            # Generate response
-            response_text = self._generate_response(
-                user_query, 
-                retrieval_results['documents'],
-                temperature=temperature
-            )
+            with start_span(
+                self.tracer,
+                "rag.query",
+                span_kind="CHAIN",
+                attrs={
+                    "input.value": user_query,
+                    "rag.phoenix_enabled": self.phoenix_enabled,
+                },
+            ):
+                # Input validation
+                if not user_query or not user_query.strip():
+                    raise ValueError("Empty query provided")
 
-            configured_default_temp = float(os.getenv('TEMPERATURE', '0.3'))
-            effective_temperature = configured_default_temp if temperature is None else float(temperature)
-            
-            # Calculate total response time
-            total_time = time.time() - start_time
-            
-            # Update statistics
-            self.stats['queries_processed'] += 1
-            self.stats['total_response_time'] += total_time
-            
-            # Prepare response data
-            response_data = {
-                'response': response_text,
-                'sources': [
-                    {
-                        'content': self._create_smart_preview(doc),
-                        'metadata': meta,
-                        'similarity': round(max(0, (1 - dist) * 100), 1)  # Convert cosine distance to similarity percentage
-                    }
-                    for doc, meta, dist in zip(
-                        retrieval_results['documents'][:3],
-                        retrieval_results['metadatas'][:3],
-                        retrieval_results['distances'][:3]
-                    )
-                ],
-                'retrieval_time': retrieval_results['retrieval_time'],
-                'generation_time': total_time - retrieval_results['retrieval_time'],
-                'total_time': total_time,
-                'temperature': effective_temperature
-            }
-            
-            return response_data
+                # Retrieve relevant documents
+                retrieval_results = self._retrieve_documents(user_query)
+
+                # Generate response
+                response_text = self._generate_response(
+                    user_query,
+                    retrieval_results['documents'],
+                    temperature=temperature
+                )
+
+                configured_default_temp = float(os.getenv('TEMPERATURE', '0.3'))
+                effective_temperature = configured_default_temp if temperature is None else float(temperature)
+
+                # Calculate total response time
+                total_time = time.time() - start_time
+
+                # Update statistics
+                self.stats['queries_processed'] += 1
+                self.stats['total_response_time'] += total_time
+
+                # Prepare response data
+                response_data = {
+                    'response': response_text,
+                    'sources': [
+                        {
+                            'content': self._create_smart_preview(doc),
+                            'metadata': meta,
+                            'similarity': round(max(0, (1 - dist) * 100), 1)  # Convert cosine distance to similarity percentage
+                        }
+                        for doc, meta, dist in zip(
+                            retrieval_results['documents'][:3],
+                            retrieval_results['metadatas'][:3],
+                            retrieval_results['distances'][:3]
+                        )
+                    ],
+                    'retrieval_time': retrieval_results['retrieval_time'],
+                    'generation_time': total_time - retrieval_results['retrieval_time'],
+                    'total_time': total_time,
+                    'temperature': effective_temperature
+                }
+
+                return response_data
             
         except Exception as e:
             error_time = time.time() - start_time
@@ -564,6 +600,7 @@ class RAGPipeline:
             'average_retrieval_time': round(self.stats['average_retrieval_time'], 3),
             'documents_loaded': self.stats['documents_loaded'],
             'error_count': self.stats['errors'],
+            'phoenix_ask_tracing_enabled': self.stats['phoenix_ask_tracing_enabled'],
             'warmup_enabled': self.stats['warmup_enabled'],
             'warmup_completed': self.stats['warmup_completed'],
             'warmup_time': self.stats['warmup_time'],

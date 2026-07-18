@@ -35,7 +35,16 @@ def _register_once(project_name: str) -> bool:
     try:
         from phoenix.otel import register
 
-        register(project_name=project_name)
+        collector_endpoint = os.getenv("PHOENIX_COLLECTOR_ENDPOINT", "http://127.0.0.1:6006").strip()
+        collector_protocol = os.getenv("PHOENIX_COLLECTOR_PROTOCOL", "http/protobuf").strip().lower()
+        if collector_protocol not in {"http/protobuf", "grpc"}:
+            collector_protocol = "http/protobuf"
+
+        register(
+            project_name=project_name,
+            endpoint=collector_endpoint,
+            protocol=collector_protocol,
+        )
         _REGISTERED = True
         return True
     except Exception as exc:
