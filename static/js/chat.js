@@ -320,6 +320,9 @@ class ChatApp {
         try {
             const requestPayload = { message: message };
             requestPayload.session_id = this.sessionId;
+            if (Number.isFinite(this.exerciseNumber) && this.exerciseNumber > 0) {
+                requestPayload.exercise_number = this.exerciseNumber;
+            }
 
             if (this.getAgentModeEnabled()) {
                 requestPayload.mode = 'agentic';

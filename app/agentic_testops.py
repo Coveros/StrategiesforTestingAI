@@ -87,6 +87,12 @@ class TestOpsAgent:
     def _span(self, name: str, attrs: Optional[Dict[str, Any]] = None):
         return start_span(self.tracer, name, attrs=attrs)
 
+    def _span_name(self, base_name: str, exercise_number: Optional[int]) -> str:
+        """Make span names searchable by exercise in Phoenix name search."""
+        if isinstance(exercise_number, int) and exercise_number > 0:
+            return f"{base_name}.ex{exercise_number}"
+        return base_name
+
     def _get_rag_pipeline(self) -> "RAGPipeline":
         # Delay heavy RAG imports until first actual KB access.
         from app.rag_pipeline import RAGPipeline
@@ -190,6 +196,7 @@ class TestOpsAgent:
         message: str,
         session_id: str,
         include_trace: bool,
+        exercise_number: Optional[int],
         force_loop_bug: bool = False,
     ) -> Dict[str, Any]:
         from langchain.agents import AgentExecutor, create_react_agent
@@ -257,10 +264,11 @@ class TestOpsAgent:
 
         with start_span(
             self.tracer,
-            "Single-Agent ReAct",
+            self._span_name("Single-Agent ReAct", exercise_number),
             span_kind="AGENT",
             attrs={
                 "session.id": session_id,
+                "course.exercise.number": exercise_number,
                 "agent.mode": "single",
                 "agent.loop_bug": force_loop_bug,
             },
@@ -313,9 +321,16 @@ class TestOpsAgent:
             handoffs=[],
             trajectory_metrics=metrics,
             crew_mode=False,
+            exercise_number=exercise_number,
         )
 
-    def _run_multi_agent(self, message: str, session_id: str, include_trace: bool) -> Dict[str, Any]:
+    def _run_multi_agent(
+        self,
+        message: str,
+        session_id: str,
+        include_trace: bool,
+        exercise_number: Optional[int],
+    ) -> Dict[str, Any]:
         from langchain.agents import AgentExecutor, create_react_agent
         from langchain_core.tools import tool
 
@@ -364,7 +379,7 @@ class TestOpsAgent:
 
             with start_span(
                 self.tracer,
-                "RAG Specialist",
+                self._span_name("RAG Specialist", exercise_number),
                 span_kind="AGENT",
                 attrs={
                     "handoff.mutated": mutated,
@@ -376,6 +391,7 @@ class TestOpsAgent:
                     message=routed_query,
                     session_id=session_id,
                     include_trace=False,
+                    exercise_number=exercise_number,
                     force_loop_bug=False,
                 )
 
@@ -398,7 +414,7 @@ class TestOpsAgent:
             )
             with start_span(
                 self.tracer,
-                "General Chat Agent",
+                self._span_name("General Chat Agent", exercise_number),
                 span_kind="AGENT",
                 attrs={"handoff.original_query": user_query},
             ):
@@ -430,7 +446,7 @@ class TestOpsAgent:
             )
             with start_span(
                 self.tracer,
-                "Validator Agent",
+                self._span_name("Validator Agent", exercise_number),
                 span_kind="AGENT",
                 attrs={"validator.input_length": len(candidate_answer)},
             ):
@@ -464,10 +480,11 @@ class TestOpsAgent:
 
         with start_span(
             self.tracer,
-            "Triage Agent",
+            self._span_name("Triage Agent", exercise_number),
             span_kind="AGENT",
             attrs={
                 "session.id": session_id,
+                "course.exercise.number": exercise_number,
                 "agent.mode": "multi",
             },
         ):
@@ -517,6 +534,7 @@ class TestOpsAgent:
             handoffs=handoffs,
             trajectory_metrics=metrics,
             crew_mode=True,
+            exercise_number=exercise_number,
         )
 
     def process(
@@ -525,6 +543,7 @@ class TestOpsAgent:
         session_id: str,
         include_trace: bool = False,
         crew_mode: bool = False,
+        exercise_number: Optional[int] = None,
     ) -> Dict[str, Any]:
         self.stats["requests"] += 1
         if crew_mode:
@@ -546,6 +565,7 @@ class TestOpsAgent:
                 handoffs=[],
                 trajectory_metrics=metrics,
                 crew_mode=crew_mode,
+                exercise_number=exercise_number,
             )
 
         if self._is_injection_attempt(message):
@@ -561,6 +581,7 @@ class TestOpsAgent:
                 handoffs=[],
                 trajectory_metrics=metrics,
                 crew_mode=crew_mode,
+                exercise_number=exercise_number,
             )
 
         if "set persona pirate" in lowered:
@@ -577,6 +598,7 @@ class TestOpsAgent:
                 handoffs=[],
                 trajectory_metrics=metrics,
                 crew_mode=crew_mode,
+                exercise_number=exercise_number,
             )
 
         if "set persona default" in lowered:
@@ -593,6 +615,7 @@ class TestOpsAgent:
                 handoffs=[],
                 trajectory_metrics=metrics,
                 crew_mode=crew_mode,
+                exercise_number=exercise_number,
             )
 
         if "reset context" in lowered or "new session" in lowered:
@@ -614,6 +637,7 @@ class TestOpsAgent:
                 handoffs=[],
                 trajectory_metrics=metrics,
                 crew_mode=crew_mode,
+                exercise_number=exercise_number,
             )
 
         track_match = re.search(r"track failure\s+(REG-\d{3,5})", message, re.IGNORECASE)
@@ -631,14 +655,21 @@ class TestOpsAgent:
                 handoffs=[],
                 trajectory_metrics=metrics,
                 crew_mode=crew_mode,
+                exercise_number=exercise_number,
             )
 
         try:
             force_loop_bug = "trajectory hacking" in lowered or "simulate react loop" in lowered
             if crew_mode:
-                payload = self._run_multi_agent(message, session_id, include_trace)
+                payload = self._run_multi_agent(message, session_id, include_trace, exercise_number)
             else:
-                payload = self._run_single_agent(message, session_id, include_trace, force_loop_bug=force_loop_bug)
+                payload = self._run_single_agent(
+                    message,
+                    session_id,
+                    include_trace,
+                    exercise_number,
+                    force_loop_bug=force_loop_bug,
+                )
 
             if self._should_apply_bootstrap(payload):
                 payload = self._apply_bootstrap_recovery(
@@ -647,6 +678,7 @@ class TestOpsAgent:
                     session_id=session_id,
                     include_trace=include_trace,
                     crew_mode=crew_mode,
+                    exercise_number=exercise_number,
                 )
                 self.stats["fallback_responses"] += 1
 
@@ -654,6 +686,7 @@ class TestOpsAgent:
                 payload["response"] = f"Ahoy matey. {payload['response']} Arrr."
 
             payload["phoenix_trace_enabled"] = self.phoenix_enabled
+            payload["exercise_number"] = exercise_number
             return payload
         except Exception as exc:
             self.stats["errors"] += 1
@@ -670,6 +703,7 @@ class TestOpsAgent:
                 handoffs=[],
                 trajectory_metrics=metrics,
                 crew_mode=crew_mode,
+                exercise_number=exercise_number,
             )
 
     def _should_apply_bootstrap(self, payload: Dict[str, Any]) -> bool:
@@ -689,6 +723,7 @@ class TestOpsAgent:
         session_id: str,
         include_trace: bool,
         crew_mode: bool,
+        exercise_number: Optional[int],
     ) -> Dict[str, Any]:
         if crew_mode:
             recovered = self._bootstrap_multi_agent(message)
@@ -726,6 +761,7 @@ class TestOpsAgent:
         merged["bootstrap_applied"] = True
         merged["bootstrap_reason"] = "zero_tool_calls"
         merged["bootstrap_mode"] = "multi" if crew_mode else "single"
+        merged["exercise_number"] = exercise_number
         return merged
 
     def _bootstrap_single_agent(self, message: str) -> Dict[str, Any]:
@@ -843,6 +879,7 @@ class TestOpsAgent:
         handoffs: List[Dict[str, Any]],
         trajectory_metrics: Dict[str, Any],
         crew_mode: bool,
+        exercise_number: Optional[int],
         bootstrap_applied: bool = False,
         bootstrap_reason: Optional[str] = None,
     ) -> Dict[str, Any]:
@@ -852,6 +889,7 @@ class TestOpsAgent:
             "agent_mode": True,
             "crew_mode": crew_mode,
             "session_id": session_id,
+            "exercise_number": exercise_number,
             "tool_calls": tool_calls,
             "handoffs": handoffs,
             "trajectory_metrics": trajectory_metrics,

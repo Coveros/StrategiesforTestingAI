@@ -408,8 +408,21 @@ class RAGPipeline:
         
         # Final fallback: hard truncation with ellipsis
         return text[:max_length - 3] + "..."
+
+    def _span_name(self, base_name: str, exercise_number: Optional[int]) -> str:
+        """Make span names searchable by exercise in Phoenix name search."""
+        if isinstance(exercise_number, int) and exercise_number > 0:
+            return f"{base_name}.ex{exercise_number}"
+        return base_name
     
-    def _retrieve_documents(self, query: str, n_results: int = None) -> Dict[str, Any]:
+    def _retrieve_documents(
+        self,
+        query: str,
+        n_results: int = None,
+        *,
+        session_id: Optional[str] = None,
+        exercise_number: Optional[int] = None,
+    ) -> Dict[str, Any]:
         """Retrieve relevant documents for a query."""
         start_time = time.time()
         
@@ -419,11 +432,14 @@ class RAGPipeline:
 
             with start_span(
                 self.tracer,
-                "rag.retrieve",
+                self._span_name("rag.retrieve", exercise_number),
                 span_kind="RETRIEVER",
                 attrs={
                     "rag.query": query,
                     "rag.n_results": n_results,
+                    "session.id": session_id,
+                    "course.exercise.number": exercise_number,
+                    "app.mode": "rag",
                 },
             ):
                 # Generate query embedding
@@ -454,7 +470,15 @@ class RAGPipeline:
             self.stats['errors'] += 1
             raise
     
-    def _generate_response(self, query: str, context_docs: List[str], temperature: Optional[float] = None) -> str:
+    def _generate_response(
+        self,
+        query: str,
+        context_docs: List[str],
+        temperature: Optional[float] = None,
+        *,
+        session_id: Optional[str] = None,
+        exercise_number: Optional[int] = None,
+    ) -> str:
         """Generate response using Ollama with retrieved context."""
         try:
             # Prepare context from retrieved documents
@@ -481,12 +505,15 @@ class RAGPipeline:
 
             with start_span(
                 self.tracer,
-                "rag.generate",
+                self._span_name("rag.generate", exercise_number),
                 span_kind="LLM",
                 attrs={
                     "llm.model_name": self.ollama_model,
                     "llm.temperature": effective_temperature,
                     "rag.context_docs_used": min(3, len(context_docs)),
+                    "session.id": session_id,
+                    "course.exercise.number": exercise_number,
+                    "app.mode": "rag",
                 },
             ):
                 def generate_call():
@@ -514,18 +541,28 @@ class RAGPipeline:
             self.stats['errors'] += 1
             raise
     
-    def query(self, user_query: str, temperature: Optional[float] = None) -> Dict[str, Any]:
+    def query(
+        self,
+        user_query: str,
+        temperature: Optional[float] = None,
+        *,
+        session_id: Optional[str] = None,
+        exercise_number: Optional[int] = None,
+    ) -> Dict[str, Any]:
         """Process a user query and return response with metadata."""
         start_time = time.time()
         
         try:
             with start_span(
                 self.tracer,
-                "rag.query",
+                self._span_name("rag.query", exercise_number),
                 span_kind="CHAIN",
                 attrs={
                     "input.value": user_query,
                     "rag.phoenix_enabled": self.phoenix_enabled,
+                    "session.id": session_id,
+                    "course.exercise.number": exercise_number,
+                    "app.mode": "rag",
                 },
             ):
                 # Input validation
@@ -533,13 +570,19 @@ class RAGPipeline:
                     raise ValueError("Empty query provided")
 
                 # Retrieve relevant documents
-                retrieval_results = self._retrieve_documents(user_query)
+                retrieval_results = self._retrieve_documents(
+                    user_query,
+                    session_id=session_id,
+                    exercise_number=exercise_number,
+                )
 
                 # Generate response
                 response_text = self._generate_response(
                     user_query,
                     retrieval_results['documents'],
-                    temperature=temperature
+                    temperature=temperature,
+                    session_id=session_id,
+                    exercise_number=exercise_number,
                 )
 
                 configured_default_temp = float(os.getenv('TEMPERATURE', '0.3'))

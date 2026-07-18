@@ -271,6 +271,14 @@ def chat():
         session_id = str(data.get('session_id') or uuid.uuid4())
         include_trace = bool(data.get('include_trace', False))
         crew_mode = bool(data.get('crew_mode', False))
+        exercise_number = None
+        if 'exercise_number' in data and data['exercise_number'] is not None:
+            try:
+                parsed_exercise = int(data['exercise_number'])
+                if 1 <= parsed_exercise <= 9:
+                    exercise_number = parsed_exercise
+            except (TypeError, ValueError):
+                exercise_number = None
 
         requested_temperature = None
         if 'temperature' in data and data['temperature'] is not None:
@@ -294,7 +302,8 @@ def chat():
                 user_message,
                 session_id=session_id,
                 include_trace=include_trace,
-                crew_mode=crew_mode
+                crew_mode=crew_mode,
+                exercise_number=exercise_number,
             )
         else:
             # Check if RAG pipeline is initialized
@@ -310,7 +319,12 @@ def chat():
                     return jsonify(error_payload), 500
             
             # Get response from RAG pipeline
-            response_data = rag_pipeline.query(user_message, temperature=requested_temperature)
+            response_data = rag_pipeline.query(
+                user_message,
+                temperature=requested_temperature,
+                session_id=session_id,
+                exercise_number=exercise_number,
+            )
         
         # Calculate response time
         response_time = time.time() - start_time
@@ -320,6 +334,7 @@ def chat():
         response_data['status'] = 'success'
         response_data['mode'] = mode
         response_data['session_id'] = session_id
+        response_data['exercise_number'] = exercise_number
         
         logger.info(f"Query processed successfully in {response_time:.3f}s")
         return jsonify(response_data)
