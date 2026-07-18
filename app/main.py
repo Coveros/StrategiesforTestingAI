@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, abort, send_file
+from flask import Flask, render_template, request, jsonify, redirect, url_for, abort
 from flask_cors import CORS
 import os
 import logging
@@ -45,8 +45,6 @@ CORS(app, resources={r"/api/*": {"origins": _cors_origins}})
 
 DOCS_DIR = Path(os.path.dirname(os.path.dirname(__file__))) / 'docs'
 EXERCISE_DOCS_DIR = DOCS_DIR / 'exercises'
-TRACE_SAMPLES_DIR = Path(os.path.dirname(os.path.dirname(__file__))) / 'artifacts' / 'trace_samples'
-
 EXERCISE_CATALOG = [
     {
         'number': i,
@@ -447,44 +445,6 @@ def get_stats():
         logger.error(f"Error getting stats: {str(e)}")
         logger.error(traceback.format_exc())
         return jsonify({'error': 'Failed to retrieve stats'}), 500
-
-
-@app.route('/trace-demo', methods=['GET'])
-def trace_demo():
-    """Serve the most recent trace visualization HTML artifact."""
-    try:
-        if not TRACE_SAMPLES_DIR.exists():
-            return jsonify({
-                'status': 'error',
-                'error': 'Trace samples directory not found',
-                'next_step': 'Run: python trace_visualization_demo.py'
-            }), 404
-
-        html_files = sorted(
-            TRACE_SAMPLES_DIR.glob('trace_visualization_*.html'),
-            key=lambda p: p.stat().st_mtime,
-            reverse=True,
-        )
-
-        if not html_files:
-            return jsonify({
-                'status': 'error',
-                'error': 'No trace visualization report found',
-                'next_step': 'Run: python trace_visualization_demo.py'
-            }), 404
-
-        response = send_file(html_files[0], mimetype='text/html')
-        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '0'
-        return response
-    except Exception as e:
-        logger.error(f"Error loading trace demo: {str(e)}")
-        logger.error(traceback.format_exc())
-        return jsonify({
-            'status': 'error',
-            'error': 'Failed to load trace demo report'
-        }), 500
 
 
 @app.route('/api/reset', methods=['POST'])

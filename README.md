@@ -258,7 +258,6 @@ TestingAITutorial/
 - `GET /` chat UI
 - `POST /api/chat` message processing
 - `GET /api/health` service health
-- `GET /trace-demo` latest trace demo artifact
 
 ### Environment Setup
 - Copy `.env.template` to `.env`

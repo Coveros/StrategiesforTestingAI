@@ -17,7 +17,6 @@
             </div>
             <div class="header-actions">
                 <a href="{{ url_for('exercises_home', instructor=request.args.get('instructor'), agent=request.args.get('agent'), exercise=request.args.get('exercise')) }}" class="btn btn-secondary">Exercises</a>
-                <a href="{{ url_for('trace_demo') }}" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Trace Demo</a>
                 <button id="clearChat" class="btn btn-secondary">Clear Chat</button>
                 <button id="showStats" class="btn btn-secondary">Stats</button>
                 <div id="instructorControls" class="instructor-controls" style="display: none;">
