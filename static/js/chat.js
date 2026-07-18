@@ -7,6 +7,10 @@ class ChatApp {
         this.statsEndpoint = '/api/stats';
         this.healthEndpoint = '/api/health';
         this.appFlags = window.APP_FLAGS || {};
+        this.defaultTemperature = this.normalizeTemperatureValue(this.appFlags.defaultTemperature ?? '0.3');
+        this.modeTempStorageKey = 'chatModeTemperature';
+        this.modeTempUserSetStorageKey = 'chatModeTemperatureUserSet';
+        this.modeTempMigrationStorageKey = 'chatModeTemperatureMigrated_v2';
         this.queryParams = new URLSearchParams(window.location.search);
         this.instructorMode = Boolean(this.appFlags.instructorMode) || this.queryParams.get('instructor') === '1';
         this.exerciseNumber = Number(this.queryParams.get('exercise') || 0);
@@ -87,6 +91,8 @@ class ChatApp {
         this.tempOverrideEnabled.checked = savedEnabled === 'true';
         if (savedTemp !== null && savedTemp !== '') {
             this.temperatureInput.value = savedTemp;
+        } else {
+            this.temperatureInput.value = this.defaultTemperature.toFixed(1);
         }
         this.agentModeEnabled.checked = savedAgentMode === 'true';
         this.showTraceEnabled.checked = savedTraceMode === 'true';
@@ -109,14 +115,29 @@ class ChatApp {
         this.agentModeBtn.addEventListener('click', () => this.setChatMode('agent', true));
 
         if (this.modeTemperature) {
-            const savedTemp = localStorage.getItem('chatModeTemperature');
+            const savedTemp = localStorage.getItem(this.modeTempStorageKey);
+            const userSetTemp = localStorage.getItem(this.modeTempUserSetStorageKey) === 'true';
+            const migrationApplied = localStorage.getItem(this.modeTempMigrationStorageKey) === 'true';
+
+            let initialTemp = this.defaultTemperature;
             if (savedTemp !== null && savedTemp !== '') {
-                this.modeTemperature.value = this.normalizeTemperatureValue(savedTemp).toFixed(1);
+                const normalizedSaved = this.normalizeTemperatureValue(savedTemp);
+                const legacyDefaultDetected = Math.abs(normalizedSaved - 0.7) < 0.001;
+                const shouldMigrateLegacyDefault = legacyDefaultDetected && !userSetTemp && !migrationApplied;
+                initialTemp = shouldMigrateLegacyDefault ? this.defaultTemperature : normalizedSaved;
+                if (shouldMigrateLegacyDefault) {
+                    localStorage.setItem(this.modeTempMigrationStorageKey, 'true');
+                }
             }
+
+            this.modeTemperature.value = initialTemp.toFixed(1);
+            localStorage.setItem(this.modeTempStorageKey, String(initialTemp));
+
             this.modeTemperature.addEventListener('change', () => {
                 const value = this.normalizeTemperatureValue(this.modeTemperature.value);
                 this.modeTemperature.value = value.toFixed(1);
-                localStorage.setItem('chatModeTemperature', String(value));
+                localStorage.setItem(this.modeTempStorageKey, String(value));
+                localStorage.setItem(this.modeTempUserSetStorageKey, 'true');
             });
         }
     }
@@ -757,7 +778,7 @@ class ChatApp {
     normalizeTemperatureValue(rawValue) {
         const parsed = Number(rawValue);
         if (Number.isNaN(parsed)) {
-            return 0.7;
+            return 0.3;
         }
         return Math.max(0, Math.min(1, parsed));
     }
@@ -780,7 +801,7 @@ class ChatApp {
 
         const normalized = this.normalizeTemperatureValue(this.modeTemperature.value);
         this.modeTemperature.value = normalized.toFixed(1);
-        localStorage.setItem('chatModeTemperature', String(normalized));
+        localStorage.setItem(this.modeTempStorageKey, String(normalized));
         return normalized;
     }
 

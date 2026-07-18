@@ -39,13 +39,18 @@ class RAGPipeline:
             'total_response_time': 0,
             'documents_loaded': 0,
             'average_retrieval_time': 0,
-            'errors': 0
+            'errors': 0,
+            'warmup_enabled': False,
+            'warmup_completed': False,
+            'warmup_time': 0.0,
+            'warmup_error': None,
         }
         # Rate limiting tracking
         self._last_provider_call_time = 0
         self._min_spacing = 0.1  # spacing between local provider calls
         
         self._initialize_components()
+        self._warm_up_runtime()
     
     def _initialize_components(self):
         """Initialize all pipeline components."""
@@ -62,6 +67,54 @@ class RAGPipeline:
             logger.error(f"Failed to initialize RAG pipeline: {str(e)}")
             logger.error(traceback.format_exc())
             raise
+
+    def _warm_up_runtime(self):
+        """Warm up retrieval and generation paths to reduce first-query latency."""
+        warmup_enabled = os.getenv('RAG_WARMUP_ENABLED', 'true').lower() in ('1', 'true', 'yes', 'on')
+        self.stats['warmup_enabled'] = warmup_enabled
+        self.stats['warmup_completed'] = False
+        self.stats['warmup_time'] = 0.0
+        self.stats['warmup_error'] = None
+
+        if not warmup_enabled:
+            return
+
+        started_at = time.time()
+
+        try:
+            # Warm vector retrieval path and local file/db caches.
+            if self.collection is not None and self.collection.count() > 0:
+                self._retrieve_documents('genai testing warmup', n_results=1)
+
+            # Warm Ollama model/runtime with a tiny deterministic completion.
+            keep_alive = os.getenv('OLLAMA_KEEP_ALIVE', '10m')
+
+            def warmup_generate_call():
+                response = requests.post(
+                    f"{self.ollama_host}/api/generate",
+                    json={
+                        "model": self.ollama_model,
+                        "prompt": "Warmup: reply with OK.",
+                        "stream": False,
+                        "keep_alive": keep_alive,
+                        "options": {
+                            "temperature": 0,
+                            "num_predict": 8,
+                        },
+                    },
+                    timeout=min(30, self.ollama_timeout_seconds),
+                )
+                response.raise_for_status()
+                return response.json()
+
+            self._provider_call_with_backoff(warmup_generate_call)
+            self.stats['warmup_completed'] = True
+
+        except Exception as e:
+            self.stats['warmup_error'] = str(e)
+            logger.warning("Startup warm-up skipped after failure: %s", e)
+        finally:
+            self.stats['warmup_time'] = round(time.time() - started_at, 3)
 
     def _initialize_embedding_model(self):
         """Initialize local sentence-transformer embedding model."""
@@ -511,6 +564,10 @@ class RAGPipeline:
             'average_retrieval_time': round(self.stats['average_retrieval_time'], 3),
             'documents_loaded': self.stats['documents_loaded'],
             'error_count': self.stats['errors'],
+            'warmup_enabled': self.stats['warmup_enabled'],
+            'warmup_completed': self.stats['warmup_completed'],
+            'warmup_time': self.stats['warmup_time'],
+            'warmup_error': self.stats['warmup_error'],
             'error_rate': (
                 self.stats['errors'] / self.stats['queries_processed']
                 if self.stats['queries_processed'] > 0 else 0
