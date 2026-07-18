@@ -82,12 +82,12 @@ Frontend (HTML/CSS/JS) → Flask Backend → RAG Pipeline → Ollama (Local SLM)
 
    Pull a model locally if not already present:
    ```bash
-   ollama pull llama3:8b
-   # alternatives for lower-resource systems: llama3.2:3b or llama3.2:1b
+   ollama pull llama3.2:1b
+   # alternatives for better quality when resources allow: llama3.2:3b or llama3:8b
    ```
 
    Agent-mode reliability controls for Exercises 5-6:
-   - `AGENT_MODEL=llama3:8b` (recommended)
+   - `AGENT_MODEL=llama3.2:1b` (fastest startup path for class demos)
    - `AGENT_REQUEST_TIMEOUT_SECONDS=300` to avoid client-side timeouts on local CPU inference
    - `AGENT_BOOTSTRAP_ON_ZERO_TOOLS=auto` enables a transparent one-step bootstrap in student mode only
    - Set `AGENT_BOOTSTRAP_ON_ZERO_TOOLS=false` for pure-autonomy instructor demonstrations

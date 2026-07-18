@@ -13,8 +13,8 @@
 
 	// Boot-time defaults used before a local .env is created.
 	"remoteEnv": {
-		"OLLAMA_MODEL": "llama3:8b",
-		"AGENT_MODEL": "llama3:8b",
+		"OLLAMA_MODEL": "llama3.2:1b",
+		"AGENT_MODEL": "llama3.2:1b",
 		"AGENT_REQUEST_TIMEOUT_SECONDS": "300",
 		"AGENT_BOOTSTRAP_ON_ZERO_TOOLS": "true"
 	},

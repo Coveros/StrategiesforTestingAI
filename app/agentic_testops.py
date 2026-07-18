@@ -37,7 +37,7 @@ class TestOpsAgent:
         }
 
         self.ollama_host = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
-        self.model_name = os.getenv("AGENT_MODEL", os.getenv("OLLAMA_MODEL", "llama3:8b"))
+        self.model_name = os.getenv("AGENT_MODEL", os.getenv("OLLAMA_MODEL", "llama3.2:1b"))
         self.temperature = self._safe_float(os.getenv("AGENT_TEMPERATURE", "0.2"), default=0.2)
         self.max_iterations = int(self._safe_float(os.getenv("AGENT_MAX_ITERATIONS", "10"), default=10))
         self.request_timeout_seconds = int(self._safe_float(os.getenv("AGENT_REQUEST_TIMEOUT_SECONDS", "300"), default=300))

@@ -197,7 +197,7 @@ print_status_summary() {
   echo "==============================================="
 }
 
-MODEL="${OLLAMA_MODEL:-llama3:8b}"
+MODEL="${OLLAMA_MODEL:-llama3.2:1b}"
 
 if ensure_ollama_prerequisites && ensure_ollama_installed; then
   start_ollama_if_needed

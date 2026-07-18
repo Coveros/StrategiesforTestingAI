@@ -17,7 +17,7 @@ if [ -f .env ]; then
   fi
 fi
 
-MODEL="${OLLAMA_MODEL:-llama3:8b}"
+MODEL="${OLLAMA_MODEL:-llama3.2:1b}"
 
 ensure_ollama_prerequisites() {
   if command -v zstd >/dev/null 2>&1; then
