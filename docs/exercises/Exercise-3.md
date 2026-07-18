@@ -19,7 +19,9 @@ Your team added 2 new tests to the golden test suite during Exercise 2. Now audi
    - One false negative: a test that failed but should have passed based on response quality.
 5. For each, document: Test ID, actual similarity/keyword scores, why the threshold decision was wrong.
 6. Use Copilot to draft 1 new metric that would catch that gap (e.g., PII detector, source citation checker, JSON validator). Use the **Sample Copilot prompts for new metrics** below if helpful.
-7. Propose where this metric would live in the framework and what threshold it should use.
+7. Use Copilot to apply the metric change in the regression framework and explain what was changed.
+8. Re-run regression tests and confirm whether your false positive/false negative issue improved.
+9. Propose where this metric should live long-term in the framework and what threshold it should use.
 
 ## How to run and open the right artifact
 1. Run regression tests:
@@ -30,6 +32,7 @@ Your team added 2 new tests to the golden test suite during Exercise 2. Now audi
    - `CRITICAL FAILURES` and `BY CATEGORY` to find risk areas fast.
    - `DETAILED RESULTS` to review query, response preview, score components, and gate checks.
 4. Only if needed, open the matching JSON file for raw full response text.
+5. After analysis, use Copilot to implement your metric fix and run the suite again to validate the change.
 
 ## Analyzing Your Test Results
 

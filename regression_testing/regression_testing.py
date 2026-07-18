@@ -757,7 +757,9 @@ class RegressionTestFramework:
         file.write("3. In DETAILED RESULTS, compare Component Scores vs Gate Checks for each test.\n")
         file.write("4. Identify one false positive candidate: test passed but quality is not acceptable.\n")
         file.write("5. Identify one false negative candidate: test failed but quality appears acceptable.\n")
-        file.write("6. Use JSON only if you need full raw response text beyond previews in this report.\n\n")
+        file.write("6. Use Copilot to implement one metric or threshold fix for the identified gap.\n")
+        file.write("7. Re-run regression tests and compare before/after outcomes for that test.\n")
+        file.write("8. Use JSON only if you need full raw response text beyond previews in this report.\n\n")
         
         file.write("PERFORMANCE METRICS\n")
         file.write("-" * 20 + "\n")
