@@ -11,13 +11,25 @@
 Your team added 2 new tests to the golden test suite during Exercise 2. Now audit all 9 of your test results and find evaluation issues. The framework uses weighted thresholds (semantic similarity 40%, keyword match 25%, etc.) that might be too strict or too loose. You'll find one false positive and one false negative, then propose a metric improvement.
 
 ## Student tasks
-1. Analyse your test results from Exercise 2 located in `regression_test_results/` using the **Analyzing Your Test Results** guide below this task list. 
-2. Look at the scores for each test and identify:
-   - One false positive: a test that failed but should have passed based on the response quality.
-   - One false negative: a test that passed but should have failed due to issues in the response.
-3. For each, document: Test ID, actual similarity/keyword scores, why the threshold decision was wrong.
-4. Use Copilot to draft 1 new metric that would catch that gap (e.g., PII detector, source citation checker, JSON validator). Use the **Sample Copilot prompts for new metrics** below if helpful.
-5. Propose where this metric would live in the framework and what threshold it should use.
+1. Run regression tests and open the latest summary report in `regression_test_results/` (pattern: `regression_summary_YYYYMMDD_HHMMSS.txt`). Use this text report as the primary analysis artifact.
+2. Analyse test results using the **Analyzing Your Test Results** guide below this task list.
+3. Use the JSON file (`regression_results_YYYYMMDD_HHMMSS.json`) only when learners need deeper details beyond the summary report.
+4. Look at the scores for each test and identify:
+   - One false positive: a test that passed but should have failed based on response quality.
+   - One false negative: a test that failed but should have passed based on response quality.
+5. For each, document: Test ID, actual similarity/keyword scores, why the threshold decision was wrong.
+6. Use Copilot to draft 1 new metric that would catch that gap (e.g., PII detector, source citation checker, JSON validator). Use the **Sample Copilot prompts for new metrics** below if helpful.
+7. Propose where this metric would live in the framework and what threshold it should use.
+
+## How to run and open the right artifact
+1. Run regression tests:
+   - `python -m regression_testing.regression_testing`
+2. Open the latest summary report in `regression_test_results/`:
+   - File name pattern: `regression_summary_YYYYMMDD_HHMMSS.txt`
+3. Coach learners to use:
+   - `CRITICAL FAILURES` and `BY CATEGORY` for triage.
+   - `DETAILED RESULTS` for query/response previews, component scores, and gate checks.
+4. Open JSON only if a learner needs full raw response text or custom parsing.
 
 ## Analyzing Your Test Results
 
@@ -31,13 +43,13 @@ Look at each result in the test output:
 
 Use these fixed lab thresholds for all submissions: Semantic Similarity 0.65 and Keyword Match 0.25.
 
-**False Positive Pattern (should pass but failed):**
-- A test has strong semantic similarity, but one strict sub-score (for example, keyword match) drives the final decision to fail.
-- Use your own run data to decide whether the weighting or threshold was too strict.
+**False Positive Pattern (passed but should fail):**
+- A test passes gate checks, but qualitative review shows clear response issues (for example: irrelevant answer, unsafe content, missing grounding).
+- Use run data to identify why current metrics allowed this.
 
-**False Negative Pattern (should fail but passed):**
-- A test passes on aggregate scoring, but qualitative review shows a clear response quality issue (for example, mixed-signal, irrelevant, or unsafe content).
-- Use your own run data to identify why the current metrics missed it.
+**False Negative Pattern (failed but should pass):**
+- A test is semantically correct enough for classroom use, but strict thresholding or exact keyword matching causes a fail.
+- Use run data to identify which threshold/metric is too strict.
 
 Use findings from your own artifacts in `regression_test_results/`; do not reuse example IDs from this handout.
 

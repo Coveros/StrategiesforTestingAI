@@ -363,6 +363,59 @@ class RegressionTestFramework:
                 'sources': [{'source': 'genai_testing_guide.md', 'similarity': 0.83}],
                 'total_time': 0.01
             }
+
+    def _format_score_breakdown(self, evaluation: Dict[str, Any]) -> str:
+        """Format component score details for display in logs/reports."""
+        scores = evaluation.get('scores', {})
+        if not isinstance(scores, dict) or not scores:
+            return "N/A"
+
+        if 'edge_case_behavior' in scores:
+            return (
+                f"sim={scores.get('semantic_similarity', 0):.3f}, "
+                f"kw={scores.get('keyword_match', 0):.3f}, "
+                f"len={scores.get('length_appropriate', 0):.3f}, "
+                f"edge={scores.get('edge_case_behavior', 0):.3f}"
+            )
+
+        return (
+            f"sim={scores.get('semantic_similarity', 0):.3f}, "
+            f"kw={scores.get('keyword_match', 0):.3f}, "
+            f"len={scores.get('length_appropriate', 0):.3f}, "
+            f"src={scores.get('sources_adequate', 0):.3f}, "
+            f"perf={scores.get('performance_good', 0):.3f}, "
+            f"content={scores.get('content_substantial', 0):.3f}"
+        )
+
+    def _format_gate_breakdown(self, evaluation: Dict[str, Any]) -> str:
+        """Format pass/fail gate check details for display in logs/reports."""
+        reasons = evaluation.get('pass_reasons', {})
+        if not isinstance(reasons, dict) or not reasons:
+            return "N/A"
+
+        if 'edge_case_appropriate' in reasons:
+            return (
+                f"semantic={reasons.get('semantic_similarity_pass', False)}, "
+                f"keyword={reasons.get('keyword_match_pass', False)}, "
+                f"length={reasons.get('length_reasonable', False)}, "
+                f"edge_ok={reasons.get('edge_case_appropriate', False)}"
+            )
+
+        return (
+            f"semantic={reasons.get('semantic_similarity_pass', False)}, "
+            f"keyword={reasons.get('keyword_match_pass', False)}, "
+            f"content={reasons.get('content_quality_pass', False)}, "
+            f"no_errors={reasons.get('no_errors', False)}"
+        )
+
+    def _preview_text(self, text: str, max_len: int = 260) -> str:
+        """Create a compact single-line preview for report readability."""
+        if not text:
+            return ""
+        normalized = " ".join(str(text).split())
+        if len(normalized) <= max_len:
+            return normalized
+        return normalized[: max_len - 3] + "..."
     
     def evaluate_response_quality(self, test_case: Dict[str, Any], response_data: Dict[str, Any]) -> Dict[str, Any]:
         """Evaluate response quality against gold standard."""
@@ -546,9 +599,13 @@ class RegressionTestFramework:
                 
                 # Show immediate results
                 status = "✅ PASS" if evaluation['test_passed'] else "❌ FAIL"
-                print(f"   {status} | Similarity: {evaluation['semantic_similarity']:.3f} | "
-                      f"Keywords: {evaluation['keyword_match']:.3f} | "
-                      f"Score: {evaluation['overall_score']:.3f}")
+                print(
+                    f"   {status} | Similarity: {evaluation['semantic_similarity']:.3f} | "
+                    f"Keywords: {evaluation['keyword_match']:.3f} | "
+                    f"Score: {evaluation['overall_score']:.3f}"
+                )
+                print(f"      Components: {self._format_score_breakdown(evaluation)}")
+                print(f"      Gates: {self._format_gate_breakdown(evaluation)}")
                 
             except Exception as e:
                 print(f"   ❌ ERROR: {str(e)}")
@@ -692,6 +749,15 @@ class RegressionTestFramework:
         file.write(f"Failed: {summary['failed_tests']}\n")
         file.write(f"Pass Rate: {summary['pass_rate']:.1%}\n")
         file.write(f"Execution Time: {summary['total_execution_time']:.2f}s\n\n")
+
+        file.write("STUDENT ANALYSIS CHECKLIST\n")
+        file.write("-" * 26 + "\n")
+        file.write("1. Use this summary file as your primary artifact for Exercise 3 analysis.\n")
+        file.write("2. Start with CRITICAL FAILURES and BY CATEGORY to find likely risk areas.\n")
+        file.write("3. In DETAILED RESULTS, compare Component Scores vs Gate Checks for each test.\n")
+        file.write("4. Identify one false positive candidate: test passed but quality is not acceptable.\n")
+        file.write("5. Identify one false negative candidate: test failed but quality appears acceptable.\n")
+        file.write("6. Use JSON only if you need full raw response text beyond previews in this report.\n\n")
         
         file.write("PERFORMANCE METRICS\n")
         file.write("-" * 20 + "\n")
@@ -719,9 +785,23 @@ class RegressionTestFramework:
         for result in results:
             status = "PASS" if result.get('test_passed', False) else "FAIL"
             file.write(f"{result['test_id']}: {status}\n")
-            if not result.get('test_passed', False):
+            file.write(f"  Priority/Category: {result.get('priority', 'N/A')} / {result.get('category', 'N/A')}\n")
+            file.write(f"  Query: {self._preview_text(result.get('query', ''))}\n")
+            if 'overall_score' in result:
+                file.write(f"  Overall Score: {result.get('overall_score', 0):.3f}\n")
                 file.write(f"  Similarity: {result.get('semantic_similarity', 0):.3f}\n")
                 file.write(f"  Keywords: {result.get('keyword_match', 0):.3f}\n")
+                file.write(f"  Response Length: {result.get('response_length', 0)} chars\n")
+                file.write(f"  Expected Length Range: {result.get('expected_length_range', 'N/A')}\n")
+                file.write(f"  Sources Count: {result.get('sources_count', 0)}\n")
+                file.write(f"  Response Time: {result.get('response_time', 0):.2f}s\n")
+                file.write(f"  Component Scores: {self._format_score_breakdown(result)}\n")
+                file.write(f"  Gate Checks: {self._format_gate_breakdown(result)}\n")
+                file.write(f"  Gold Standard Preview: {self._preview_text(result.get('gold_standard', ''))}\n")
+                file.write(f"  Response Preview: {self._preview_text(result.get('response', ''))}\n")
+            if result.get('error'):
+                file.write(f"  Error: {result.get('error')}\n")
+            file.write("\n")
     
     def print_detailed_results(self, test_results: Dict[str, Any]):
         """Print detailed test results to console."""
@@ -765,6 +845,8 @@ class RegressionTestFramework:
             for test in failed_tests:
                 print(f"   ❌ {test['test_id']}: Sim={test.get('semantic_similarity', 0):.3f}, "
                       f"Keywords={test.get('keyword_match', 0):.3f}")
+                print(f"      Components: {self._format_score_breakdown(test)}")
+                print(f"      Gates: {self._format_gate_breakdown(test)}")
         else:
             print("   🎉 No failed tests!")
         
