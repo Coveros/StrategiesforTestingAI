@@ -10,9 +10,134 @@ from typing import Any, Dict, List, Optional
 if TYPE_CHECKING:
     from app.rag_pipeline import RAGPipeline
 
-from app.phoenix_tracing import get_tracer, start_span
+try:
+    from langchain_core.callbacks import BaseCallbackHandler
+except Exception:
+    class BaseCallbackHandler:  # type: ignore[no-redef]
+        pass
+
+from app.phoenix_tracing import OPENINFERENCE_SPAN_KIND, get_tracer, start_span
 
 logger = logging.getLogger(__name__)
+
+
+class AgentTrajectorySpanCallback(BaseCallbackHandler):
+    """Emit detailed child spans for agent internals (chain, llm, tool events)."""
+
+    def __init__(
+        self,
+        tracer: Any,
+        *,
+        session_id: str,
+        exercise_number: Optional[int],
+        agent_mode: str,
+        enabled: bool,
+    ) -> None:
+        super().__init__()
+        self.tracer = tracer
+        self.session_id = session_id
+        self.exercise_number = exercise_number
+        self.agent_mode = agent_mode
+        self.enabled = bool(enabled and tracer is not None)
+        self._active_spans: Dict[str, Any] = {}
+
+    def _normalize_name(self, base: str) -> str:
+        if isinstance(self.exercise_number, int) and self.exercise_number > 0:
+            return f"{base}.ex{self.exercise_number}"
+        return base
+
+    def _start(self, run_id: Any, name: str, span_kind: str, attrs: Optional[Dict[str, Any]] = None) -> None:
+        if not self.enabled:
+            return
+
+        try:
+            span = self.tracer.start_span(self._normalize_name(name))
+            span.set_attribute(OPENINFERENCE_SPAN_KIND, span_kind)
+            span.set_attribute("session.id", self.session_id)
+            span.set_attribute("agent.mode", self.agent_mode)
+            if self.exercise_number is not None:
+                span.set_attribute("exercise_number", self.exercise_number)
+                span.set_attribute("course.exercise.number", self.exercise_number)
+            if attrs:
+                for key, value in attrs.items():
+                    if value is None:
+                        continue
+                    if isinstance(value, (bool, int, float, str)):
+                        span.set_attribute(key, value)
+                    else:
+                        span.set_attribute(key, str(value))
+
+            self._active_spans[str(run_id)] = span
+        except Exception:
+            return
+
+    def _end(self, run_id: Any, error: Optional[Any] = None) -> None:
+        if not self.enabled:
+            return
+
+        span = self._active_spans.pop(str(run_id), None)
+        if span is None:
+            return
+
+        try:
+            if error is not None:
+                span.record_exception(error)
+                span.set_attribute("error", True)
+            span.end()
+        except Exception:
+            return
+
+    def on_chain_start(self, serialized: Dict[str, Any], inputs: Dict[str, Any], run_id: Any = None, **kwargs: Any) -> Any:
+        run_id = run_id or kwargs.get("run_id")
+        chain_name = serialized.get("name") or serialized.get("id") or "chain"
+        self._start(run_id, "agent.chain", "CHAIN", attrs={"chain.name": str(chain_name)})
+
+    def on_chain_end(self, outputs: Dict[str, Any], run_id: Any = None, **kwargs: Any) -> Any:
+        run_id = run_id or kwargs.get("run_id")
+        self._end(run_id)
+
+    def on_chain_error(self, error: BaseException, run_id: Any = None, **kwargs: Any) -> Any:
+        run_id = run_id or kwargs.get("run_id")
+        self._end(run_id, error=error)
+
+    def on_chat_model_start(self, serialized: Dict[str, Any], messages: List[Any], run_id: Any = None, **kwargs: Any) -> Any:
+        run_id = run_id or kwargs.get("run_id")
+        model_name = serialized.get("name") or serialized.get("id") or "chat_model"
+        self._start(run_id, "agent.llm", "LLM", attrs={"llm.model_name": str(model_name)})
+
+    def on_llm_start(self, serialized: Dict[str, Any], prompts: List[str], run_id: Any = None, **kwargs: Any) -> Any:
+        run_id = run_id or kwargs.get("run_id")
+        model_name = serialized.get("name") or serialized.get("id") or "llm"
+        self._start(run_id, "agent.llm", "LLM", attrs={"llm.model_name": str(model_name)})
+
+    def on_llm_end(self, response: Any, run_id: Any = None, **kwargs: Any) -> Any:
+        run_id = run_id or kwargs.get("run_id")
+        self._end(run_id)
+
+    def on_llm_error(self, error: BaseException, run_id: Any = None, **kwargs: Any) -> Any:
+        run_id = run_id or kwargs.get("run_id")
+        self._end(run_id, error=error)
+
+    def on_tool_start(self, serialized: Dict[str, Any], input_str: str, run_id: Any = None, **kwargs: Any) -> Any:
+        run_id = run_id or kwargs.get("run_id")
+        tool_name = serialized.get("name") or serialized.get("id") or "tool"
+        self._start(
+            run_id,
+            "agent.tool",
+            "TOOL",
+            attrs={
+                "tool.name": str(tool_name),
+                "tool.input_preview": str(input_str)[:180],
+            },
+        )
+
+    def on_tool_end(self, output: Any, run_id: Any = None, **kwargs: Any) -> Any:
+        run_id = run_id or kwargs.get("run_id")
+        self._end(run_id)
+
+    def on_tool_error(self, error: BaseException, run_id: Any = None, **kwargs: Any) -> Any:
+        run_id = run_id or kwargs.get("run_id")
+        self._end(run_id, error=error)
 
 
 class TestOpsAgent:
@@ -43,6 +168,7 @@ class TestOpsAgent:
         self.max_iterations = int(self._safe_float(os.getenv("AGENT_MAX_ITERATIONS", "10"), default=10))
         self.max_execution_seconds = int(self._safe_float(os.getenv("AGENT_MAX_EXECUTION_SECONDS", "45"), default=45))
         self.request_timeout_seconds = int(self._safe_float(os.getenv("AGENT_REQUEST_TIMEOUT_SECONDS", "300"), default=300))
+        self.enable_detailed_tracing = self._is_truthy(os.getenv("AGENT_DETAILED_TRACING", "true"))
         bootstrap_mode = str(os.getenv("AGENT_BOOTSTRAP_ON_ZERO_TOOLS", "auto")).strip().lower()
         instructor_mode = self._is_truthy(os.getenv("EXERCISE_HUB_ENABLE_INSTRUCTOR", "false"))
         if bootstrap_mode in {"1", "true", "yes", "on"}:
@@ -181,6 +307,7 @@ class TestOpsAgent:
         system_text: str,
         user_input: str,
         max_iterations: int,
+        callbacks: Optional[List[Any]] = None,
     ) -> Dict[str, Any]:
         """Execute LangGraph prebuilt ReAct agent and extract output/trajectory."""
         agent = None
@@ -201,13 +328,16 @@ class TestOpsAgent:
         result = None
         last_error = None
         recursion_limit = max(4, int(max_iterations) * 2)
+        invoke_config: Dict[str, Any] = {"recursion_limit": recursion_limit}
+        if callbacks:
+            invoke_config["callbacks"] = callbacks
         for payload in (
             {"messages": [("user", user_input)]},
             {"messages": [{"role": "user", "content": user_input}]},
             {"input": user_input},
         ):
             try:
-                result = agent.invoke(payload, {"recursion_limit": recursion_limit})
+                result = agent.invoke(payload, invoke_config)
                 break
             except Exception as exc:
                 last_error = exc
@@ -414,6 +544,17 @@ class TestOpsAgent:
         tool_calls: List[Dict[str, Any]] = []
         state = self._get_state(session_id)
         metrics = self._empty_trajectory_metrics()
+        callbacks: List[Any] = []
+        if self.enable_detailed_tracing:
+            callbacks.append(
+                AgentTrajectorySpanCallback(
+                    self.tracer,
+                    session_id=session_id,
+                    exercise_number=exercise_number,
+                    agent_mode="single",
+                    enabled=self.phoenix_enabled,
+                )
+            )
 
         @tool
         def query_knowledge_base(query: str) -> str:
@@ -486,6 +627,7 @@ class TestOpsAgent:
                     handle_parsing_errors=True,
                     return_intermediate_steps=True,
                     verbose=False,
+                    callbacks=callbacks,
                 )
                 result = executor.invoke({"input": message})
                 output = str(result.get("output", "")).strip()
@@ -515,6 +657,7 @@ class TestOpsAgent:
                     system_text,
                     message,
                     self.max_iterations,
+                    callbacks,
                 )
                 output = str(langgraph_result.get("output", "")).strip()
                 trace.extend(langgraph_result.get("trace", []))
@@ -595,6 +738,17 @@ class TestOpsAgent:
         handoffs: List[Dict[str, Any]] = []
         metrics = self._empty_trajectory_metrics()
         state = self._get_state(session_id)
+        callbacks: List[Any] = []
+        if self.enable_detailed_tracing:
+            callbacks.append(
+                AgentTrajectorySpanCallback(
+                    self.tracer,
+                    session_id=session_id,
+                    exercise_number=exercise_number,
+                    agent_mode="multi",
+                    enabled=self.phoenix_enabled,
+                )
+            )
 
         def should_mutate_handoff(text: str) -> bool:
             lowered = text.lower()
@@ -750,6 +904,7 @@ class TestOpsAgent:
                     handle_parsing_errors=True,
                     return_intermediate_steps=True,
                     verbose=False,
+                    callbacks=callbacks,
                 )
                 result = executor.invoke({"input": message})
                 output = str(result.get("output", "")).strip()
@@ -779,6 +934,7 @@ class TestOpsAgent:
                     orchestration_system_text,
                     message,
                     self.max_iterations,
+                    callbacks,
                 )
                 output = str(langgraph_result.get("output", "")).strip()
                 for item in langgraph_result.get("trace", []):
