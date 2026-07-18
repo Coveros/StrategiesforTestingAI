@@ -377,13 +377,27 @@ class ChatApp {
                 body: JSON.stringify(requestPayload)
             });
             
-            const data = await response.json();
+            const rawBody = await response.text();
+            let data = null;
+            try {
+                data = rawBody ? JSON.parse(rawBody) : null;
+            } catch (parseError) {
+                const fallbackMessage = response.ok
+                    ? 'Server returned an unexpected response format.'
+                    : `HTTP ${response.status} ${response.statusText}`;
+                throw new Error(fallbackMessage);
+            }
             
             // Remove typing indicator
             this.removeTypingIndicator(typingId);
             
             if (!response.ok) {
-                throw new Error(data.error || `HTTP ${response.status}`);
+                const serverError = data && data.error ? data.error : `HTTP ${response.status} ${response.statusText}`;
+                throw new Error(serverError);
+            }
+
+            if (!data || typeof data !== 'object') {
+                throw new Error('Server returned an empty response.');
             }
             
             // Add assistant response

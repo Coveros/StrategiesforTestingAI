@@ -41,6 +41,7 @@ class TestOpsAgent:
         self.model_name = os.getenv("AGENT_MODEL", os.getenv("OLLAMA_MODEL", "llama3.2:1b"))
         self.temperature = self._safe_float(os.getenv("AGENT_TEMPERATURE", "0.2"), default=0.2)
         self.max_iterations = int(self._safe_float(os.getenv("AGENT_MAX_ITERATIONS", "10"), default=10))
+        self.max_execution_seconds = int(self._safe_float(os.getenv("AGENT_MAX_EXECUTION_SECONDS", "45"), default=45))
         self.request_timeout_seconds = int(self._safe_float(os.getenv("AGENT_REQUEST_TIMEOUT_SECONDS", "300"), default=300))
         bootstrap_mode = str(os.getenv("AGENT_BOOTSTRAP_ON_ZERO_TOOLS", "auto")).strip().lower()
         instructor_mode = self._is_truthy(os.getenv("EXERCISE_HUB_ENABLE_INSTRUCTOR", "false"))
@@ -87,8 +88,28 @@ class TestOpsAgent:
 
     def _resolve_langchain_agent_runtime(self):
         """Resolve ReAct runtime across classic LangChain and modern LangGraph layouts."""
+        runtime_pref = str(os.getenv("AGENT_RUNTIME", "auto")).strip().lower()
         agent_executor_cls = None
         create_react_agent_fn = None
+
+        def resolve_langgraph_runtime():
+            try:
+                module = importlib.import_module("langgraph.prebuilt")
+                langgraph_create_react_agent = getattr(module, "create_react_agent", None)
+                if langgraph_create_react_agent is not None:
+                    return {
+                        "kind": "langgraph",
+                        "create_react_agent": langgraph_create_react_agent,
+                    }
+            except Exception:
+                return None
+            return None
+
+        # Prefer LangGraph when configured or in auto mode; this is more reliable for SLM tool-calling.
+        if runtime_pref in {"langgraph", "auto"}:
+            langgraph_runtime = resolve_langgraph_runtime()
+            if langgraph_runtime is not None:
+                return langgraph_runtime
 
         # AgentExecutor moved between versions; try known module locations.
         for module_name, attr_name in (
@@ -125,17 +146,10 @@ class TestOpsAgent:
                 "create_react_agent": create_react_agent_fn,
             }
 
-        # Newer LangChain versions use LangGraph prebuilt ReAct agents.
-        try:
-            module = importlib.import_module("langgraph.prebuilt")
-            langgraph_create_react_agent = getattr(module, "create_react_agent", None)
-            if langgraph_create_react_agent is not None:
-                return {
-                    "kind": "langgraph",
-                    "create_react_agent": langgraph_create_react_agent,
-                }
-        except Exception:
-            pass
+        # If classic failed and we did not already resolve LangGraph, try LangGraph as a final fallback.
+        langgraph_runtime = resolve_langgraph_runtime()
+        if langgraph_runtime is not None:
+            return langgraph_runtime
 
         raise ImportError(
             "LangChain agent runtime imports failed. Ensure create_react_agent is available from "
@@ -159,7 +173,15 @@ class TestOpsAgent:
             return " ".join(chunks).strip()
         return str(content).strip()
 
-    def _invoke_langgraph_react(self, create_react_agent_fn, llm, tools, system_text: str, user_input: str) -> Dict[str, Any]:
+    def _invoke_langgraph_react(
+        self,
+        create_react_agent_fn,
+        llm,
+        tools,
+        system_text: str,
+        user_input: str,
+        max_iterations: int,
+    ) -> Dict[str, Any]:
         """Execute LangGraph prebuilt ReAct agent and extract output/trajectory."""
         agent = None
         for constructor in (
@@ -178,13 +200,14 @@ class TestOpsAgent:
 
         result = None
         last_error = None
+        recursion_limit = max(4, int(max_iterations) * 2)
         for payload in (
             {"messages": [("user", user_input)]},
             {"messages": [{"role": "user", "content": user_input}]},
             {"input": user_input},
         ):
             try:
-                result = agent.invoke(payload)
+                result = agent.invoke(payload, {"recursion_limit": recursion_limit})
                 break
             except Exception as exc:
                 last_error = exc
@@ -423,7 +446,8 @@ class TestOpsAgent:
 
         system_text = (
             "You are a testing assistant focused on GenAI quality, safety, and reliability. "
-            "Use the knowledge base tool for factual classroom content. "
+            "For factual classroom content, your first action must be query_knowledge_base using the user's question. "
+            "Do not produce Final Answer before at least one tool call. "
             "If tool results are empty, stop after a small number of retries and explain what is missing."
         )
 
@@ -458,6 +482,7 @@ class TestOpsAgent:
                     agent=agent,
                     tools=tools,
                     max_iterations=self.max_iterations,
+                    max_execution_time=self.max_execution_seconds,
                     handle_parsing_errors=True,
                     return_intermediate_steps=True,
                     verbose=False,
@@ -489,6 +514,7 @@ class TestOpsAgent:
                     tools,
                     system_text,
                     message,
+                    self.max_iterations,
                 )
                 output = str(langgraph_result.get("output", "")).strip()
                 trace.extend(langgraph_result.get("trace", []))
@@ -720,6 +746,7 @@ class TestOpsAgent:
                     agent=agent,
                     tools=tools,
                     max_iterations=self.max_iterations,
+                    max_execution_time=self.max_execution_seconds,
                     handle_parsing_errors=True,
                     return_intermediate_steps=True,
                     verbose=False,
@@ -751,6 +778,7 @@ class TestOpsAgent:
                     tools,
                     orchestration_system_text,
                     message,
+                    self.max_iterations,
                 )
                 output = str(langgraph_result.get("output", "")).strip()
                 for item in langgraph_result.get("trace", []):
