@@ -2,6 +2,7 @@ import logging
 import os
 import re
 import time
+import importlib
 from collections import Counter
 from typing import TYPE_CHECKING
 from typing import Any, Dict, List, Optional
@@ -83,6 +84,47 @@ class TestOpsAgent:
                 async_client_kwargs={"timeout": self.request_timeout_seconds},
             )
         return self.llm
+
+    def _resolve_langchain_agent_runtime(self):
+        """Resolve AgentExecutor/create_react_agent across LangChain package layouts."""
+        agent_executor_cls = None
+        create_react_agent_fn = None
+
+        # AgentExecutor moved between versions; try known module locations.
+        for module_name, attr_name in (
+            ("langchain.agents", "AgentExecutor"),
+            ("langchain.agents.agent", "AgentExecutor"),
+            ("langchain_classic.agents", "AgentExecutor"),
+        ):
+            try:
+                module = importlib.import_module(module_name)
+                agent_executor_cls = getattr(module, attr_name, None)
+                if agent_executor_cls is not None:
+                    break
+            except Exception:
+                continue
+
+        # create_react_agent can also move by version.
+        for module_name, attr_name in (
+            ("langchain.agents", "create_react_agent"),
+            ("langchain.agents.react.agent", "create_react_agent"),
+            ("langchain_classic.agents", "create_react_agent"),
+        ):
+            try:
+                module = importlib.import_module(module_name)
+                create_react_agent_fn = getattr(module, attr_name, None)
+                if create_react_agent_fn is not None:
+                    break
+            except Exception:
+                continue
+
+        if agent_executor_cls is None or create_react_agent_fn is None:
+            raise ImportError(
+                "LangChain agent runtime imports failed. Ensure AgentExecutor and create_react_agent are available "
+                "for your installed LangChain version."
+            )
+
+        return agent_executor_cls, create_react_agent_fn
 
     def _span(self, name: str, attrs: Optional[Dict[str, Any]] = None):
         return start_span(self.tracer, name, attrs=attrs)
@@ -199,8 +241,9 @@ class TestOpsAgent:
         exercise_number: Optional[int],
         force_loop_bug: bool = False,
     ) -> Dict[str, Any]:
-        from langchain.agents import AgentExecutor, create_react_agent
         from langchain_core.tools import tool
+
+        AgentExecutor, create_react_agent = self._resolve_langchain_agent_runtime()
 
         trace: List[Dict[str, str]] = []
         tool_calls: List[Dict[str, Any]] = []
@@ -332,8 +375,9 @@ class TestOpsAgent:
         include_trace: bool,
         exercise_number: Optional[int],
     ) -> Dict[str, Any]:
-        from langchain.agents import AgentExecutor, create_react_agent
         from langchain_core.tools import tool
+
+        AgentExecutor, create_react_agent = self._resolve_langchain_agent_runtime()
 
         trace: List[Dict[str, str]] = []
         tool_calls: List[Dict[str, Any]] = []
