@@ -8,7 +8,7 @@
 5. A GitHub Copilot demo has been completed.
 
 ## Scenario
-This exercise focuses on **Ask mode**, the deterministic RAG pipeline. A user asks one question, the app retrieves context from the vector database, and then sends the query plus context to the LLM in one straight shot. In Phoenix, students should see a clean linear trace with exactly 3 spans: **Chains â†’ Retriever â†’ LLM**.
+This exercise focuses on **Ask mode**, the deterministic RAG pipeline. A user asks one question, the app retrieves context from the vector database, and then sends the query plus context to the LLM in one straight shot. In Phoenix, students should see a clean linear trace with exactly 3 spans: **Chains -> Retriever -> LLM**.
 
 ## Student tasks
 1. Open the UI at `http://localhost:5000/?exercise=4` and stay in **Ask** mode.
@@ -26,6 +26,10 @@ This exercise focuses on **Ask mode**, the deterministic RAG pipeline. A user as
 	- `Chains`
 	- `Retriever`
 	- `LLM`
+   In this codebase, these conceptual labels appear with concrete span names:
+	- `Chains` -> `rag.query`
+	- `Retriever` -> `rag.retrieve`
+	- `LLM` -> `rag.generate`
    Use this quick interpretation guide while reviewing traces:
 	- `Chains` = top-level Ask mode workflow
 	- `Retriever` = vector database lookup and ranking

@@ -26,6 +26,10 @@ This exercise focuses on **Ask mode**, the deterministic RAG pipeline. A user as
 	- `Chains`
 	- `Retriever`
 	- `LLM`
+   In this codebase, these conceptual labels appear with concrete span names:
+	- `Chains` -> `rag.query`
+	- `Retriever` -> `rag.retrieve`
+	- `LLM` -> `rag.generate`
    Use this quick interpretation guide while reviewing traces:
 	- `Chains` = top-level Ask mode workflow
 	- `Retriever` = vector database lookup and ranking
