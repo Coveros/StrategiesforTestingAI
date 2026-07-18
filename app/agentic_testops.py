@@ -268,6 +268,7 @@ class TestOpsAgent:
             span_kind="AGENT",
             attrs={
                 "session.id": session_id,
+                "exercise_number": exercise_number,
                 "course.exercise.number": exercise_number,
                 "agent.mode": "single",
                 "agent.loop_bug": force_loop_bug,
@@ -382,6 +383,7 @@ class TestOpsAgent:
                 self._span_name("RAG Specialist", exercise_number),
                 span_kind="AGENT",
                 attrs={
+                    "exercise_number": exercise_number,
                     "handoff.mutated": mutated,
                     "handoff.original_query": user_query,
                     "handoff.routed_query": routed_query,
@@ -484,6 +486,7 @@ class TestOpsAgent:
             span_kind="AGENT",
             attrs={
                 "session.id": session_id,
+                "exercise_number": exercise_number,
                 "course.exercise.number": exercise_number,
                 "agent.mode": "multi",
             },

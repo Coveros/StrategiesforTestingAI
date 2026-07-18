@@ -73,6 +73,20 @@ def should_expose_diagnostics() -> bool:
     return is_truthy(os.getenv('EXPOSE_DIAGNOSTIC_DETAILS', 'false'))
 
 
+def infer_exercise_number(mode: str, crew_mode: bool) -> int:
+    """Infer lab exercise when client does not provide explicit exercise metadata.
+
+    Defaults map to the course flow:
+    - Ask/RAG mode -> Exercise 4
+    - Agent mode (single or crew) -> Exercise 5
+
+    Crew is now an execution toggle, not an implicit exercise selector.
+    """
+    if mode == 'agentic':
+        return 5
+    return 4
+
+
 def _client_ip() -> str:
     forwarded_for = request.headers.get('X-Forwarded-For', '')
     if forwarded_for:
@@ -279,6 +293,9 @@ def chat():
                     exercise_number = parsed_exercise
             except (TypeError, ValueError):
                 exercise_number = None
+
+        if exercise_number is None:
+            exercise_number = infer_exercise_number(mode=mode, crew_mode=crew_mode)
 
         requested_temperature = None
         if 'temperature' in data and data['temperature'] is not None:

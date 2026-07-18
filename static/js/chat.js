@@ -11,6 +11,7 @@ class ChatApp {
         this.modeTempStorageKey = 'chatModeTemperature';
         this.modeTempUserSetStorageKey = 'chatModeTemperatureUserSet';
         this.modeTempMigrationStorageKey = 'chatModeTemperatureMigrated_v2';
+        this.agentExecutionStorageKey = 'chatAgentExecutionMode';
         this.queryParams = new URLSearchParams(window.location.search);
         this.instructorMode = Boolean(this.appFlags.instructorMode) || this.queryParams.get('instructor') === '1';
         this.exerciseNumber = Number(this.queryParams.get('exercise') || 0);
@@ -51,6 +52,7 @@ class ChatApp {
         this.crewModeEnabled = document.getElementById('crewModeEnabled');
         this.askModeBtn = document.getElementById('askModeBtn');
         this.agentModeBtn = document.getElementById('agentModeBtn');
+        this.agentExecutionSelect = document.getElementById('agentExecutionSelect');
         this.modeTemperature = document.getElementById('modeTemperature');
         this.modeHint = document.getElementById('modeHint');
         
@@ -107,6 +109,23 @@ class ChatApp {
             return;
         }
 
+        if (this.agentExecutionSelect) {
+            const defaults = this.getExerciseDefaults();
+            const savedExecution = localStorage.getItem(this.agentExecutionStorageKey);
+            const initialExecution = (savedExecution === 'single' || savedExecution === 'crew')
+                ? savedExecution
+                : (defaults.crew ? 'crew' : 'single');
+
+            this.agentExecutionSelect.value = initialExecution;
+            localStorage.setItem(this.agentExecutionStorageKey, initialExecution);
+            this.agentExecutionSelect.addEventListener('change', () => {
+                const selected = this.agentExecutionSelect.value === 'crew' ? 'crew' : 'single';
+                this.agentExecutionSelect.value = selected;
+                localStorage.setItem(this.agentExecutionStorageKey, selected);
+                this.updateModeHint();
+            });
+        }
+
         const queryWantsAgent = this.queryParams.get('agent') === '1';
         const initialMode = queryWantsAgent ? 'agent' : 'ask';
         this.setChatMode(initialMode, false);
@@ -161,6 +180,12 @@ class ChatApp {
             this.updateInstructorTemperatureState();
         }
 
+        if (this.agentExecutionSelect) {
+            const isAgentMode = this.activeMode === 'agent';
+            this.agentExecutionSelect.disabled = !isAgentMode;
+            this.agentExecutionSelect.style.opacity = isAgentMode ? '1' : '0.6';
+        }
+
         this.updateModeHint();
     }
 
@@ -182,8 +207,14 @@ class ChatApp {
         }
 
         const defaults = this.getExerciseDefaults();
+        const selectedExecution = this.getAgentExecutionMode();
+        if (selectedExecution === 'crew') {
+            this.modeHint.textContent = 'Agent mode: Crew orchestration is enabled for this run.';
+            return;
+        }
+
         if (defaults.crew) {
-            this.modeHint.textContent = 'Agent mode: trace and crew are auto-enabled for this exercise.';
+            this.modeHint.textContent = 'Agent mode: single-agent flow is active (crew can be enabled via selector).';
             return;
         }
 
@@ -815,6 +846,13 @@ class ChatApp {
         return this.activeMode === 'agent';
     }
 
+    getAgentExecutionMode() {
+        if (!this.agentExecutionSelect) {
+            return this.getExerciseDefaults().crew ? 'crew' : 'single';
+        }
+        return this.agentExecutionSelect.value === 'crew' ? 'crew' : 'single';
+    }
+
     getTraceEnabled() {
         if (!this.getAgentModeEnabled()) {
             return false;
@@ -836,7 +874,7 @@ class ChatApp {
             return Boolean(this.crewModeEnabled && this.crewModeEnabled.checked);
         }
 
-        return this.getExerciseDefaults().crew;
+        return this.getAgentExecutionMode() === 'crew';
     }
 }
 

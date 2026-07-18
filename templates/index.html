@@ -88,6 +88,13 @@
                             <div class="chat-mode-bar" role="group" aria-label="Chat mode">
                                 <button type="button" id="askModeBtn" class="mode-btn active" aria-pressed="true">Ask</button>
                                 <button type="button" id="agentModeBtn" class="mode-btn" aria-pressed="false">Agent</button>
+                                <label class="agent-exec" for="agentExecutionSelect">
+                                    Run
+                                    <select id="agentExecutionSelect" aria-label="Agent execution mode">
+                                        <option value="single">Agent</option>
+                                        <option value="crew">Crew</option>
+                                    </select>
+                                </label>
                                 <label class="mode-temp" for="modeTemperature">
                                     Temp
                                     <input id="modeTemperature" type="number" min="0" max="1" step="0.1" value="0.3" aria-label="Chat temperature">
