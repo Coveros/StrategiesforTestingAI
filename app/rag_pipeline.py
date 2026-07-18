@@ -389,13 +389,24 @@ class RAGPipeline:
         try:
             # Prepare context from retrieved documents
             context = "\n\n".join(context_docs[:3])  # Use top 3 documents
-            effective_temperature = 0.7 if temperature is None else float(temperature)
+            configured_default_temp = float(os.getenv('TEMPERATURE', '0.3'))
+            effective_temperature = configured_default_temp if temperature is None else float(temperature)
 
             prompt = (
+                "You are a grounded GenAI testing assistant.\n"
+                "Task rules:\n"
+                "1) Use only the provided context.\n"
+                "2) If context is relevant, answer directly and concretely.\n"
+                "3) Do not claim missing context when relevant details are present.\n"
+                "4) If context is truly insufficient, say what is missing in one sentence.\n"
+                "5) Keep answer concise and practical for students.\n"
+                "6) Use this format:\n"
+                "   - One-sentence summary\n"
+                "   - 3 to 5 bullet points\n"
+                "   - Maximum 140 words total\n\n"
                 f"Question: {query}\n\n"
                 f"Context:\n{context}\n\n"
-                "Based on the provided context, answer the question using only that context. "
-                "If the context does not contain relevant information, say so clearly."
+                "Answer:"
             )
 
             def generate_call():
@@ -442,7 +453,8 @@ class RAGPipeline:
                 temperature=temperature
             )
 
-            effective_temperature = 0.7 if temperature is None else float(temperature)
+            configured_default_temp = float(os.getenv('TEMPERATURE', '0.3'))
+            effective_temperature = configured_default_temp if temperature is None else float(temperature)
             
             # Calculate total response time
             total_time = time.time() - start_time
