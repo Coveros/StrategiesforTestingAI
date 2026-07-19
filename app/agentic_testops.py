@@ -166,7 +166,11 @@ class TestOpsAgent:
         self.model_name = os.getenv("AGENT_MODEL", os.getenv("OLLAMA_MODEL", "llama3.2:1b"))
         self.temperature = self._safe_float(os.getenv("AGENT_TEMPERATURE", "0.2"), default=0.2)
         self.max_iterations = int(self._safe_float(os.getenv("AGENT_MAX_ITERATIONS", "10"), default=10))
+        self.max_iterations_crew = int(self._safe_float(os.getenv("AGENT_MAX_ITERATIONS_CREW", "4"), default=4))
         self.max_execution_seconds = int(self._safe_float(os.getenv("AGENT_MAX_EXECUTION_SECONDS", "45"), default=45))
+        self.max_execution_seconds_crew = int(
+            self._safe_float(os.getenv("AGENT_MAX_EXECUTION_SECONDS_CREW", "25"), default=25)
+        )
         self.request_timeout_seconds = int(self._safe_float(os.getenv("AGENT_REQUEST_TIMEOUT_SECONDS", "300"), default=300))
         self.enable_detailed_tracing = self._is_truthy(os.getenv("AGENT_DETAILED_TRACING", "true"))
         bootstrap_mode = str(os.getenv("AGENT_BOOTSTRAP_ON_ZERO_TOOLS", "auto")).strip().lower()
@@ -622,8 +626,8 @@ class TestOpsAgent:
                 executor = AgentExecutor(
                     agent=agent,
                     tools=tools,
-                    max_iterations=self.max_iterations,
-                    max_execution_time=self.max_execution_seconds,
+                    max_iterations=self.max_iterations_crew,
+                    max_execution_time=self.max_execution_seconds_crew,
                     handle_parsing_errors=True,
                     return_intermediate_steps=True,
                     verbose=False,
@@ -933,7 +937,7 @@ class TestOpsAgent:
                     tools,
                     orchestration_system_text,
                     message,
-                    self.max_iterations,
+                    self.max_iterations_crew,
                     callbacks,
                 )
                 output = str(langgraph_result.get("output", "")).strip()

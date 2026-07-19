@@ -10,6 +10,7 @@ from app.rag_pipeline import RAGPipeline
 from app.agentic_testops import TestOpsAgent
 import time
 import traceback
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from collections import defaultdict, deque
 from functools import wraps
 
@@ -312,13 +313,36 @@ def chat():
         
         if mode == 'agentic':
             # Process with the test-ops agentic loop
-            response_data = agentic_pipeline.process(
-                user_message,
-                session_id=session_id,
-                include_trace=include_trace,
-                crew_mode=crew_mode,
-                exercise_number=exercise_number,
-            )
+            try:
+                agent_timeout_seconds = float(os.getenv('AGENT_API_TIMEOUT_SECONDS', '35'))
+            except (TypeError, ValueError):
+                agent_timeout_seconds = 35.0
+
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(
+                    agentic_pipeline.process,
+                    user_message,
+                    session_id=session_id,
+                    include_trace=include_trace,
+                    crew_mode=crew_mode,
+                    exercise_number=exercise_number,
+                )
+                try:
+                    response_data = future.result(timeout=max(5.0, agent_timeout_seconds))
+                except FutureTimeoutError:
+                    logger.warning(
+                        "Agent mode request timed out after %.1fs (session=%s, crew_mode=%s)",
+                        agent_timeout_seconds,
+                        session_id,
+                        crew_mode,
+                    )
+                    return jsonify({
+                        'error': 'Agent mode timed out before completion. Try a shorter prompt or lower iterations.',
+                        'status': 'error',
+                        'mode': mode,
+                        'session_id': session_id,
+                        'exercise_number': exercise_number,
+                    }), 504
         else:
             # Check if RAG pipeline is initialized
             if rag_pipeline is None:
