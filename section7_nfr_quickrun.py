@@ -70,6 +70,13 @@ def _build_cases() -> List[Dict[str, Any]]:
             "expect": "handled",
         },
         {
+            "id": "ask_gibberish",
+            "mode": "rag",
+            "crew_mode": False,
+            "prompt": "xqz@@##123###?? en espanol ??? ###",
+            "expect": "handled",
+        },
+        {
             "id": "crew_gibberish",
             "mode": "agentic",
             "crew_mode": True,
@@ -135,6 +142,31 @@ def _evaluate(case: Dict[str, Any], payload: Dict[str, Any], status_code: int) -
     }
 
 
+def _category_for_case(case: Dict[str, Any]) -> str:
+    return "crew-addon" if bool(case.get("crew_mode", False)) else "core"
+
+
+def _summarize_results(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    total = len(rows)
+    passed = len([r for r in rows if _safe_get(_safe_get(r, "evaluation", {}), "passed", False)])
+    avg_response = round(
+        sum((_safe_get(_safe_get(r, "raw", {}), "response_time", 0) or 0) for r in rows) / max(total, 1),
+        3,
+    )
+    worst_response = round(
+        max((_safe_get(_safe_get(r, "raw", {}), "response_time", 0) or 0) for r in rows),
+        3,
+    ) if total > 0 else 0.0
+
+    return {
+        "total_cases": total,
+        "passed_cases": passed,
+        "pass_rate": round(passed / max(total, 1), 3),
+        "avg_response_time": avg_response,
+        "worst_response_time": worst_response,
+    }
+
+
 def run_suite(session_id: str, include_trace: bool) -> Dict[str, Any]:
     client, transport = get_exercise_test_client()
     cases = _build_cases()
@@ -156,6 +188,7 @@ def run_suite(session_id: str, include_trace: bool) -> Dict[str, Any]:
         results.append(
             {
                 "id": case["id"],
+                "category": _category_for_case(case),
                 "mode": case["mode"],
                 "crew_mode": case["crew_mode"],
                 "prompt": case["prompt"],
@@ -170,16 +203,12 @@ def run_suite(session_id: str, include_trace: bool) -> Dict[str, Any]:
             }
         )
 
-    total = len(results)
-    passed = len([r for r in results if _safe_get(_safe_get(r, "evaluation", {}), "passed", False)])
-    avg_response = round(
-        sum((_safe_get(_safe_get(r, "raw", {}), "response_time", 0) or 0) for r in results) / max(total, 1),
-        3,
-    )
-    worst_response = round(
-        max((_safe_get(_safe_get(r, "raw", {}), "response_time", 0) or 0) for r in results),
-        3,
-    )
+    core_results = [r for r in results if r.get("category") == "core"]
+    crew_addon_results = [r for r in results if r.get("category") == "crew-addon"]
+
+    overall_summary = _summarize_results(results)
+    core_summary = _summarize_results(core_results)
+    crew_addon_summary = _summarize_results(crew_addon_results)
 
     return {
         "run_meta": {
@@ -187,11 +216,13 @@ def run_suite(session_id: str, include_trace: bool) -> Dict[str, Any]:
             "transport": transport,
             "session_id": session_id,
             "include_trace": include_trace,
-            "total_cases": total,
-            "passed_cases": passed,
-            "pass_rate": round(passed / max(total, 1), 3),
-            "avg_response_time": avg_response,
-            "worst_response_time": worst_response,
+            "total_cases": overall_summary["total_cases"],
+            "passed_cases": overall_summary["passed_cases"],
+            "pass_rate": overall_summary["pass_rate"],
+            "avg_response_time": overall_summary["avg_response_time"],
+            "worst_response_time": overall_summary["worst_response_time"],
+            "core_checks": core_summary,
+            "crew_addon_checks": crew_addon_summary,
         },
         "results": results,
     }
@@ -219,11 +250,36 @@ def write_artifacts(report: Dict[str, Any], out_dir: str) -> Dict[str, str]:
         f"Avg Response Time: {meta['avg_response_time']}s",
         f"Worst Response Time: {meta['worst_response_time']}s",
         "",
-        "Case Details",
+        "Core Checks",
         "-" * 36,
+        f"Passed: {meta['core_checks']['passed_cases']} / {meta['core_checks']['total_cases']} "
+        f"({meta['core_checks']['pass_rate']})",
+        f"Avg Response Time: {meta['core_checks']['avg_response_time']}s | "
+        f"Worst: {meta['core_checks']['worst_response_time']}s",
+        "",
     ]
 
-    for row in report["results"]:
+    for row in [r for r in report["results"] if r.get("category") == "core"]:
+        ev = row["evaluation"]
+        mode_label = "crew" if row["crew_mode"] else row["mode"]
+        lines.append(
+            f"{row['id']}: {'PASS' if ev['passed'] else 'FAIL'} | "
+            f"mode={mode_label} degraded={ev['degraded_mode']} poisoned={ev['poisoned_retrieval']} "
+            f"steps={ev['steps']} tools={ev['tool_calls']} handoffs={ev['handoff_count']} loop_tax={ev['loop_tax']}"
+        )
+
+    lines.extend([
+        "",
+        "Crew Add-On Checks",
+        "-" * 36,
+        f"Passed: {meta['crew_addon_checks']['passed_cases']} / {meta['crew_addon_checks']['total_cases']} "
+        f"({meta['crew_addon_checks']['pass_rate']})",
+        f"Avg Response Time: {meta['crew_addon_checks']['avg_response_time']}s | "
+        f"Worst: {meta['crew_addon_checks']['worst_response_time']}s",
+        "",
+    ])
+
+    for row in [r for r in report["results"] if r.get("category") == "crew-addon"]:
         ev = row["evaluation"]
         mode_label = "crew" if row["crew_mode"] else row["mode"]
         lines.append(
