@@ -1,18 +1,34 @@
 ﻿# Exercise 3 Instructor Notes: Audit Test Results and Improve a Metric
+# Exercise 3 Instructor Notes: Audit Test Results and Improve a Metric
+Facilitator reference: [Instructor Facilitation Rubric](Exercise-Instructor-Facilitation-Rubric.md)
 
 ## Prerequisites
-1. A running GenAI testing assistant in your Codespace at [http://localhost:5000](http://localhost:5000).
-2. GitHub Copilot has been activated in Visual Studio Code in this Codespace.
-3. A GitHub Copilot demo has been completed.
-4. Exercise 2 completed with your 9-test regression suite in Codespaces.
-5. Regression test results from your Exercise 2 in `regression_test_results/`.
+1. Exercise 2 completed with your 9-test regression suite in your Codespace.
+2. Regression test results from your Exercise 2 in `regression_test_results/`.
 
 ## Scenario
 Your team added 2 new tests to the golden test suite during Exercise 2. Now audit all 9 of your test results and find evaluation issues. The framework uses weighted thresholds (semantic similarity 40%, keyword match 25%, etc.) that might be too strict or too loose. You'll find one false positive and one false negative, then propose a metric improvement.
 
+## Instructor Preparation: What to Watch For
+
+### Signals Students Should Notice
+1. A passing score does not always mean high-quality output (false positives).
+2. A failing score can still correspond to acceptable responses (false negatives).
+3. Threshold and weighting choices encode product risk preferences.
+
+### Likely Issues, Defects, or Quality Challenges
+1. Over-reliance on keyword presence can penalize valid paraphrases.
+2. Semantic thresholds may hide groundedness or safety problems.
+3. Students may propose metrics without clear placement in the existing framework.
+
+### Recommended Modifications to Discuss
+1. Calibrate thresholds by test category rather than one global value when justified.
+2. Add one risk-focused metric (for example safety/refusal or grounding check) with clear failure semantics.
+3. Require before/after evidence that the proposed metric reduces a real observed error.
+
 ## Student tasks
 1. Run regression tests and open the latest summary report in `regression_test_results/` (pattern: `regression_summary_YYYYMMDD_HHMMSS.txt`). Use this text report as the primary analysis artifact.
-2. Analyse test results using the **Analyzing Your Test Results** guide below this task list.
+2. Analyze test results using the **Analyzing Your Test Results** guide below this task list.
 3. Use the JSON file (`regression_results_YYYYMMDD_HHMMSS.json`) only when learners need deeper details beyond the summary report.
 4. Look at the scores for each test and identify:
    - One false positive: a test that passed but should have failed based on response quality.

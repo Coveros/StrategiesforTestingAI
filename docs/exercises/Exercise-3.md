@@ -1,18 +1,15 @@
 # Exercise 3: Audit Test Results and Improve a Metric
 
 ## Prerequisites
-1. A running GenAI testing assistant in your Codespace at [http://localhost:5000](http://localhost:5000).
-2. GitHub Copilot has been activated in Visual Studio Code in this Codespace.
-3. A GitHub Copilot demo has been completed.
-4. Exercise 2 completed with your 9-test regression suite in Codespaces.
-5. Regression test results from your Exercise 2 in `regression_test_results/`.
+1. Exercise 2 completed with your 9-test regression suite in your Codespace.
+2. Regression test results from your Exercise 2 in `regression_test_results/`.
 
 ## Scenario
 Your team added 2 new tests to the golden test suite during Exercise 2. Now audit all 9 of your test results and find evaluation issues. The framework uses weighted thresholds (semantic similarity 40%, keyword match 25%, etc.) that might be too strict or too loose. You'll find one false positive and one false negative, then propose a metric improvement.
 
 ## Student tasks
 1. Run regression tests and open the latest summary report in `regression_test_results/` (pattern: `regression_summary_YYYYMMDD_HHMMSS.txt`). Use this text report as your primary analysis artifact.
-2. Analyse your test results using the **Analyzing Your Test Results** guide below this task list.
+2. Analyze your test results using the **Analyzing Your Test Results** guide below this task list.
 3. Use the JSON file (`regression_results_YYYYMMDD_HHMMSS.json`) only if you need deeper inspection beyond the summary report.
 4. Look at the scores for each test and identify:
    - One false positive: a test that passed but should have failed based on response quality.

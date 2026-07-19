@@ -237,6 +237,8 @@ def write_outputs(report: Dict[str, Any], out_dir: str) -> Dict[str, str]:
         f"Baseline pass rate: {g['baseline_pass_rate']}",
         f"Candidate pass rate: {g['candidate_pass_rate']}",
         f"Pass rate drop: {g['pass_rate_drop']}",
+        f"Baseline avg response time: {report['baseline']['summary']['avg_response_time']}s",
+        f"Candidate avg response time: {report['candidate']['summary']['avg_response_time']}s",
         "",
         "Baseline Cases",
         "-" * 30,

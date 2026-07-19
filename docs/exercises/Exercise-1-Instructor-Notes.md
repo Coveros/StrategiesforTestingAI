@@ -1,4 +1,5 @@
 ﻿# Exercise 1 Instructor Notes: Exploratory Testing for a GenAI Testing Assistant
+Facilitator reference: [Instructor Facilitation Rubric](Exercise-Instructor-Facilitation-Rubric.md)
 
 ## Prerequisites
 1. A short architecture overview (frontend -> Flask API -> RAG pipeline -> LLM).
@@ -8,6 +9,23 @@
 
 ## Scenario
 You are performing an initial exploratory testing session on a new GenAI testing assistant. Your mission is to expose the limits of traditional black-box testing on probabilistic models. Use your team's exploratory prompts and evaluation criteria, and remember that the assistant's output may be variable and not always perfectly reliable.
+
+## Instructor Preparation: What to Watch For
+
+### Signals Students Should Notice
+1. The same prompt can produce meaningfully different wording and detail on reruns.
+2. Some variation is acceptable; risk comes from unsafe, fabricated, or out-of-scope claims.
+3. Adversarial prompts can reveal boundary behavior that happy-path prompts hide.
+
+### Likely Issues, Defects, or Quality Challenges
+1. Students may over-focus on exact wording differences instead of outcome quality.
+2. Hallucination and factuality concerns are often missed when responses sound confident.
+3. Teams may not separate style variance from true correctness or safety defects.
+
+### Recommended Modifications to Discuss
+1. Introduce a simple acceptability rubric (correctness, safety, scope, clarity) before testing.
+2. Require one rerun per prompt to surface non-determinism explicitly.
+3. Ask each charter owner to produce one candidate automated check from their findings.
 
 ## Student tasks
 1. Split up your team and assign each person to one of five charters: 

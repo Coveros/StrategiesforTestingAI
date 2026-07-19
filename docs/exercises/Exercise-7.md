@@ -1,13 +1,10 @@
 # Exercise 7: Reliability and Overhead (Ask vs Agent + Crew Handoff Focus)
 
 ## Prerequisites
-1. A running GenAI testing assistant in your Codespace at [http://localhost:5000](http://localhost:5000).
-2. A running Arize Phoenix instance in your Codespace at [http://localhost:6006](http://localhost:6006).
-3. Use live traces from Phoenix during this exercise (no separate trace demo is required).
-4. GitHub Copilot has been activated in Visual Studio Code in this Codespace.
-5. A GitHub Copilot demo has been completed.
-6. Ability to use Ask mode, Agent mode, and Crew Mode in the UI.
-7. Optional automation runner available in Codespaces: `python section7_nfr_quickrun.py`.
+1. Exercise 6 completed.
+2. Use live traces from Phoenix during this exercise.
+3. Ability to use Ask mode, Agent mode, and Crew Mode in the UI.
+4. Optional automation runner available in your Codespace: `python section7_nfr_quickrun.py`.
 
 ## Scenario
 You are testing non-functional behavior across the runtime patterns now used in this repo:
@@ -22,15 +19,15 @@ The goal is to compare reliability, latency, and trajectory overhead primarily a
 1. Open `http://localhost:5000/?exercise=7&instructor=1`.
 2. In instructor controls, enable **Show Trace**.
 3. Run the baseline factual query in Ask mode and Agent mode (Crew OFF):
-	- Ask mode: `What are the key challenges in testing GenAI applications?`
-	- Agent mode with **Crew Mode OFF**: same prompt
+   - Ask mode: `What are the key challenges in testing GenAI applications?`
+   - Agent mode with **Crew Mode OFF**: same prompt
 4. Run a Crew baseline once (**Crew Mode ON**) as supplemental context, not the primary comparison.
 5. Split 5 roles:
-	- Latency Overhead
-	- Long-Input Stability
-	- Malformed Input Handling
-	- Single-Agent Loop Containment
-	- Multi-Agent Handoff Resilience
+   - Latency Overhead
+   - Long-Input Stability
+   - Malformed Input Handling
+   - Single-Agent Loop Containment
+   - Multi-Agent Handoff Resilience
 6. For your assigned role, run the exact prompts below and capture evidence from response metadata and Phoenix.
 7. Record Pass/Fail/Mixed with one evidence note per required mode.
 8. As a team, identify the weakest NFR area and propose one fix with the smallest blast radius.
@@ -39,7 +36,7 @@ The goal is to compare reliability, latency, and trajectory overhead primarily a
 
 ### Latency Overhead
 1. Run this prompt in Ask mode and Agent mode (Crew OFF):
-	- `What are the key challenges in testing GenAI applications?`
+   - `What are the key challenges in testing GenAI applications?`
 2. Compare `response_time`, steps, and tool calls.
 3. Optional Crew add-on: run once with **Crew ON** and note handoffs overhead separately.
 
@@ -51,19 +48,19 @@ The goal is to compare reliability, latency, and trajectory overhead primarily a
 
 ### Malformed Input Handling
 1. Use this malformed prompt in Ask mode and single-agent mode:
-	- `xqz@@##123###?? en espanol ??? ###`
+   - `xqz@@##123###?? en espanol ??? ###`
 2. Optional Crew add-on: run once with Crew ON.
 3. Verify the system does not crash and still returns a bounded response.
 
 ### Single-Agent Loop Containment
 1. In Agent mode with **Crew Mode OFF**, run:
-	- `simulate react loop for trajectory hacking`
+   - `simulate react loop for trajectory hacking`
 2. In Agent mode with **Crew Mode ON**, rerun the same prompt as a control.
 3. Compare whether the loop pathology is isolated to the single-agent path.
 
 ### Multi-Agent Handoff Resilience
 1. In Agent mode with **Crew Mode ON**, run:
-	- `simulate handoff corruption for retrieval query about 2024 regression failures`
+   - `simulate handoff corruption for retrieval query about 2024 regression failures`
 2. In Agent mode with **Crew Mode OFF**, rerun the same prompt as a control.
 3. Compare whether handoff mutation is visible only in the multi-agent path.
 

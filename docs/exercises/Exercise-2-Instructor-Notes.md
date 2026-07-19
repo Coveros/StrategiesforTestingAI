@@ -1,19 +1,37 @@
 ﻿# Exercise 2 Instructor Notes: Extend the Golden Test Set with New Tests
+Facilitator reference: [Instructor Facilitation Rubric](Exercise-Instructor-Facilitation-Rubric.md)
 
 ## Prerequisites
-1. A running GenAI testing assistant in your Codespace at [http://localhost:5000](http://localhost:5000).
+1. Exercise 1 completed.
 2. GitHub Copilot has been activated in Visual Studio Code in this Codespace.
 3. A GitHub Copilot demo has been completed.
-4. Your new tests from Exercise 1.
+4. Access to this repository in your Codespace.
 
 ## Scenario
 You are expanding your **golden regression test set** located here: `regression_testing/regression_testing.py` by adding two new tests you created during Exercise 1.
+
+## Instructor Preparation: What to Watch For
+
+### Signals Students Should Notice
+1. Gold standards that are too specific create fragile tests.
+2. Keyword lists can miss semantically correct answers with different phrasing.
+3. Category balance matters; too many similar tests reduce signal quality.
+
+### Likely Issues, Defects, or Quality Challenges
+1. Test IDs and categories may be inconsistent or ambiguous.
+2. Expected length ranges may not match realistic model output behavior.
+3. Students may copy prompts without translating them into measurable acceptance criteria.
+
+### Recommended Modifications to Discuss
+1. Standardize test-case authoring with a short checklist before adding cases.
+2. Keep gold standards concise and concept-focused, not exact-string focused.
+3. Require one explicit risk rationale per new test case (why this case matters).
 
 ## Student tasks
 1. Pick 2 tests you created during Exercise 1 to automate and add to this regression testing suite.
 2. Use Copilot to generate the query, gold standard answer, keywords, and priority for each test in JSON format.
 3. Add your 2 new test cases to `regression_testing/regression_testing.py` in the `_load_test_cases()` method.
-4. Rerun the framework: `python regression_testing/regression_testing.py` and confirm your all the tests run
+4. Rerun the framework: `python regression_testing/regression_testing.py` and confirm all tests run.
 5. Record pass rate, failed test IDs, and execution mode (Local Ollama or Offline Fallback). Use the results table template below to capture your run outputs.
 
 ## Results table template
@@ -73,9 +91,9 @@ Gold Standard: "Hallucinations cause harm in medical diagnosis (wrong treatment)
 
 Keywords: ["hallucination", "harm", "real-world", "medical", "financial", "factuality"]
 
-## Copilot prompt starters for automated test case generate
+## Copilot Prompt Starters for Automated Test Case Generation
 1. "Turn this test case description into JSON matching the regression framework structure. Use semantic similarity threshold 0.75, priority 'high'."
-2. "Check my gold standard answerâ€”is it too long? Rewrite it to be 100-200 chars while keeping the core content."
+2. "Check my gold standard answer-is it too long? Rewrite it to be 100-200 chars while keeping the core content."
 3. "Generate a rerun command and parse the results for pass rate and failed test IDs."
 
 ## Team debrief questions
@@ -83,4 +101,3 @@ Keywords: ["hallucination", "harm", "real-world", "medical", "financial", "factu
 2. Did the existing 7-test baseline all pass, or were some failures expected?
 3. With your 9-test local pack, what is your confidence level as a "quick regression pack"?
 
-python regression_testing/regression_testing.py
