@@ -76,12 +76,11 @@ def infer_exercise_number(mode: str, crew_mode: bool) -> int:
 
     Defaults map to the course flow:
     - Ask/RAG mode -> Exercise 4
-    - Agent mode (single or crew) -> Exercise 5
-
-    Crew is now an execution toggle, not an implicit exercise selector.
+    - Agent mode (single) -> Exercise 5
+    - Agent mode (crew) -> Exercise 6
     """
     if mode == 'agentic':
-        return 5
+        return 6 if crew_mode else 5
     return 4
 
 

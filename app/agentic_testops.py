@@ -1163,9 +1163,17 @@ class TestOpsAgent:
         exercise_number: Optional[int],
     ) -> Dict[str, Any]:
         if crew_mode:
-            recovered = self._bootstrap_multi_agent(message)
+            recovered = self._bootstrap_multi_agent(
+                message,
+                session_id=session_id,
+                exercise_number=exercise_number,
+            )
         else:
-            recovered = self._bootstrap_single_agent(message)
+            recovered = self._bootstrap_single_agent(
+                message,
+                session_id=session_id,
+                exercise_number=exercise_number,
+            )
 
         merged = dict(payload)
         merged["response"] = recovered["response"]
@@ -1201,24 +1209,36 @@ class TestOpsAgent:
         merged["exercise_number"] = exercise_number
         return merged
 
-    def _bootstrap_single_agent(self, message: str) -> Dict[str, Any]:
-        kb = self._kb_lookup(message, k=3)
-        docs = kb.get("documents", [])
-        context = "\n\n".join(docs[:2])
-
-        prompt = (
-            "You are a testing assistant. Use only the provided context when possible, "
-            "and acknowledge missing evidence when context is insufficient.\n\n"
-            f"Question: {message}\n\n"
-            f"Context:\n{context}"
-        )
-
+    def _bootstrap_single_agent(
+        self,
+        message: str,
+        *,
+        session_id: Optional[str] = None,
+        exercise_number: Optional[int] = None,
+    ) -> Dict[str, Any]:
         with start_span(
             self.tracer,
-            "Bootstrap query_knowledge_base",
+            self._span_name("Bootstrap query_knowledge_base", exercise_number),
             span_kind="TOOL",
-            attrs={"bootstrap.applied": True},
+            attrs={
+                "bootstrap.applied": True,
+                "session.id": session_id,
+                "exercise_number": exercise_number,
+                "course.exercise.number": exercise_number,
+                "agent.mode": "single",
+            },
         ):
+            kb = self._kb_lookup(message, k=3)
+            docs = kb.get("documents", [])
+            context = "\n\n".join(docs[:2])
+
+            prompt = (
+                "You are a testing assistant. Use only the provided context when possible, "
+                "and acknowledge missing evidence when context is insufficient.\n\n"
+                f"Question: {message}\n\n"
+                f"Context:\n{context}"
+            )
+
             llm_response = self._get_llm().invoke(prompt)
 
         response_text = getattr(llm_response, "content", str(llm_response)).strip()
@@ -1249,24 +1269,36 @@ class TestOpsAgent:
             "trajectory_metrics": metrics,
         }
 
-    def _bootstrap_multi_agent(self, message: str) -> Dict[str, Any]:
-        kb = self._kb_lookup(message, k=3)
-        docs = kb.get("documents", [])
-        context = "\n\n".join(docs[:2])
-
-        prompt = (
-            "You are the RAG specialist in a multi-agent test workflow. "
-            "Answer using context and call out uncertainty when needed.\n\n"
-            f"Question: {message}\n\n"
-            f"Context:\n{context}"
-        )
-
+    def _bootstrap_multi_agent(
+        self,
+        message: str,
+        *,
+        session_id: Optional[str] = None,
+        exercise_number: Optional[int] = None,
+    ) -> Dict[str, Any]:
         with start_span(
             self.tracer,
-            "Bootstrap RAG Specialist",
+            self._span_name("Bootstrap RAG Specialist", exercise_number),
             span_kind="AGENT",
-            attrs={"bootstrap.applied": True},
+            attrs={
+                "bootstrap.applied": True,
+                "session.id": session_id,
+                "exercise_number": exercise_number,
+                "course.exercise.number": exercise_number,
+                "agent.mode": "multi",
+            },
         ):
+            kb = self._kb_lookup(message, k=3)
+            docs = kb.get("documents", [])
+            context = "\n\n".join(docs[:2])
+
+            prompt = (
+                "You are the RAG specialist in a multi-agent test workflow. "
+                "Answer using context and call out uncertainty when needed.\n\n"
+                f"Question: {message}\n\n"
+                f"Context:\n{context}"
+            )
+
             llm_response = self._get_llm().invoke(prompt)
 
         response_text = getattr(llm_response, "content", str(llm_response)).strip()
