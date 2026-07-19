@@ -165,6 +165,7 @@ class TestOpsAgent:
         self.ollama_host = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
         self.model_name = os.getenv("AGENT_MODEL", os.getenv("OLLAMA_MODEL", "llama3.2:1b"))
         self.temperature = self._safe_float(os.getenv("AGENT_TEMPERATURE", "0.2"), default=0.2)
+        self.max_tokens = int(self._safe_float(os.getenv("AGENT_MAX_TOKENS", "220"), default=220))
         self.max_iterations = int(self._safe_float(os.getenv("AGENT_MAX_ITERATIONS", "10"), default=10))
         self.max_iterations_crew = int(self._safe_float(os.getenv("AGENT_MAX_ITERATIONS_CREW", "4"), default=4))
         self.max_execution_seconds = int(self._safe_float(os.getenv("AGENT_MAX_EXECUTION_SECONDS", "45"), default=45))
@@ -172,6 +173,8 @@ class TestOpsAgent:
             self._safe_float(os.getenv("AGENT_MAX_EXECUTION_SECONDS_CREW", "25"), default=25)
         )
         self.request_timeout_seconds = int(self._safe_float(os.getenv("AGENT_REQUEST_TIMEOUT_SECONDS", "300"), default=300))
+        self.crew_specialist_mode = str(os.getenv("AGENT_CREW_SPECIALIST_MODE", "direct")).strip().lower()
+        self.crew_enable_validator = self._is_truthy(os.getenv("AGENT_CREW_ENABLE_VALIDATOR", "false"))
         self.enable_detailed_tracing = self._is_truthy(os.getenv("AGENT_DETAILED_TRACING", "true"))
         bootstrap_mode = str(os.getenv("AGENT_BOOTSTRAP_ON_ZERO_TOOLS", "auto")).strip().lower()
         instructor_mode = self._is_truthy(os.getenv("EXERCISE_HUB_ENABLE_INSTRUCTOR", "false"))
@@ -211,6 +214,7 @@ class TestOpsAgent:
                 model=self.model_name,
                 base_url=self.ollama_host,
                 temperature=self.temperature,
+                num_predict=self.max_tokens,
                 sync_client_kwargs={"timeout": self.request_timeout_seconds},
                 async_client_kwargs={"timeout": self.request_timeout_seconds},
             )
@@ -500,6 +504,59 @@ class TestOpsAgent:
             "documents": docs,
             "metadatas": metas,
             "distances": distances,
+        }
+
+    def _run_specialist_direct(
+        self,
+        message: str,
+        *,
+        session_id: str,
+        exercise_number: Optional[int],
+    ) -> Dict[str, Any]:
+        """Fast grounded specialist pass for crew mode to avoid nested ReAct latency."""
+        with start_span(
+            self.tracer,
+            self._span_name("RAG Specialist direct", exercise_number),
+            span_kind="AGENT",
+            attrs={
+                "session.id": session_id,
+                "exercise_number": exercise_number,
+                "course.exercise.number": exercise_number,
+                "agent.mode": "multi",
+            },
+        ):
+            kb = self._kb_lookup(message, k=3)
+            docs = kb.get("documents", [])
+            context = "\n\n".join(docs[:2])
+
+            prompt = (
+                "You are a RAG specialist for GenAI testing exercises. "
+                "Answer only from provided context and be concise.\n\n"
+                f"Question: {message}\n\n"
+                f"Context:\n{context}"
+            )
+            llm_response = self._get_llm().invoke(prompt)
+
+        response_text = getattr(llm_response, "content", str(llm_response)).strip()
+        tool_call = {
+            "tool": "query_knowledge_base",
+            "query": message,
+            "result_count": len(docs),
+            "result_preview": [doc[:180] for doc in docs[:2]],
+        }
+        trace = [
+            {"phase": "action", "content": f"tool=query_knowledge_base input={message}"},
+            {"phase": "observation", "content": response_text[:280]},
+        ]
+        metrics = self._empty_trajectory_metrics()
+        metrics["steps"] = len(trace)
+        metrics["tool_calls"] = 1
+        return {
+            "response": response_text,
+            "tool_calls": [tool_call],
+            "handoffs": [],
+            "agent_trace": trace,
+            "trajectory_metrics": metrics,
         }
 
     def _run_single_agent(
@@ -802,13 +859,20 @@ class TestOpsAgent:
                     "handoff.routed_query": routed_query,
                 },
             ):
-                nested = self._run_single_agent(
-                    message=routed_query,
-                    session_id=session_id,
-                    include_trace=False,
-                    exercise_number=exercise_number,
-                    force_loop_bug=False,
-                )
+                if self.crew_specialist_mode == "react":
+                    nested = self._run_single_agent(
+                        message=routed_query,
+                        session_id=session_id,
+                        include_trace=False,
+                        exercise_number=exercise_number,
+                        force_loop_bug=False,
+                    )
+                else:
+                    nested = self._run_specialist_direct(
+                        routed_query,
+                        session_id=session_id,
+                        exercise_number=exercise_number,
+                    )
 
             if nested.get("tool_calls"):
                 tool_calls.extend(nested["tool_calls"])
@@ -876,12 +940,17 @@ class TestOpsAgent:
             )
             return getattr(response, "content", str(response))
 
-        tools = [rag_agent_tool, general_chat_agent, validator_agent_tool]
+        tools = [rag_agent_tool, general_chat_agent]
+        if self.crew_enable_validator:
+            tools.append(validator_agent_tool)
+
         orchestration_system_text = (
             "You are the TriageAgent orchestrator. Choose exactly one specialist tool at a time. "
-            "For factual/product/testing-content questions prefer rag_agent_tool, then optionally call validator_agent_tool. "
+            "For factual/product/testing-content questions prefer rag_agent_tool. "
             "For casual greetings/help use general_chat_agent."
         )
+        if self.crew_enable_validator:
+            orchestration_system_text += " Optionally call validator_agent_tool before final answer."
         prompt = self._build_react_prompt(orchestration_system_text)
         llm = self._get_llm()
 
@@ -903,8 +972,8 @@ class TestOpsAgent:
                 executor = AgentExecutor(
                     agent=agent,
                     tools=tools,
-                    max_iterations=self.max_iterations,
-                    max_execution_time=self.max_execution_seconds,
+                    max_iterations=self.max_iterations_crew,
+                    max_execution_time=self.max_execution_seconds_crew,
                     handle_parsing_errors=True,
                     return_intermediate_steps=True,
                     verbose=False,
