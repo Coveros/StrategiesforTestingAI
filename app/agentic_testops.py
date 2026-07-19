@@ -1000,7 +1000,7 @@ class TestOpsAgent:
                 lowered = message.lower()
                 casual_markers = ("hello", "hi", "hey", "thanks", "thank you", "help")
                 if any(marker in lowered for marker in casual_markers):
-                    output = general_chat_agent(message)
+                    output = general_chat_agent.invoke({"user_query": message})
                     trace.append({
                         "phase": "action",
                         "content": f"triage_tool=general_chat_agent input={message}",
@@ -1010,7 +1010,7 @@ class TestOpsAgent:
                         "content": str(output)[:280],
                     })
                 else:
-                    output = rag_agent_tool(message)
+                    output = rag_agent_tool.invoke({"user_query": message})
                     trace.append({
                         "phase": "action",
                         "content": f"triage_tool=rag_agent_tool input={message}",
