@@ -39,7 +39,7 @@ class AgentTrajectorySpanCallback(BaseCallbackHandler):
         self.exercise_number = exercise_number
         self.agent_mode = agent_mode
         self.enabled = bool(enabled and tracer is not None)
-        self._active_spans: Dict[str, Any] = {}
+        self._active_spans: Dict[str, Dict[str, Any]] = {}
 
     def _normalize_name(self, base: str) -> str:
         if isinstance(self.exercise_number, int) and self.exercise_number > 0:
@@ -50,8 +50,18 @@ class AgentTrajectorySpanCallback(BaseCallbackHandler):
         if not self.enabled:
             return
 
+        if run_id is None:
+            return
+
+        run_key = str(run_id)
+        if run_key in self._active_spans:
+            # Some runtimes can emit overlapping start callbacks for the same run id.
+            # Keep a single span to avoid duplicate timing nodes.
+            return
+
         try:
-            span = self.tracer.start_span(self._normalize_name(name))
+            span_context = self.tracer.start_as_current_span(self._normalize_name(name))
+            span = span_context.__enter__()
             span.set_attribute(OPENINFERENCE_SPAN_KIND, span_kind)
             span.set_attribute("session.id", self.session_id)
             span.set_attribute("agent.mode", self.agent_mode)
@@ -67,7 +77,10 @@ class AgentTrajectorySpanCallback(BaseCallbackHandler):
                     else:
                         span.set_attribute(key, str(value))
 
-            self._active_spans[str(run_id)] = span
+            self._active_spans[run_key] = {
+                "span": span,
+                "context": span_context,
+            }
         except Exception:
             return
 
@@ -75,15 +88,25 @@ class AgentTrajectorySpanCallback(BaseCallbackHandler):
         if not self.enabled:
             return
 
-        span = self._active_spans.pop(str(run_id), None)
-        if span is None:
+        if run_id is None:
             return
+
+        active = self._active_spans.pop(str(run_id), None)
+        if active is None:
+            return
+
+        span = active.get("span")
+        span_context = active.get("context")
 
         try:
             if error is not None:
                 span.record_exception(error)
                 span.set_attribute("error", True)
-            span.end()
+
+            if span_context is not None:
+                span_context.__exit__(type(error) if error is not None else None, error, getattr(error, "__traceback__", None))
+            elif span is not None:
+                span.end()
         except Exception:
             return
 
