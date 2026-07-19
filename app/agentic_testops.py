@@ -677,17 +677,17 @@ class TestOpsAgent:
             },
         ):
             if runtime["kind"] == "classic":
-                AgentExecutor = runtime["AgentExecutor"]
-                create_react_agent = runtime["create_react_agent"]
-                agent = create_react_agent(llm, tools, prompt)
-                executor = AgentExecutor(
-                    agent=agent,
-                    tools=tools,
-                    max_iterations=self.max_iterations_crew,
-                    max_execution_time=self.max_execution_seconds_crew,
-                    handle_parsing_errors=True,
-                    return_intermediate_steps=True,
-                    verbose=False,
+            if docs:
+                response_text = self._get_rag_pipeline()._generate_response(
+                    message,
+                    docs,
+                    session_id=session_id,
+                    exercise_number=exercise_number,
+                )
+            else:
+                response_text = (
+                    "I could not find enough grounded context in the knowledge base to answer that question."
+                )
                     callbacks=callbacks,
                 )
                 result = executor.invoke({"input": message})
