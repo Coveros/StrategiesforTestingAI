@@ -89,6 +89,7 @@ class AgentTrajectorySpanCallback(BaseCallbackHandler):
 
     def on_chain_start(self, serialized: Dict[str, Any], inputs: Dict[str, Any], run_id: Any = None, **kwargs: Any) -> Any:
         run_id = run_id or kwargs.get("run_id")
+        serialized = serialized or {}
         chain_name = serialized.get("name") or serialized.get("id") or "chain"
         self._start(run_id, "agent.chain", "CHAIN", attrs={"chain.name": str(chain_name)})
 
@@ -102,11 +103,13 @@ class AgentTrajectorySpanCallback(BaseCallbackHandler):
 
     def on_chat_model_start(self, serialized: Dict[str, Any], messages: List[Any], run_id: Any = None, **kwargs: Any) -> Any:
         run_id = run_id or kwargs.get("run_id")
+        serialized = serialized or {}
         model_name = serialized.get("name") or serialized.get("id") or "chat_model"
         self._start(run_id, "agent.llm", "LLM", attrs={"llm.model_name": str(model_name)})
 
     def on_llm_start(self, serialized: Dict[str, Any], prompts: List[str], run_id: Any = None, **kwargs: Any) -> Any:
         run_id = run_id or kwargs.get("run_id")
+        serialized = serialized or {}
         model_name = serialized.get("name") or serialized.get("id") or "llm"
         self._start(run_id, "agent.llm", "LLM", attrs={"llm.model_name": str(model_name)})
 
@@ -120,6 +123,7 @@ class AgentTrajectorySpanCallback(BaseCallbackHandler):
 
     def on_tool_start(self, serialized: Dict[str, Any], input_str: str, run_id: Any = None, **kwargs: Any) -> Any:
         run_id = run_id or kwargs.get("run_id")
+        serialized = serialized or {}
         tool_name = serialized.get("name") or serialized.get("id") or "tool"
         self._start(
             run_id,
@@ -527,17 +531,17 @@ class TestOpsAgent:
         ):
             kb = self._kb_lookup(message, k=3)
             docs = kb.get("documents", [])
-            context = "\n\n".join(docs[:2])
-
-            prompt = (
-                "You are a RAG specialist for GenAI testing exercises. "
-                "Answer only from provided context and be concise.\n\n"
-                f"Question: {message}\n\n"
-                f"Context:\n{context}"
-            )
-            llm_response = self._get_llm().invoke(prompt)
-
-        response_text = getattr(llm_response, "content", str(llm_response)).strip()
+            if docs:
+                response_text = self._get_rag_pipeline()._generate_response(
+                    message,
+                    docs,
+                    session_id=session_id,
+                    exercise_number=exercise_number,
+                )
+            else:
+                response_text = (
+                    "I could not find enough grounded context in the knowledge base to answer that question."
+                )
         tool_call = {
             "tool": "query_knowledge_base",
             "query": message,
@@ -677,17 +681,17 @@ class TestOpsAgent:
             },
         ):
             if runtime["kind"] == "classic":
-            if docs:
-                response_text = self._get_rag_pipeline()._generate_response(
-                    message,
-                    docs,
-                    session_id=session_id,
-                    exercise_number=exercise_number,
-                )
-            else:
-                response_text = (
-                    "I could not find enough grounded context in the knowledge base to answer that question."
-                )
+                AgentExecutor = runtime["AgentExecutor"]
+                create_react_agent = runtime["create_react_agent"]
+                agent = create_react_agent(llm, tools, prompt)
+                executor = AgentExecutor(
+                    agent=agent,
+                    tools=tools,
+                    max_iterations=self.max_iterations,
+                    max_execution_time=self.max_execution_seconds,
+                    handle_parsing_errors=True,
+                    return_intermediate_steps=True,
+                    verbose=False,
                     callbacks=callbacks,
                 )
                 result = executor.invoke({"input": message})
