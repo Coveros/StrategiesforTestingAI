@@ -85,6 +85,28 @@ def infer_exercise_number(mode: str, crew_mode: bool) -> int:
     return 4
 
 
+def _safe_env_float(name: str, default: float) -> float:
+    try:
+        return float(os.getenv(name, str(default)))
+    except (TypeError, ValueError):
+        return default
+
+
+def resolve_agent_api_timeout_seconds(crew_mode: bool) -> float:
+    """Return an API timeout aligned to the active agent execution budget.
+
+    Keeps compatibility with AGENT_API_TIMEOUT_SECONDS overrides while avoiding
+    premature API timeouts when the selected agent mode is allowed to run longer.
+    """
+    configured_api_timeout = _safe_env_float('AGENT_API_TIMEOUT_SECONDS', 60.0)
+    single_exec_budget = _safe_env_float('AGENT_MAX_EXECUTION_SECONDS', 45.0)
+    crew_exec_budget = _safe_env_float('AGENT_MAX_EXECUTION_SECONDS_CREW', 25.0)
+    active_exec_budget = crew_exec_budget if crew_mode else single_exec_budget
+
+    # Small buffer accounts for orchestration and response serialization overhead.
+    return max(5.0, configured_api_timeout, active_exec_budget + 5.0)
+
+
 def _client_ip() -> str:
     forwarded_for = request.headers.get('X-Forwarded-For', '')
     if forwarded_for:
@@ -313,10 +335,7 @@ def chat():
         
         if mode == 'agentic':
             # Process with the test-ops agentic loop
-            try:
-                agent_timeout_seconds = float(os.getenv('AGENT_API_TIMEOUT_SECONDS', '35'))
-            except (TypeError, ValueError):
-                agent_timeout_seconds = 35.0
+            agent_timeout_seconds = resolve_agent_api_timeout_seconds(crew_mode)
 
             with ThreadPoolExecutor(max_workers=1) as executor:
                 future = executor.submit(
@@ -328,7 +347,7 @@ def chat():
                     exercise_number=exercise_number,
                 )
                 try:
-                    response_data = future.result(timeout=max(5.0, agent_timeout_seconds))
+                    response_data = future.result(timeout=agent_timeout_seconds)
                 except FutureTimeoutError:
                     logger.warning(
                         "Agent mode request timed out after %.1fs (session=%s, crew_mode=%s)",

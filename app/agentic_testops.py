@@ -170,7 +170,7 @@ class TestOpsAgent:
         self.model_name = os.getenv("AGENT_MODEL", os.getenv("OLLAMA_MODEL", "llama3.2:1b"))
         self.temperature = self._safe_float(os.getenv("AGENT_TEMPERATURE", "0.2"), default=0.2)
         self.max_tokens = int(self._safe_float(os.getenv("AGENT_MAX_TOKENS", "220"), default=220))
-        self.max_iterations = int(self._safe_float(os.getenv("AGENT_MAX_ITERATIONS", "10"), default=10))
+        self.max_iterations = int(self._safe_float(os.getenv("AGENT_MAX_ITERATIONS", "6"), default=6))
         self.max_iterations_crew = int(self._safe_float(os.getenv("AGENT_MAX_ITERATIONS_CREW", "4"), default=4))
         self.max_execution_seconds = int(self._safe_float(os.getenv("AGENT_MAX_EXECUTION_SECONDS", "45"), default=45))
         self.max_execution_seconds_crew = int(
