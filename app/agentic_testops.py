@@ -179,6 +179,7 @@ class TestOpsAgent:
         self.request_timeout_seconds = int(self._safe_float(os.getenv("AGENT_REQUEST_TIMEOUT_SECONDS", "300"), default=300))
         self.crew_specialist_mode = str(os.getenv("AGENT_CREW_SPECIALIST_MODE", "direct")).strip().lower()
         self.crew_enable_validator = self._is_truthy(os.getenv("AGENT_CREW_ENABLE_VALIDATOR", "false"))
+        self.crew_router_mode = str(os.getenv("AGENT_CREW_ROUTER_MODE", "heuristic")).strip().lower()
         self.enable_detailed_tracing = self._is_truthy(os.getenv("AGENT_DETAILED_TRACING", "true"))
         bootstrap_mode = str(os.getenv("AGENT_BOOTSTRAP_ON_ZERO_TOOLS", "auto")).strip().lower()
         instructor_mode = self._is_truthy(os.getenv("EXERCISE_HUB_ENABLE_INSTRUCTOR", "false"))
@@ -766,38 +767,6 @@ class TestOpsAgent:
     ) -> Dict[str, Any]:
         from langchain_core.tools import tool
 
-        try:
-            runtime = self._resolve_langchain_agent_runtime()
-        except ImportError as import_error:
-            logger.warning("Agent runtime unavailable; using bootstrap multi-agent fallback: %s", import_error)
-            recovered = self._bootstrap_multi_agent(message)
-            if include_trace:
-                recovered_trace = list(recovered.get("agent_trace", []))
-                recovered_trace.insert(
-                    0,
-                    {
-                        "phase": "fallback",
-                        "content": "LangChain runtime unavailable; executed bootstrap multi-agent path",
-                    },
-                )
-                recovered["agent_trace"] = recovered_trace
-
-            payload = self._response_payload(
-                response=recovered.get("response", "I could not produce a response."),
-                trace=recovered.get("agent_trace", []),
-                tool_calls=recovered.get("tool_calls", []),
-                session_id=session_id,
-                include_trace=include_trace,
-                handoffs=recovered.get("handoffs", []),
-                trajectory_metrics=recovered.get("trajectory_metrics", self._empty_trajectory_metrics()),
-                crew_mode=True,
-                exercise_number=exercise_number,
-                bootstrap_applied=True,
-                bootstrap_reason="agent_runtime_import_failure",
-            )
-            payload["agent_runtime_fallback"] = True
-            return payload
-
         trace: List[Dict[str, str]] = []
         tool_calls: List[Dict[str, Any]] = []
         handoffs: List[Dict[str, Any]] = []
@@ -814,6 +783,41 @@ class TestOpsAgent:
                     enabled=self.phoenix_enabled,
                 )
             )
+
+        if self.crew_router_mode == "react":
+            try:
+                runtime = self._resolve_langchain_agent_runtime()
+            except ImportError as import_error:
+                logger.warning("Agent runtime unavailable; using bootstrap multi-agent fallback: %s", import_error)
+                recovered = self._bootstrap_multi_agent(message)
+                if include_trace:
+                    recovered_trace = list(recovered.get("agent_trace", []))
+                    recovered_trace.insert(
+                        0,
+                        {
+                            "phase": "fallback",
+                            "content": "LangChain runtime unavailable; executed bootstrap multi-agent path",
+                        },
+                    )
+                    recovered["agent_trace"] = recovered_trace
+
+                payload = self._response_payload(
+                    response=recovered.get("response", "I could not produce a response."),
+                    trace=recovered.get("agent_trace", []),
+                    tool_calls=recovered.get("tool_calls", []),
+                    session_id=session_id,
+                    include_trace=include_trace,
+                    handoffs=recovered.get("handoffs", []),
+                    trajectory_metrics=recovered.get("trajectory_metrics", self._empty_trajectory_metrics()),
+                    crew_mode=True,
+                    exercise_number=exercise_number,
+                    bootstrap_applied=True,
+                    bootstrap_reason="agent_runtime_import_failure",
+                )
+                payload["agent_runtime_fallback"] = True
+                return payload
+        else:
+            runtime = None
 
         def should_mutate_handoff(text: str) -> bool:
             lowered = text.lower()
@@ -969,7 +973,30 @@ class TestOpsAgent:
                 "agent.mode": "multi",
             },
         ):
-            if runtime["kind"] == "classic":
+            if self.crew_router_mode != "react":
+                lowered = message.lower()
+                casual_markers = ("hello", "hi", "hey", "thanks", "thank you", "help")
+                if any(marker in lowered for marker in casual_markers):
+                    output = general_chat_agent(message)
+                    trace.append({
+                        "phase": "action",
+                        "content": f"triage_tool=general_chat_agent input={message}",
+                    })
+                    trace.append({
+                        "phase": "observation",
+                        "content": str(output)[:280],
+                    })
+                else:
+                    output = rag_agent_tool(message)
+                    trace.append({
+                        "phase": "action",
+                        "content": f"triage_tool=rag_agent_tool input={message}",
+                    })
+                    trace.append({
+                        "phase": "observation",
+                        "content": str(output)[:280],
+                    })
+            elif runtime["kind"] == "classic":
                 AgentExecutor = runtime["AgentExecutor"]
                 create_react_agent = runtime["create_react_agent"]
                 agent = create_react_agent(llm, tools, prompt)
