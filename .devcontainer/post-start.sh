@@ -200,19 +200,39 @@ else
   echo "Warning: phoenix CLI not found; Phoenix auto-start skipped."
 fi
 
-if ensure_ollama_prerequisites && ensure_ollama_installed; then
-  start_ollama_if_needed
+# Check available CPU cores before attempting Ollama startup
+AVAILABLE_CPUS=$(grep -c ^processor /proc/cpuinfo 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || echo "1")
+REQUIRED_CPUS=4
 
-  if wait_for_ollama; then
-    if ! ollama list | awk '{print $1}' | grep -qx "${MODEL}"; then
-      echo "Model ${MODEL} not found locally; pulling now..."
-      ollama pull "${MODEL}" || echo "Warning: model pull failed. Retry with: ollama pull ${MODEL}"
+if [ "${AVAILABLE_CPUS}" -lt "${REQUIRED_CPUS}" ]; then
+  echo ""
+  echo "⚠️  WARNING: Insufficient CPU cores for Ollama (detected: ${AVAILABLE_CPUS}, required: ${REQUIRED_CPUS})"
+  echo ""
+  echo "STEPS TO FIX:"
+  echo "1. In GitHub.com, go to: https://github.com/codespaces"
+  echo "2. Click the ⋯ menu next to this Codespace"
+  echo "3. Select 'Change machine type' and upgrade to 4-core"
+  echo "4. Wait for rebuild (~2 minutes)"
+  echo "5. After rebuild, manually start Ollama by running:"
+  echo "   bash .devcontainer/start-ollama.sh"
+  echo ""
+  echo "For now, the Flask app will start but LLM requests will fail."
+  echo ""
+else
+  if ensure_ollama_prerequisites && ensure_ollama_installed; then
+    start_ollama_if_needed
+
+    if wait_for_ollama; then
+      if ! ollama list | awk '{print $1}' | grep -qx "${MODEL}"; then
+        echo "Model ${MODEL} not found locally; pulling now..."
+        ollama pull "${MODEL}" || echo "Warning: model pull failed. Retry with: ollama pull ${MODEL}"
+      fi
+    else
+      echo "Warning: Ollama service did not become ready. See /tmp/ollama.log"
     fi
   else
-    echo "Warning: Ollama service did not become ready. See /tmp/ollama.log"
+    echo "Warning: Ollama prerequisite/install/start failed in post-start; demo app may not answer model requests yet."
   fi
-else
-  echo "Warning: Ollama prerequisite/install/start failed in post-start; demo app may not answer model requests yet."
 fi
 
 print_startup_status
