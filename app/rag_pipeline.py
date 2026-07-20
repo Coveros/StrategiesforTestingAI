@@ -56,9 +56,34 @@ class RAGPipeline:
         # Rate limiting tracking
         self._last_provider_call_time = 0
         self._min_spacing = 0.1  # spacing between local provider calls
+        self.phoenix_quality_signals_enabled = self._is_truthy_env('PHOENIX_QUALITY_SIGNALS_ENABLED', False)
         
         self._initialize_components()
         self._warm_up_runtime()
+
+    def _is_truthy_env(self, key: str, default: bool = False) -> bool:
+        """Read a boolean-like env var safely."""
+        fallback = 'true' if default else 'false'
+        value = os.getenv(key, fallback)
+        return str(value).strip().lower() in ('1', 'true', 'yes', 'on')
+
+    def _add_quality_signal_attrs(self, span: Any, attrs: Dict[str, Any]) -> None:
+        """Attach optional Phoenix quality attributes to an active span."""
+        if not self.phoenix_quality_signals_enabled:
+            return
+        if span is None or not attrs:
+            return
+        try:
+            for key, value in attrs.items():
+                if value is None:
+                    continue
+                if isinstance(value, (bool, int, float, str)):
+                    span.set_attribute(key, value)
+                else:
+                    span.set_attribute(key, str(value))
+        except Exception:
+            # Quality signal attributes are optional and should never break core flow.
+            logger.debug("Skipped setting optional Phoenix quality signal attributes", exc_info=True)
     
     def _initialize_components(self):
         """Initialize all pipeline components."""
@@ -442,7 +467,7 @@ class RAGPipeline:
                     "course.exercise.number": exercise_number,
                     "app.mode": "rag",
                 },
-            ):
+            ) as retrieve_span:
                 # Generate query embedding
                 query_embedding = self._generate_query_embedding(query)
 
@@ -451,6 +476,17 @@ class RAGPipeline:
                     query_embeddings=[query_embedding],
                     n_results=n_results,
                     include=["documents", "metadatas", "distances"]
+                )
+
+                distances = results['distances'][0] if results.get('distances') else []
+                similarities = [max(0.0, min(1.0, 1 - float(dist))) for dist in distances]
+                self._add_quality_signal_attrs(
+                    retrieve_span,
+                    {
+                        "quality.retrieval.docs_returned": len(results['documents'][0]) if results.get('documents') else 0,
+                        "quality.retrieval.top1_similarity": round(similarities[0], 4) if similarities else None,
+                        "quality.retrieval.avg_similarity": round(sum(similarities) / len(similarities), 4) if similarities else None,
+                    },
                 )
             
             retrieval_time = time.time() - start_time
@@ -567,7 +603,7 @@ class RAGPipeline:
                     "course.exercise.number": exercise_number,
                     "app.mode": "rag",
                 },
-            ):
+            ) as query_span:
                 # Input validation
                 if not user_query or not user_query.strip():
                     raise ValueError("Empty query provided")
@@ -618,6 +654,17 @@ class RAGPipeline:
                     'total_time': total_time,
                     'temperature': effective_temperature
                 }
+
+                self._add_quality_signal_attrs(
+                    query_span,
+                    {
+                        "quality.response.length_chars": len(response_text),
+                        "quality.response.has_sources": len(response_data['sources']) > 0,
+                        "quality.response.source_count": len(response_data['sources']),
+                        "quality.response.total_time_ms": round(total_time * 1000, 2),
+                        "quality.response.retrieval_time_ms": round(retrieval_results['retrieval_time'] * 1000, 2),
+                    },
+                )
 
                 return response_data
             

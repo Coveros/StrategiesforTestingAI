@@ -26,8 +26,8 @@
 
 	// Specify minimum host requirements for ML workloads (sentence-transformers, chromadb, etc.)
 	"hostRequirements": {
-		"cpus": 4,
-		"memory": "16GB",
+		"cpus": 2,
+		"memory": "4GB",
 		"storage": "32GB"
 	},
 

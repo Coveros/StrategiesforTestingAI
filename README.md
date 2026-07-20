@@ -99,6 +99,7 @@ Frontend (HTML/CSS/JS) → Flask Backend → RAG Pipeline → Ollama (Local SLM)
    Phoenix tracing is enabled by default for both Ask mode and Agent mode:
    - `ENABLE_PHOENIX_ASK_TRACING=true`
    - `ENABLE_PHOENIX_AGENT_TRACING=true`
+   - `PHOENIX_QUALITY_SIGNALS_ENABLED=false` (optional quality-related span attributes; keep false to preserve baseline Exercise 4-6 behavior)
    - `PHOENIX_PROJECT_NAME=strategiesfortestingai`
 
 5. **Run Application**
