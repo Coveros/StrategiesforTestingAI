@@ -9,14 +9,6 @@ Personal GitHub accounts have limited access to Codespaces machine sizes. To bal
 
 ## Quick Start Steps
 
-### 0. Configure Idle Timeout (Do This First!)
-Before you start, set your Codespaces idle timeout to the maximum to avoid your machine stopping during class:
-
-1. Go to https://github.com/settings/codespaces
-2. Find the **"Idle timeout"** setting
-3. Select **"240 minutes"** (4 hours - the maximum)
-4. This ensures your Codespace won't stop during our lecture/exercise sessions
-
 ### 1. Create a Codespace
 - Go to the repository on GitHub
 - Click **"< > Code"** → **"Codespaces"** tab → **"Create codespace on main"**
