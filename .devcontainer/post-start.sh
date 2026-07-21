@@ -208,6 +208,9 @@ if ensure_ollama_prerequisites && ensure_ollama_installed; then
       echo "Model ${MODEL} not found locally; pulling now..."
       ollama pull "${MODEL}" || echo "Warning: model pull failed. Retry with: ollama pull ${MODEL}"
     fi
+    
+    echo "Pre-warming model ${MODEL} into memory..."
+    curl -s http://localhost:11434/api/generate -d "{\"model\": \"${MODEL}\", \"keep_alive\": -1}" > /dev/null 2>&1 || true
   else
     echo "Warning: Ollama service did not become ready. See /tmp/ollama.log"
   fi
