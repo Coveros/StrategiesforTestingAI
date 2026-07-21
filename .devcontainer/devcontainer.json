@@ -16,7 +16,9 @@
 		"OLLAMA_MODEL": "llama3.2:1b",
 		"AGENT_MODEL": "llama3.2:1b",
 		"AGENT_REQUEST_TIMEOUT_SECONDS": "300",
-		"AGENT_BOOTSTRAP_ON_ZERO_TOOLS": "true"
+		"AGENT_BOOTSTRAP_ON_ZERO_TOOLS": "true",
+		"OLLAMA_NUM_PARALLEL": "1",
+		"OLLAMA_MAX_LOADED_MODELS": "1"
 	},
 
 	// Use interpreter-bound pip to avoid PATH ambiguity.
