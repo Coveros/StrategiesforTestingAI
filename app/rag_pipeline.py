@@ -480,6 +480,18 @@ class RAGPipeline:
 
                 distances = results['distances'][0] if results.get('distances') else []
                 similarities = [max(0.0, min(1.0, 1 - float(dist))) for dist in distances]
+                
+                # Capture retrieved documents for test analysis
+                if retrieve_span is not None and results.get('documents'):
+                    try:
+                        docs = results['documents'][0] if results['documents'] else []
+                        for idx, doc in enumerate(docs[:3]):
+                            retrieve_span.set_attribute(f"retrieval.documents.{idx}.content", str(doc)[:500])
+                            if retrieve_span is not None and idx < len(similarities):
+                                retrieve_span.set_attribute(f"retrieval.documents.{idx}.score", round(similarities[idx], 4))
+                    except Exception as e:
+                        logger.debug("Error capturing retrieval results: %s", e)
+                
                 self._add_quality_signal_attrs(
                     retrieve_span,
                     {
@@ -547,13 +559,15 @@ class RAGPipeline:
                 attrs={
                     "llm.model_name": self.ollama_model,
                     "llm.temperature": effective_temperature,
+                    "llm.prompts.0": prompt[:1000],  # Capture prompt for test analysis
                     "rag.context_docs_used": min(3, len(context_docs)),
+                    "rag.query": query,
                     "session.id": session_id,
                     "exercise_number": exercise_number,
                     "course.exercise.number": exercise_number,
                     "app.mode": "rag",
                 },
-            ):
+            ) as gen_span:
                 def generate_call():
                     response = requests.post(
                         f"{self.ollama_host}/api/generate",
@@ -572,7 +586,20 @@ class RAGPipeline:
                     return response.json()
 
                 payload = self._provider_call_with_backoff(generate_call)
-                return str(payload.get('response', '')).strip()
+                response_text = str(payload.get('response', '')).strip()
+                
+                # Capture response output and metadata
+                if gen_span is not None:
+                    try:
+                        gen_span.set_attribute("llm.completions.0.content", response_text[:1000])
+                        gen_span.set_attribute("llm.completions.0.finish_reason", "stop")
+                        if "eval_count" in payload and "prompt_eval_count" in payload:
+                            gen_span.set_attribute("llm.usage.completion_tokens", payload.get("eval_count", 0))
+                            gen_span.set_attribute("llm.usage.prompt_tokens", payload.get("prompt_eval_count", 0))
+                    except Exception as e:
+                        logger.debug("Error capturing generation output: %s", e)
+                
+                return response_text
             
         except Exception as e:
             logger.error(f"Failed to generate response: {str(e)}")

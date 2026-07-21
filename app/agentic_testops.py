@@ -128,16 +128,77 @@ class AgentTrajectorySpanCallback(BaseCallbackHandler):
         run_id = run_id or kwargs.get("run_id")
         serialized = serialized or {}
         model_name = serialized.get("name") or serialized.get("id") or "chat_model"
-        self._start(run_id, "agent.llm", "LLM", attrs={"llm.model_name": str(model_name)})
+        
+        attrs = {
+            "llm.model_name": str(model_name),
+            "llm.invocation_parameters.temperature": self._get_temp_from_serialized(serialized),
+        }
+        
+        # Capture message content for debugging
+        if messages:
+            try:
+                prompt_text = "\n".join([getattr(m, "content", str(m))[:500] for m in messages])
+                attrs["llm.messages.0.content"] = prompt_text
+                attrs["llm.messages.count"] = len(messages)
+            except Exception:
+                pass
+        
+        self._start(run_id, "agent.llm", "LLM", attrs=attrs)
+
+    def _get_temp_from_serialized(self, serialized: Dict[str, Any]) -> float:
+        """Extract temperature from LangChain serialized config."""
+        try:
+            return float(serialized.get("kwargs", {}).get("temperature", 0.0))
+        except (ValueError, TypeError, AttributeError):
+            return 0.0
 
     def on_llm_start(self, serialized: Dict[str, Any], prompts: List[str], run_id: Any = None, **kwargs: Any) -> Any:
         run_id = run_id or kwargs.get("run_id")
         serialized = serialized or {}
         model_name = serialized.get("name") or serialized.get("id") or "llm"
-        self._start(run_id, "agent.llm", "LLM", attrs={"llm.model_name": str(model_name)})
+        
+        attrs = {
+            "llm.model_name": str(model_name),
+            "llm.invocation_parameters.temperature": self._get_temp_from_serialized(serialized),
+        }
+        
+        # Capture prompt content for retrieval testing
+        if prompts:
+            try:
+                prompt_preview = prompts[0][:500] if prompts else ""
+                attrs["llm.prompts.0"] = prompt_preview
+                attrs["llm.prompts.count"] = len(prompts)
+            except Exception:
+                pass
+        
+        self._start(run_id, "agent.llm", "LLM", attrs=attrs)
 
     def on_llm_end(self, response: Any, run_id: Any = None, **kwargs: Any) -> Any:
         run_id = run_id or kwargs.get("run_id")
+        active = self._active_spans.get(str(run_id), {})
+        span = active.get("span")
+        
+        # Capture LLM output and token usage
+        if span is not None and response is not None:
+            try:
+                # Capture text response
+                if hasattr(response, "generations") and response.generations:
+                    text_out = response.generations[0][0].text[:500] if response.generations[0] else ""
+                    span.set_attribute("llm.completions.0.finish_reason", "stop")
+                    span.set_attribute("llm.completions.0.content", text_out)
+                elif hasattr(response, "content"):
+                    span.set_attribute("llm.completions.0.content", str(response.content)[:500])
+                
+                # Capture token usage if available
+                if hasattr(response, "usage_metadata") and response.usage_metadata:
+                    usage = response.usage_metadata
+                    span.set_attribute("llm.usage.completion_tokens", usage.get("output_tokens", 0))
+                    span.set_attribute("llm.usage.prompt_tokens", usage.get("input_tokens", 0))
+                    span.set_attribute("llm.usage.total_tokens", 
+                                     usage.get("input_tokens", 0) + usage.get("output_tokens", 0))
+            except Exception as e:
+                logger.debug("Error capturing LLM output: %s", e)
+        
         self._end(run_id)
 
     def on_llm_error(self, error: BaseException, run_id: Any = None, **kwargs: Any) -> Any:
@@ -154,12 +215,24 @@ class AgentTrajectorySpanCallback(BaseCallbackHandler):
             "TOOL",
             attrs={
                 "tool.name": str(tool_name),
-                "tool.input_preview": str(input_str)[:180],
+                "tool.input": str(input_str),  # Full input, not preview
             },
         )
 
     def on_tool_end(self, output: Any, run_id: Any = None, **kwargs: Any) -> Any:
         run_id = run_id or kwargs.get("run_id")
+        active = self._active_spans.get(str(run_id), {})
+        span = active.get("span")
+        
+        # Capture tool output for test analysis
+        if span is not None and output is not None:
+            try:
+                output_str = str(output)[:1000]  # Truncate large outputs
+                span.set_attribute("tool.output", output_str)
+                span.set_attribute("tool.execution_result", "success")
+            except Exception:
+                pass
+        
         self._end(run_id)
 
     def on_tool_error(self, error: BaseException, run_id: Any = None, **kwargs: Any) -> Any:
