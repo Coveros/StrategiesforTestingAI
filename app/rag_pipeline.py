@@ -593,11 +593,23 @@ class RAGPipeline:
                     try:
                         gen_span.set_attribute("llm.completions.0.content", response_text[:1000])
                         gen_span.set_attribute("llm.completions.0.finish_reason", "stop")
-                        if "eval_count" in payload and "prompt_eval_count" in payload:
-                            gen_span.set_attribute("llm.usage.completion_tokens", payload.get("eval_count", 0))
-                            gen_span.set_attribute("llm.usage.prompt_tokens", payload.get("prompt_eval_count", 0))
+                        
+                        # Capture token usage from Ollama response
+                        eval_count = payload.get("eval_count")
+                        prompt_eval_count = payload.get("prompt_eval_count")
+                        
+                        if eval_count is not None:
+                            gen_span.set_attribute("llm.usage.completion_tokens", int(eval_count))
+                        if prompt_eval_count is not None:
+                            gen_span.set_attribute("llm.usage.prompt_tokens", int(prompt_eval_count))
+                        if eval_count is not None and prompt_eval_count is not None:
+                            gen_span.set_attribute("llm.usage.total_tokens", int(eval_count) + int(prompt_eval_count))
+                        
+                        # Log payload for debugging if tokens missing
+                        if eval_count is None or prompt_eval_count is None:
+                            logger.debug("Ollama response missing token counts. Payload keys: %s", list(payload.keys()))
                     except Exception as e:
-                        logger.debug("Error capturing generation output: %s", e)
+                        logger.warning("Error capturing generation output: %s", e)
                 
                 return response_text
             

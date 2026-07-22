@@ -192,12 +192,17 @@ class AgentTrajectorySpanCallback(BaseCallbackHandler):
                 # Capture token usage if available
                 if hasattr(response, "usage_metadata") and response.usage_metadata:
                     usage = response.usage_metadata
-                    span.set_attribute("llm.usage.completion_tokens", usage.get("output_tokens", 0))
-                    span.set_attribute("llm.usage.prompt_tokens", usage.get("input_tokens", 0))
-                    span.set_attribute("llm.usage.total_tokens", 
-                                     usage.get("input_tokens", 0) + usage.get("output_tokens", 0))
+                    prompt_tokens = usage.get("input_tokens", 0)
+                    completion_tokens = usage.get("output_tokens", 0)
+                    span.set_attribute("llm.usage.prompt_tokens", int(prompt_tokens))
+                    span.set_attribute("llm.usage.completion_tokens", int(completion_tokens))
+                    span.set_attribute("llm.usage.total_tokens", int(prompt_tokens) + int(completion_tokens))
+                else:
+                    # Log missing token data for debugging
+                    if hasattr(response, "__dict__"):
+                        logger.debug("Response missing usage_metadata. Response attributes: %s", list(response.__dict__.keys()))
             except Exception as e:
-                logger.debug("Error capturing LLM output: %s", e)
+                logger.warning("Error capturing LLM output: %s", e)
         
         self._end(run_id)
 

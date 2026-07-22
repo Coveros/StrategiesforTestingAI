@@ -214,13 +214,47 @@ From rag.retrieve span:
 
 ## How to Query This Data in Phoenix
 
-### Via Phoenix UI:
+### Via Phoenix UI - Finding Token Usage:
 
-1. **Open Phoenix** → http://localhost:6006
-2. **Navigate to Traces** tab
-3. **Click on any trace** to expand it
-4. **View Attributes panel** on the right → shows all span attributes
-5. **Click individual spans** to drill into LLM outputs, tool results, etc.
+**Step 1: Open Traces Tab**
+1. Go to http://localhost:6006
+2. Click **Traces** tab (main table view)
+
+**Step 2: Find Your Request**
+- Look for span name: `rag.generate` (Ask mode) or `agent.llm` (Agent/Crew mode)
+- Or search by attributes if available
+
+**Step 3: Expand the Span**
+- Click on the trace row to view detailed trace
+- In the **left panel**, you'll see nested spans (CHAIN > LLM > TOOL structure)
+- Click on the **LLM span** (blue or red box)
+
+**Step 4: View Attributes Panel**
+- **Right panel** shows all span attributes
+- Scroll down in attributes to find:
+  - `llm.usage.prompt_tokens` — Input token count
+  - `llm.usage.completion_tokens` — Output token count
+  - `llm.usage.total_tokens` — Total token count
+  - `llm.prompts.0` — The actual prompt sent
+  - `llm.completions.0.content` — The model's response
+  - `llm.completions.0.finish_reason` — Why it stopped (stop, length, error)
+
+**Step 5: For RAG Retrieval**
+- Click on the **RETRIEVER span** (purple)
+- Attributes panel shows:
+  - `retrieval.documents.0.content` — First retrieved document
+  - `retrieval.documents.0.score` — Similarity (0-1 scale)
+  - `retrieval.documents.1.content`, `.1.score` — Second doc
+  - `retrieval.documents.2.content`, `.2.score` — Third doc
+  - `quality.retrieval.top1_similarity` — Best match score
+  - `rag.query` — The original user question
+
+### Important Clarification: Evaluators Tab vs Traces Tab
+
+- **Traces Tab** (where token usage appears): Shows execution details, attributes, and metadata
+- **Evaluators Tab**: For *running automated evaluation functions* (e.g., scoring hallucination, relevance) — separate feature
+
+Token usage always appears in **Traces Tab, Attributes Panel**, not in Evaluators.
 
 ### Via Span Timeline:
 
@@ -263,19 +297,31 @@ From rag.retrieve span:
 - Wait 30 seconds for first inference to warm up (cold-start timeout)
 - Refresh Phoenix UI and create a new trace
 
-### Problem: Spans exist but attributes are empty
-**Solution:**
-- Check Phoenix is using correct project name: `PHOENIX_PROJECT_NAME` env var
-- Verify `ENABLE_PHOENIX_ASK_TRACING=true` (RAG) and `ENABLE_PHOENIX_AGENT_TRACING=true` (Agent)
-- Ensure `app/agentic_testops.py` and `app/rag_pipeline.py` are importing latest versions
+### Problem: Spans exist but token counts are missing
+**Solution (Ask/RAG mode):**
+- Check `/tmp/ollama.log` for errors
+- Ensure Ollama is responding: `curl http://127.0.0.1:11434/api/tags`
+- Token data comes from Ollama's response payload — if missing, Ollama may not be returning them
+- Look in terminal output for debug message: "Ollama response missing token counts. Payload keys: ..."
 
-### Problem: "I see LLM spans but no completions"
-**Solution:**
-- This is a first-request cold-start. The LLM call timed out. Try again.
-- Check `/tmp/ollama.log` for "signal: terminated" errors
-- Verify Ollama has `OLLAMA_NUM_PARALLEL=1` and `OLLAMA_KEEP_ALIVE=-1` set
+**Solution (Agent/Crew mode):**
+- ChatOllama from LangChain might not be including `usage_metadata`
+- Check `AGENT_MODEL` env var matches a model that returns token counts
+- Look in terminal: "Response missing usage_metadata. Response attributes: ..."
 
-### Problem: Retrieval documents are empty
+### Problem: Spans exist but token counts show 0
+**Solution:**
+- This can happen on first/cold-start requests when model is loading
+- Try again on second request (warm model)
+- Token counting is accurate once model inference completes
+
+### Problem: I see prompts but not completions
+**Solution:**
+- Completions are only set when the LLM response completes without error
+- If you see error span markers, check exception trace
+- Long-running requests may time out before completion is captured
+
+### Problem: Retrieved documents are empty
 **Solution:**
 - Ensure documents are loaded: `curl http://localhost:5000/api/health`
 - Check document count: Look at `documents_loaded` in response
