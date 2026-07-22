@@ -249,12 +249,27 @@ From rag.retrieve span:
   - `quality.retrieval.top1_similarity` — Best match score
   - `rag.query` — The original user question
 
-### Important Clarification: Evaluators Tab vs Traces Tab
+## Phoenix Tabs Explained
 
-- **Traces Tab** (where token usage appears): Shows execution details, attributes, and metadata
-- **Evaluators Tab**: For *running automated evaluation functions* (e.g., scoring hallucination, relevance) — separate feature
+### **Traces Tab** (Your Primary Focus)
+- **Purpose**: View raw execution data from your LLM app
+- **Contains**: Prompts, responses, tokens, latency, tool calls, errors
+- **How to use**: Debug "what happened" in each request
+- **Example**: "Why did the retrieval only find 2 docs instead of 5?"
 
-Token usage always appears in **Traces Tab, Attributes Panel**, not in Evaluators.
+### **Evaluators Tab** (Automated Grading)
+- **Purpose**: Run automated scoring functions on your traces
+- **Contains**: Quality scores (hallucination, relevance, groundedness)
+- **How to use**: Measure aggregate quality across many traces
+- **Example**: "Grade 100 traces for hallucination; get average score of 0.87"
+- **See**: [PHOENIX_EVALUATIONS_GUIDE.md](PHOENIX_EVALUATIONS_GUIDE.md) for setup
+
+### **Projects / Config Tab** (Settings)
+- **Purpose**: Map span attributes to input/output roles
+- **Contains**: Input key mappings, output key mappings, custom fields
+- **How to use**: Tell Phoenix how to interpret your span structure
+- **Example**: "Treat `llm.prompts.0` as Input, `llm.completions.0.content` as Output"
+- **Default**: Phoenix auto-detects OpenInference conventions (your code uses these)
 
 ### Via Span Timeline:
 
