@@ -758,8 +758,25 @@ class TestOpsAgent:
                 "agent.mode": "multi",
             },
         ):
-            kb = self._kb_lookup(message, k=3)
-            docs = kb.get("documents", [])
+            # Emit TOOL span for retrieval visibility (Module 6/7 testing)
+            with start_span(
+                self.tracer,
+                self._span_name("query_knowledge_base", exercise_number),
+                span_kind="TOOL",
+                attrs={
+                    "tool.name": "query_knowledge_base",
+                    "tool.input": message[:500],
+                },
+            ) as retrieve_tool_span:
+                kb = self._kb_lookup(message, k=3)
+                docs = kb.get("documents", [])
+                try:
+                    retrieve_tool_span.set_attribute("retrieval.documents_returned", len(docs))
+                    retrieve_tool_span.set_attribute("tool.output", "\n".join(docs[:2])[:500] if docs else "")
+                    retrieve_tool_span.set_attribute("tool.execution_result", "success")
+                except Exception:
+                    pass
+            
             if docs:
                 response_text = self._get_rag_pipeline()._generate_response(
                     message,
