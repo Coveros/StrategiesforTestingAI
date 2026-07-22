@@ -907,8 +907,10 @@ class TestOpsAgent:
                 "course.exercise.number": exercise_number,
                 "agent.mode": "single",
                 "agent.loop_bug": force_loop_bug,
+                "input.value": message[:1000],
+                "input.mime_type": "text/plain",
             },
-        ):
+        ) as agent_span:
             if runtime["kind"] == "classic":
                 AgentExecutor = runtime["AgentExecutor"]
                 create_react_agent = runtime["create_react_agent"]
@@ -956,8 +958,15 @@ class TestOpsAgent:
                 output = str(langgraph_result.get("output", "")).strip()
                 trace.extend(langgraph_result.get("trace", []))
 
-        if not output:
-            output = "I could not produce an answer from the available context."
+            if not output:
+                output = "I could not produce an answer from the available context."
+
+            # Emit output on the root agent span so Phoenix renders it in the Output panel
+            try:
+                agent_span.set_attribute("output.value", output[:1000])
+                agent_span.set_attribute("output.mime_type", "text/plain")
+            except Exception:
+                pass
 
         query_counter = Counter((call.get("tool"), call.get("query")) for call in tool_calls)
         redundant = sum(count - 1 for count in query_counter.values() if count > 1)
@@ -1199,8 +1208,10 @@ class TestOpsAgent:
                 "exercise_number": exercise_number,
                 "course.exercise.number": exercise_number,
                 "agent.mode": "multi",
+                "input.value": message[:1000],
+                "input.mime_type": "text/plain",
             },
-        ):
+        ) as triage_span:
             if self.crew_router_mode != "react":
                 lowered = message.lower()
                 casual_markers = ("hello", "hi", "hey", "thanks", "thank you", "help")
@@ -1280,6 +1291,13 @@ class TestOpsAgent:
 
         if not output:
             output = "I could not produce a multi-agent answer for that request."
+
+        # Emit output on the root triage span so Phoenix renders it in the Output panel
+        try:
+            triage_span.set_attribute("output.value", output[:1000])
+            triage_span.set_attribute("output.mime_type", "text/plain")
+        except Exception:
+            pass
 
         query_counter = Counter((call.get("tool"), call.get("query")) for call in tool_calls)
         redundant = sum(count - 1 for count in query_counter.values() if count > 1)

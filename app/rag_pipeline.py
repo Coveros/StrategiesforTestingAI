@@ -466,6 +466,8 @@ class RAGPipeline:
                     "exercise_number": exercise_number,
                     "course.exercise.number": exercise_number,
                     "app.mode": "rag",
+                    "input.value": query[:1000],
+                    "input.mime_type": "text/plain",
                 },
             ) as retrieve_span:
                 # Generate query embedding
@@ -500,6 +502,14 @@ class RAGPipeline:
                         "quality.retrieval.avg_similarity": round(sum(similarities) / len(similarities), 4) if similarities else None,
                     },
                 )
+                # Emit output summary for Phoenix Input/Output panel
+                try:
+                    docs = results['documents'][0] if results.get('documents') else []
+                    output_summary = f"{len(docs)} documents retrieved. Top: {docs[0][:200] if docs else 'none'}"
+                    retrieve_span.set_attribute("output.value", output_summary)
+                    retrieve_span.set_attribute("output.mime_type", "text/plain")
+                except Exception:
+                    pass
             
             retrieval_time = time.time() - start_time
             self.stats['average_retrieval_time'] = (
@@ -558,6 +568,8 @@ class RAGPipeline:
                 span_kind="LLM",
                 attrs={
                     "llm.model_name": self.ollama_model,
+                    "input.value": prompt[:1000],
+                    "input.mime_type": "text/plain",
                     "llm.temperature": effective_temperature,
                     "llm.prompts.0": prompt[:1000],  # Capture prompt for test analysis
                     "rag.context_docs_used": min(3, len(context_docs)),
@@ -591,6 +603,8 @@ class RAGPipeline:
                 # Capture response output and metadata
                 if gen_span is not None:
                     try:
+                        gen_span.set_attribute("output.value", response_text[:1000])
+                        gen_span.set_attribute("output.mime_type", "text/plain")
                         gen_span.set_attribute("llm.completions.0.content", response_text[:1000])
                         gen_span.set_attribute("llm.completions.0.finish_reason", "stop")
                         
@@ -704,6 +718,12 @@ class RAGPipeline:
                         "quality.response.retrieval_time_ms": round(retrieval_results['retrieval_time'] * 1000, 2),
                     },
                 )
+                # Emit output on root RAG span for Phoenix Input/Output panel
+                try:
+                    query_span.set_attribute("output.value", response_text[:1000])
+                    query_span.set_attribute("output.mime_type", "text/plain")
+                except Exception:
+                    pass
 
                 return response_data
             
