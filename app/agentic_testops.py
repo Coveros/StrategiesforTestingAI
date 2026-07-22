@@ -1095,36 +1095,51 @@ class TestOpsAgent:
 
             with start_span(
                 self.tracer,
-                self._span_name("RAG Specialist", exercise_number),
-                span_kind="AGENT",
+                self._span_name("rag_agent_tool", exercise_number),
+                span_kind="TOOL",
                 attrs={
-                    "exercise_number": exercise_number,
-                    "handoff.mutated": mutated,
-                    "handoff.original_query": user_query,
-                    "handoff.routed_query": routed_query,
+                    "tool.name": "rag_agent_tool",
+                    "tool.input": user_query[:500],
                 },
-            ):
-                if self.crew_specialist_mode == "react":
-                    nested = self._run_single_agent(
-                        message=routed_query,
-                        session_id=session_id,
-                        include_trace=False,
-                        exercise_number=exercise_number,
-                        force_loop_bug=False,
-                    )
-                else:
-                    nested = self._run_specialist_direct(
-                        routed_query,
-                        session_id=session_id,
-                        exercise_number=exercise_number,
-                    )
+            ) as tool_span:
+                with start_span(
+                    self.tracer,
+                    self._span_name("RAG Specialist", exercise_number),
+                    span_kind="AGENT",
+                    attrs={
+                        "exercise_number": exercise_number,
+                        "handoff.mutated": mutated,
+                        "handoff.original_query": user_query,
+                        "handoff.routed_query": routed_query,
+                    },
+                ):
+                    if self.crew_specialist_mode == "react":
+                        nested = self._run_single_agent(
+                            message=routed_query,
+                            session_id=session_id,
+                            include_trace=False,
+                            exercise_number=exercise_number,
+                            force_loop_bug=False,
+                        )
+                    else:
+                        nested = self._run_specialist_direct(
+                            routed_query,
+                            session_id=session_id,
+                            exercise_number=exercise_number,
+                        )
 
-            if nested.get("tool_calls"):
-                tool_calls.extend(nested["tool_calls"])
-            if mutated:
-                metrics["poisoned_retrieval"] = True
+                if nested.get("tool_calls"):
+                    tool_calls.extend(nested["tool_calls"])
+                if mutated:
+                    metrics["poisoned_retrieval"] = True
 
-            return nested.get("response", "No response from RAG specialist")
+                output = nested.get("response", "No response from RAG specialist")
+                try:
+                    tool_span.set_attribute("tool.output", output[:500])
+                    tool_span.set_attribute("tool.execution_result", "success")
+                except Exception:
+                    pass
+                return output
 
         @tool
         def general_chat_agent(user_query: str) -> str:
@@ -1138,20 +1153,35 @@ class TestOpsAgent:
             )
             with start_span(
                 self.tracer,
-                self._span_name("General Chat Agent", exercise_number),
-                span_kind="AGENT",
-                attrs={"handoff.original_query": user_query},
-            ):
-                response = self._get_llm().invoke(user_query)
-            self.stats["tool_calls"] += 1
-            tool_calls.append(
-                {
-                    "tool": "general_chat_agent",
-                    "query": user_query,
-                    "result_count": 1,
-                }
-            )
-            return getattr(response, "content", str(response))
+                self._span_name("general_chat_agent", exercise_number),
+                span_kind="TOOL",
+                attrs={
+                    "tool.name": "general_chat_agent",
+                    "tool.input": user_query[:500],
+                },
+            ) as tool_span:
+                with start_span(
+                    self.tracer,
+                    self._span_name("General Chat Agent", exercise_number),
+                    span_kind="AGENT",
+                    attrs={"handoff.original_query": user_query},
+                ):
+                    response = self._get_llm().invoke(user_query)
+                self.stats["tool_calls"] += 1
+                tool_calls.append(
+                    {
+                        "tool": "general_chat_agent",
+                        "query": user_query,
+                        "result_count": 1,
+                    }
+                )
+                output = getattr(response, "content", str(response))
+                try:
+                    tool_span.set_attribute("tool.output", output[:500])
+                    tool_span.set_attribute("tool.execution_result", "success")
+                except Exception:
+                    pass
+                return output
 
         @tool
         def validator_agent_tool(candidate_answer: str) -> str:
@@ -1170,20 +1200,35 @@ class TestOpsAgent:
             )
             with start_span(
                 self.tracer,
-                self._span_name("Validator Agent", exercise_number),
-                span_kind="AGENT",
-                attrs={"validator.input_length": len(candidate_answer)},
-            ):
-                response = self._get_llm().invoke(prompt)
-            self.stats["tool_calls"] += 1
-            tool_calls.append(
-                {
-                    "tool": "validator_agent_tool",
-                    "query": "candidate_answer",
-                    "result_count": 1,
-                }
-            )
-            return getattr(response, "content", str(response))
+                self._span_name("validator_agent_tool", exercise_number),
+                span_kind="TOOL",
+                attrs={
+                    "tool.name": "validator_agent_tool",
+                    "tool.input": candidate_answer[:500],
+                },
+            ) as tool_span:
+                with start_span(
+                    self.tracer,
+                    self._span_name("Validator Agent", exercise_number),
+                    span_kind="AGENT",
+                    attrs={"validator.input_length": len(candidate_answer)},
+                ):
+                    response = self._get_llm().invoke(prompt)
+                self.stats["tool_calls"] += 1
+                tool_calls.append(
+                    {
+                        "tool": "validator_agent_tool",
+                        "query": "candidate_answer",
+                        "result_count": 1,
+                    }
+                )
+                output = getattr(response, "content", str(response))
+                try:
+                    tool_span.set_attribute("tool.output", output[:500])
+                    tool_span.set_attribute("tool.execution_result", "success")
+                except Exception:
+                    pass
+                return output
 
         tools = [rag_agent_tool, general_chat_agent]
         if self.crew_enable_validator:
