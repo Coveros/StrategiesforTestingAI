@@ -66,7 +66,7 @@ def run_query(
         print(f"  → Running: {prompt[:60]}...")
         
         response = requests.post(
-            f"{FLASK_URL}/api/agent",
+            f"{FLASK_URL}/api/chat",
             json={
                 "message": prompt,
                 "exercise_number": EXERCISE_NUMBER,
@@ -92,12 +92,16 @@ def run_query(
             "response_preview": data.get("response", "")[:100],
         }
         
-        # Capture agent execution metadata
-        if "agent_execution" in data:
-            exec_data = data["agent_execution"]
-            trace_info["tools_called"] = exec_data.get("tools_called", [])
-            trace_info["steps_count"] = exec_data.get("steps", 0)
-            trace_info["handoff_count"] = exec_data.get("handoffs", 0)
+        # Capture agent execution metadata from trajectory_metrics
+        if "trajectory_metrics" in data:
+            metrics = data["trajectory_metrics"]
+            trace_info["steps_count"] = metrics.get("steps", 0)
+        else:
+            trace_info["steps_count"] = 0
+        
+        # Capture tool calls and handoffs
+        trace_info["tools_called"] = data.get("tool_calls", [])
+        trace_info["handoff_count"] = len(data.get("handoffs", []))
         
         print(f"    ✓ Success")
         return trace_info
