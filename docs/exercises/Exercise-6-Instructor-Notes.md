@@ -36,26 +36,29 @@ This exercise has two components:
 - Make note of the output file: `classroom_traces_results.json`
 
 ### During Class
+
+Use [MODULE_6_SCRIPT_TRACE_WALKTHROUGH.md](../MODULE_6_SCRIPT_TRACE_WALKTHROUGH.md) as your detailed reference guide for what to point out in each scenario.
+
 1. **Announce** (2 min): "We're going to generate 12 example traces together and walk through them"
 2. **Run script** (6 min): Execute the script, let students watch progress
 3. **Open Phoenix** (2 min): Show http://localhost:6006 → Traces tab
 4. **Activity 1 - Consistency** (5 min):
-   - Show traces labeled "same_prompt"
+   - Show traces labeled "same_prompt" (refer to walkthrough guide for key metrics)
    - Expand two runs side-by-side
-   - Point out differences in tool calls, steps, latency
-   - Ask: "Why did the agent decide differently?"
+   - Point out differences in agent routing, tool calls, retrieval phrasing
+   - Ask: "Why did the agent make different decisions for the same prompt?"
 5. **Activity 2 - Robustness** (10 min):
-   - Filter "variation" traces
-   - Show how wording changes agent behavior
-   - Highlight where hallucinations appear
-   - Ask: "How would you make the agent more robust?"
+   - Filter "variation" traces (refer to walkthrough for variation-specific tips)
+   - Show how wording changes agent behavior, retrieval strategy, tool selection
+   - Highlight hallucination detection (compare INPUT/OUTPUT panels)
+   - Ask: "How would you make the agent more robust to wording variations?"
 6. **Activity 3 - Diversity** (10 min):
-   - Show "different_prompt" traces
-   - Point out edge cases or failures
-   - Discuss efficiency differences
-   - Ask: "What guardrails would you add?"
+   - Show "different_prompt" traces (refer to walkthrough for edge case detection)
+   - Point out whether retrieval was necessary or the agent self-answered
+   - Discuss efficiency differences across question types
+   - Ask: "What guardrails would prevent failures on unusual questions?"
 7. **Debrief** (5 min):
-   - Summarize key observations
+   - Summarize key observations from all 3 scenarios
    - Bridge to Part 2 exercise
    - Explain: "Next, you'll do this analysis yourselves with corruption scenarios"
 
