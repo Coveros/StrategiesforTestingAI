@@ -6,80 +6,89 @@
 3. Ability to use Ask mode, Agent mode, and Crew Mode in the UI.
 4. Optional automation runner available in your Codespace: `python section7_nfr_quickrun.py`.
 
-## Scenario
-You are testing non-functional behavior across the runtime patterns now used in this repo:
+## Trace Reuse Optimization: No New Prompts Needed ⏱️
 
-1. **Ask mode**: deterministic RAG pipeline.
-2. **Single-agent mode**: one ReAct agent with the `query_knowledge_base` tool.
-3. **Crew mode**: multi-agent orchestration primarily used here for handoff resilience checks.
+**You do not need to run new prompts for this exercise.** The 12 traces generated in Exercise 6 Part 1 (via `python generate_classroom_traces.py`) already capture Ask, Agent, and Crew modes with varying input characteristics:
 
-The goal is to compare reliability, latency, and trajectory overhead primarily across Ask vs single-agent mode, then run a focused Crew handoff-resilience check.
+- **5 traces (same_prompt)**: Identical input, test consistency and latency variation
+- **4 traces (variation)**: Robustness tests with reworded questions
+- **3 traces (different_prompt)**: Edge cases and diverse query types
 
-## Student tasks
-1. Open `http://localhost:5000/?exercise=7&instructor=1`.
-2. In instructor controls, enable **Show Trace**.
-3. Run the baseline factual query in Ask mode and Agent mode (Crew OFF):
-   - Ask mode: `What are the key challenges in testing GenAI applications?`
-   - Agent mode with **Crew Mode OFF**: same prompt
-4. Run a Crew baseline once (**Crew Mode ON**) as supplemental context, not the primary comparison.
-5. Split 5 roles:
-   - Latency Overhead
-   - Long-Input Stability
-   - Malformed Input Handling
-   - Single-Agent Loop Containment
-   - Multi-Agent Handoff Resilience
-6. For your assigned role, run the exact prompts below and capture evidence from response metadata and Phoenix.
-7. Record Pass/Fail/Mixed with one evidence note per required mode.
-8. As a team, identify the weakest NFR area and propose one fix with the smallest blast radius.
+These traces have already captured all NFR metadata: response latency, token counts, error status, tool calls, and handoff behavior.
 
-## Role prompts
+**To proceed:**
+1. Ensure Exercise 6 Part 1 has completed: `python generate_classroom_traces.py` (or verify `classroom_traces_results.json` exists)
+2. Open Phoenix: http://localhost:6006 → **Traces tab**
+3. Filter or search for traces with tags: `scenario: same_prompt` or `scenario: variation` or `scenario: different_prompt`
+4. Proceed to "Student tasks" below
 
-### Latency Overhead
-1. Run this prompt in Ask mode and Agent mode (Crew OFF):
-   - `What are the key challenges in testing GenAI applications?`
-2. Compare `response_time`, steps, and tool calls.
-3. Optional Crew add-on: run once with **Crew ON** and note handoffs overhead separately.
+**Why reuse?** Saves ~6 minutes of inference time and focuses the exercise on *analysis* rather than data generation.
 
-### Long-Input Stability
-1. Paste a long but valid prompt under the UI limit, for example a repeated paragraph asking for a 5-bullet summary of GenAI testing risks.
-2. Run it in Ask mode and single-agent mode.
-3. Optional Crew add-on: run once with Crew ON if time permits.
-4. Verify the system stays bounded and returns a usable answer.
+# Exercise 7: Reliability and NFR Testing
 
-### Malformed Input Handling
-1. Use this malformed prompt in Ask mode and single-agent mode:
-   - `xqz@@##123###?? en espanol ??? ###`
-2. Optional Crew add-on: run once with Crew ON.
-3. Verify the system does not crash and still returns a bounded response.
+## Prerequisites
+1. Exercise 6 completed (traces available in Phoenix)
+2. Flask app running: `python run.py`
+3. Phoenix running on http://localhost:6006
 
-### Single-Agent Loop Containment
-1. In Agent mode with **Crew Mode OFF**, run:
-   - `simulate react loop for trajectory hacking`
-2. In Agent mode with **Crew Mode ON**, rerun the same prompt as a control.
-3. Compare whether the loop pathology is isolated to the single-agent path.
+## Team Exercise - NFR Metrics Analysis (30 minutes)
 
-### Multi-Agent Handoff Resilience
-1. In Agent mode with **Crew Mode ON**, run:
-   - `simulate handoff corruption for retrieval query about 2024 regression failures`
-2. In Agent mode with **Crew Mode OFF**, rerun the same prompt as a control.
-3. Compare whether handoff mutation is visible only in the multi-agent path.
+### Overview
+Using pre-generated traces from Exercise 6, analyze **two key non-functional requirements**:
+1. **Latency & Token Overhead**: Does agent mode cost more than ask mode?
+2. **Error Resilience**: How does the system handle malformed inputs?
 
-## What to capture as evidence
-For each run, capture:
-1. Prompt used
-2. Mode used (`ask`, `agent`, or `crew`)
-3. Response summary
-4. `response_time`
-5. `trajectory_metrics.steps`
-6. `trajectory_metrics.tool_calls`
-7. `trajectory_metrics.redundant_tool_calls`
-8. `trajectory_metrics.degraded_mode`
-9. `trajectory_metrics.poisoned_retrieval`
-10. `handoffs` count (if present)
-11. One Phoenix observation from live traces (trace shape, span depth, or handoff graph)
+### Role Assignments
+- **Phoenix Queries**: Filters traces by mode (ask vs agent) and scenario
+- **Metrics Collector**: Extracts latency, token counts, and error info
+- **Evidence Scribe**: Records findings in results table
+- **Proposer**: Suggests one efficiency improvement
 
-## NFR scorecard
-| NFR Area | Mode | Expected Behavior | Actual Behavior | Pass/Fail/Mixed | Evidence | Recommended Fix |
+### Activities (30 minutes)
+
+#### Activity 1: Latency & Token Overhead (15 minutes)
+1. **In Phoenix Traces tab**, find 2-3 traces from Exercise 6:
+   - One "same_prompt" trace run in **Ask mode**
+   - One "same_prompt" trace run in **Agent mode** (crew OFF)
+   - Compare side-by-side
+2. **Extract metrics from each trace:**
+   - Response latency (total span duration)
+   - Token count (prompt + completion combined)
+   - Tool calls made
+   - Any retry loops?
+3. **Calculate overhead:**
+   - Token overhead = (Agent tokens - Ask tokens) / Ask tokens × 100%
+   - Latency overhead = (Agent latency - Ask latency) / Ask latency × 100%
+4. **Record in table** (see below)
+
+#### Activity 2: Error Resilience (10 minutes)
+1. **Run these test prompts in the UI** (agent mode, crew OFF):
+   - `What are the key challenges in testing GenAI applications?` (normal)
+   - `xqz@@##123###?? en espanol ???` (malformed)
+2. **For each, note:**
+   - Did the system crash or return bounded response?
+   - How many tool calls were attempted?
+   - Did error handling kick in?
+3. **In Phoenix**, inspect the error trace:
+   - Find the error span (red indicator)
+   - What was the error type? (malformed input, tool error, timeout?)
+4. **Record pass/fail** in table
+
+### Results Table
+
+| Test | Mode | Latency (sec) | Tokens | Tool Calls | Status | Insight |
+|---|---|---:|---:|---:|---|---|
+| Same Prompt - Ask | Ask | | | | | |
+| Same Prompt - Agent | Agent | | | | | |
+| **Overhead** | | **+X%** | **+X%** | | | |
+| Normal Prompt | Agent | | | | Pass/Fail | |
+| Malformed Input | Agent | | | | Pass/Fail | [Error type] |
+
+### Team Debrief (5 minutes)
+
+1. **"Where does the biggest overhead come from?"** (Extra tokens? Tool calls? Handoffs?)
+2. **"Does the system degrade gracefully on malformed input?"** (Bounded? Retry logic?)
+3. **"If you could optimize one thing, what would it be?"** (Fewer tool calls? Determinism? Caching?)
 |---|---|---|---|---|---|---|
 | Latency Overhead | Ask |  |  |  |  |  |
 | Latency Overhead | Single-agent |  |  |  |  |  |
