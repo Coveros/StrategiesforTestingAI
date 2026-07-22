@@ -114,10 +114,56 @@ class AgentTrajectorySpanCallback(BaseCallbackHandler):
         run_id = run_id or kwargs.get("run_id")
         serialized = serialized or {}
         chain_name = serialized.get("name") or serialized.get("id") or "chain"
-        self._start(run_id, "agent.chain", "CHAIN", attrs={"chain.name": str(chain_name)})
+        
+        attrs = {"chain.name": str(chain_name)}
+        
+        # Capture input value for handoff contract verification (Module 6)
+        if inputs:
+            try:
+                if isinstance(inputs, dict):
+                    input_value = inputs.get("input") or inputs.get("input_str") or next(iter(inputs.values()), "")
+                    if input_value:
+                        input_str = str(input_value)[:1000]
+                        attrs["input.value"] = input_str
+                        attrs["input.mime_type"] = "text/plain"
+            except Exception:
+                pass
+        
+        # Extract agent role from chain name (e.g., "Triage Agent" → "triage")
+        # This helps identify handoff source in multi-agent traces
+        try:
+            if "triage" in chain_name.lower():
+                attrs["agent.role"] = "triage"
+            elif "rag" in chain_name.lower() or "specialist" in chain_name.lower():
+                attrs["agent.role"] = "rag_specialist"
+            elif "validator" in chain_name.lower():
+                attrs["agent.role"] = "validator"
+        except Exception:
+            pass
+        
+        self._start(run_id, "agent.chain", "CHAIN", attrs=attrs)
 
     def on_chain_end(self, outputs: Dict[str, Any], run_id: Any = None, **kwargs: Any) -> Any:
         run_id = run_id or kwargs.get("run_id")
+        active = self._active_spans.get(str(run_id), {})
+        span = active.get("span")
+        
+        # Capture output value for handoff contract verification (Module 6)
+        if span is not None and outputs:
+            try:
+                if isinstance(outputs, dict):
+                    output_value = outputs.get("output") or outputs.get("text") or next(iter(outputs.values()), "")
+                    if output_value:
+                        output_str = str(output_value)[:1000]
+                        span.set_attribute("output.value", output_str)
+                        span.set_attribute("output.mime_type", "text/plain")
+                else:
+                    output_str = str(outputs)[:1000]
+                    span.set_attribute("output.value", output_str)
+                    span.set_attribute("output.mime_type", "text/plain")
+            except Exception:
+                pass
+        
         self._end(run_id)
 
     def on_chain_error(self, error: BaseException, run_id: Any = None, **kwargs: Any) -> Any:
@@ -208,20 +254,50 @@ class AgentTrajectorySpanCallback(BaseCallbackHandler):
 
     def on_llm_error(self, error: BaseException, run_id: Any = None, **kwargs: Any) -> Any:
         run_id = run_id or kwargs.get("run_id")
+        active = self._active_spans.get(str(run_id), {})
+        span = active.get("span")
+        
+        # Classify error type for Module 8 security analysis
+        if span is not None and error is not None:
+            error_str = str(error).lower()
+            error_type = "unknown"
+            
+            if "timeout" in error_str or "timed out" in error_str:
+                error_type = "timeout"
+            elif "rate limit" in error_str or "429" in error_str:
+                error_type = "rate_limit"
+            elif "invalid" in error_str or "validation" in error_str:
+                error_type = "validation_error"
+            elif "authentication" in error_str or "unauthorized" in error_str:
+                error_type = "auth_error"
+            elif "injection" in error_str or "override" in error_str:
+                error_type = "injection_detected"
+            
+            span.set_attribute("error.type", error_type)
+            span.set_attribute("error.message", str(error)[:200])
+            span.set_attribute("error.class", error.__class__.__name__)
+        
         self._end(run_id, error=error)
 
     def on_tool_start(self, serialized: Dict[str, Any], input_str: str, run_id: Any = None, **kwargs: Any) -> Any:
         run_id = run_id or kwargs.get("run_id")
         serialized = serialized or {}
         tool_name = serialized.get("name") or serialized.get("id") or "tool"
+        
+        # Detect if this is a retrieval tool (Module 7 NFR analysis)
+        is_retrieval = "retriev" in tool_name.lower() or "search" in tool_name.lower() or "kb" in tool_name.lower()
+        
+        attrs = {
+            "tool.name": str(tool_name),
+            "tool.input": str(input_str),
+            "tool.is_retrieval": is_retrieval,
+        }
+        
         self._start(
             run_id,
             "agent.tool",
             "TOOL",
-            attrs={
-                "tool.name": str(tool_name),
-                "tool.input": str(input_str),  # Full input, not preview
-            },
+            attrs=attrs,
         )
 
     def on_tool_end(self, output: Any, run_id: Any = None, **kwargs: Any) -> Any:
@@ -232,9 +308,21 @@ class AgentTrajectorySpanCallback(BaseCallbackHandler):
         # Capture tool output for test analysis
         if span is not None and output is not None:
             try:
-                output_str = str(output)[:1000]  # Truncate large outputs
+                output_str = str(output)[:1000]
                 span.set_attribute("tool.output", output_str)
                 span.set_attribute("tool.execution_result", "success")
+                
+                # Detect retrieval tool results (Module 7)
+                if "retriev" in span.get_attributes().get("tool.name", "").lower():
+                    try:
+                        # Try to count documents if it's a list or contains doc markers
+                        if isinstance(output, list):
+                            span.set_attribute("retrieval.documents_returned", len(output))
+                        elif "document" in output_str.lower():
+                            doc_count = output_str.count("document") // 2  # Rough estimate
+                            span.set_attribute("retrieval.documents_returned", max(1, doc_count))
+                    except Exception:
+                        pass
             except Exception:
                 pass
         
@@ -242,6 +330,27 @@ class AgentTrajectorySpanCallback(BaseCallbackHandler):
 
     def on_tool_error(self, error: BaseException, run_id: Any = None, **kwargs: Any) -> Any:
         run_id = run_id or kwargs.get("run_id")
+        active = self._active_spans.get(str(run_id), {})
+        span = active.get("span")
+        
+        # Classify tool error for Module 8 security/reliability
+        if span is not None and error is not None:
+            error_str = str(error).lower()
+            tool_error_type = "tool_execution_failed"
+            
+            if "not found" in error_str or "404" in error_str:
+                tool_error_type = "not_found"
+            elif "timeout" in error_str:
+                tool_error_type = "timeout"
+            elif "connection" in error_str or "network" in error_str:
+                tool_error_type = "connection_error"
+            elif "permission" in error_str or "denied" in error_str:
+                tool_error_type = "permission_denied"
+            
+            span.set_attribute("tool.execution_result", "error")
+            span.set_attribute("error.type", tool_error_type)
+            span.set_attribute("error.message", str(error)[:200])
+        
         self._end(run_id, error=error)
 
 
@@ -1212,37 +1321,60 @@ class TestOpsAgent:
         state = self._get_state(session_id)
         lowered = message.lower().strip()
 
-        if self._contains_harmful_intent(message):
-            self.stats["blocked_actions"] += 1
-            metrics = self._empty_trajectory_metrics()
-            metrics["steps"] = 1
-            return self._response_payload(
-                response="I cannot help with harmful or social-engineering content.",
-                trace=[{"phase": "policy", "content": "Blocked harmful intent"}],
-                tool_calls=[],
-                session_id=session_id,
-                include_trace=include_trace,
-                handoffs=[],
-                trajectory_metrics=metrics,
-                crew_mode=crew_mode,
-                exercise_number=exercise_number,
-            )
+        # Emit security decision span for Module 8 analysis
+        with start_span(
+            self.tracer,
+            f"security.gate.ex{exercise_number or 'unknown'}",
+            span_kind="SECURITY",
+            attrs={
+                "security.layer": "input_validation",
+                "session.id": session_id,
+                "exercise_number": exercise_number,
+                "request.message_length": len(message),
+            },
+        ) as security_span:
+            if self._contains_harmful_intent(message):
+                self.stats["blocked_actions"] += 1
+                security_span.set_attribute("security.decision", "blocked")
+                security_span.set_attribute("security.reason", "harmful_intent_detected")
+                security_span.set_attribute("security.severity", "high")
+                metrics = self._empty_trajectory_metrics()
+                metrics["steps"] = 1
+                return self._response_payload(
+                    response="I cannot help with harmful or social-engineering content.",
+                    trace=[{"phase": "policy", "content": "Blocked harmful intent"}],
+                    tool_calls=[],
+                    session_id=session_id,
+                    include_trace=include_trace,
+                    handoffs=[],
+                    trajectory_metrics=metrics,
+                    crew_mode=crew_mode,
+                    exercise_number=exercise_number,
+                )
 
-        if self._is_injection_attempt(message):
-            self.stats["blocked_actions"] += 1
-            metrics = self._empty_trajectory_metrics()
-            metrics["steps"] = 1
-            return self._response_payload(
-                response="I cannot execute unsafe override instructions.",
-                trace=[{"phase": "policy", "content": "Blocked prompt-injection markers"}],
-                tool_calls=[],
-                session_id=session_id,
-                include_trace=include_trace,
-                handoffs=[],
-                trajectory_metrics=metrics,
-                crew_mode=crew_mode,
-                exercise_number=exercise_number,
-            )
+            if self._is_injection_attempt(message):
+                self.stats["blocked_actions"] += 1
+                security_span.set_attribute("security.decision", "blocked")
+                security_span.set_attribute("security.reason", "prompt_injection_detected")
+                security_span.set_attribute("security.severity", "critical")
+                security_span.set_attribute("injection_markers_detected", True)
+                metrics = self._empty_trajectory_metrics()
+                metrics["steps"] = 1
+                return self._response_payload(
+                    response="I cannot execute unsafe override instructions.",
+                    trace=[{"phase": "policy", "content": "Blocked prompt-injection markers"}],
+                    tool_calls=[],
+                    session_id=session_id,
+                    include_trace=include_trace,
+                    handoffs=[],
+                    trajectory_metrics=metrics,
+                    crew_mode=crew_mode,
+                    exercise_number=exercise_number,
+                )
+            
+            # Request passed security gates
+            security_span.set_attribute("security.decision", "allowed")
+            security_span.set_attribute("security.reason", "passed_all_gates")
 
         if "set persona pirate" in lowered:
             state["persona"] = "pirate"
