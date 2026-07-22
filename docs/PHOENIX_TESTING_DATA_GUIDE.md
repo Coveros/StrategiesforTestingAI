@@ -16,12 +16,22 @@ Your application now emits rich telemetry data to Phoenix that supports comprehe
 - **Model Parameters**: Temperature, max tokens, model name
 - **Token Usage**: Prompt tokens, completion tokens, total tokens (when available from Ollama)
 - **Finish Reason**: "stop", "length", or error state
+- **Input/Output panels**: Every span now emits `input.value` and `output.value` for Phoenix's dedicated Input and Output panels
 
 **Where to Find in Phoenix:**
+
+> **Important**: `input.value` and `output.value` appear in the **INPUT** and **OUTPUT** panels at the **top** of the span detail view — NOT in the Attributes section. All other custom fields (e.g., `agent.role`, `security.decision`) appear in the **Attributes** section below.
+
 ```
 Span Type: LLM
 Span Names: agent.llm, rag.generate
-Attributes:
+
+Input/Output Panels (top of span detail):
+  - input.value → full prompt text (INPUT panel)
+  - output.value → model response (OUTPUT panel)
+  - input.mime_type / output.mime_type → "text/plain"
+
+Attributes Section (below Input/Output):
   - llm.prompts.0 → original prompt
   - llm.messages.0.content → chat message (if using messages)
   - llm.completions.0.content → model output
@@ -55,7 +65,12 @@ Attributes:
 ```
 Span Type: RETRIEVER
 Span Names: rag.retrieve
-Attributes:
+
+Input/Output Panels (top of span detail):
+  - input.value → the query text sent to retriever (INPUT panel)
+  - output.value → summary: "N documents retrieved. Top: [excerpt]" (OUTPUT panel)
+
+Attributes Section:
   - rag.query → user's question
   - rag.n_results → number of docs requested
   - retrieval.documents.0.content → first retrieved doc
@@ -90,29 +105,50 @@ Attributes:
 
 **Where to Find in Phoenix:**
 ```
-Span Type: CHAIN
-Span Names: agent.chain
-Attributes:
-  - chain.name → chain identifier
-  - agent.mode → "react" or "crew"
+Span Type: AGENT (root span - click this first)
+Span Names: Triage Agent.ex6, Single-Agent ReAct.ex5
+
+Input/Output Panels (top of span detail):
+  - input.value → the user's original message (INPUT panel)
+  - output.value → the agent's final response (OUTPUT panel)
+
+Attributes Section:
+  - agent.mode → "single" or "multi"
+  - agent.role → "triage", "rag_specialist", or "validator"
   - session.id → test session identifier
   - exercise_number → which exercise (if applicable)
-  - Spans contain tree structure showing call hierarchy
+
+Span Type: CHAIN (child spans)
+Span Names: agent.chain
+
+Input/Output Panels:
+  - input.value → query passed INTO this agent (INPUT panel)
+  - output.value → result produced BY this agent (OUTPUT panel)
+
+Attributes Section:
+  - chain.name → chain identifier
+  - agent.role → role of this agent in the handoff chain
 
 Span Type: TOOL
 Span Names: agent.tool
-Attributes:
+Attributes Section:
   - tool.name → tool identifier
   - tool.input → full input to the tool
   - tool.output → result from the tool
   - tool.execution_result → "success" or error indicator
-  - Tool spans nest under agent.chain spans
+  - tool.is_retrieval → true if this is a knowledge base lookup
 ```
 
+**Handoff Contract Verification (Module 6):**
+To detect handoff corruption, compare adjacent spans:
+1. Click the **parent CHAIN span** → note its `output.value` (OUTPUT panel)
+2. Click the **child CHAIN span** → note its `input.value` (INPUT panel)
+3. If they differ, the handoff mutated the query — this is the corruption point
+
 **Test Scenarios:**
-- **Agent Behavior**: Trace reasoning steps to understand decision-making
-- **Tool Misuse**: Verify tools are called with correct inputs and handle outputs correctly
-- **Failure Modes**: When an agent fails, see which tool call broke and why
+- **Handoff Integrity**: Compare parent `output.value` vs child `input.value` for mutations
+- **Agent Routing**: Check `agent.role` to confirm correct specialist was invoked
+- **Tool Misuse**: Verify tools are called with correct inputs
 - **Convergence**: Do agents reach conclusions or get stuck in loops?
 - **Consistency**: Run same prompt twice; do agents make same decisions?
 
@@ -160,6 +196,7 @@ RAG Attributes:
 **What's Captured:**
 - **Exception Details**: Full error message and stack trace
 - **Error Span Markers**: Spans where errors occurred marked with "error: true"
+- **Classified Error Types**: Automatic classification of error category
 - **Failure Context**: Which operation failed (LLM, retrieval, tool, agent)
 - **Session Context**: Session ID and exercise context tied to the error
 
@@ -168,16 +205,53 @@ RAG Attributes:
 Span Type: Any (marked with error)
 Attributes:
   - error: true → indicates span had an error
+  - error.type → classified type:
+      LLM errors: timeout, rate_limit, validation_error, auth_error, injection_detected
+      Tool errors: tool_execution_failed, not_found, timeout, connection_error, permission_denied
+  - error.message → first 200 chars of error text
+  - error.class → Python exception class name
   - Exception tab → shows full error traceback
   - openinference.span.kind → identifies which subsystem failed (LLM, RETRIEVER, TOOL, etc.)
 ```
 
-**Test Scenarios:**
+**Test Scenarios (Module 7 NFR):**
+- **Error Classification**: Use `error.type` to distinguish timeout vs. tool failure vs. injection
 - **Failure Modes**: Understand which operations fail most often
 - **Error Recovery**: Do agents gracefully handle tool failures?
-- **Timeouts**: Identify requests that exceed timeout limits
-- **Network Issues**: Catch connection failures to Ollama or vector DB
-- **Data Issues**: Errors on malformed input validation
+- **Timeouts**: Look for `error.type: timeout` to identify latency NFR breaches
+- **Network Issues**: `error.type: connection_error` for Ollama or vector DB failures
+
+---
+
+### 6. **Security & Guardrail Decisions (Module 8 - New)**
+
+**What's Captured:**
+- **Security Gate**: Every request passes through an input validation span before execution
+- **Decision**: Whether the request was allowed, blocked, or flagged
+- **Reason**: Why (harmful intent, prompt injection, or passed all gates)
+- **Severity**: Critical / high / medium / low classification
+
+**Where to Find in Phoenix:**
+```
+Span Type: SECURITY
+Span Names: security.gate.ex8 (or ex6, ex7, etc.)
+
+Attributes Section:
+  - security.decision → "allowed", "blocked", or "flagged"
+  - security.reason → why:
+      "harmful_intent_detected" → harmful content request
+      "prompt_injection_detected" → override/injection attempt
+      "passed_all_gates" → legitimate request
+  - security.severity → "critical" (injection), "high" (harmful), absent (allowed)
+  - security.layer → "input_validation"
+  - injection_markers_detected → true/false
+```
+
+**Red Team Analysis (Module 8):**
+- Look for `security.gate` spans in your trace
+- **Blocked requests**: Short span tree (execution stopped at gate), `security.decision: blocked`
+- **Allowed requests**: Deep span tree (execution continued), `security.decision: allowed`
+- **Guardrail layer**: Input gates block BEFORE LLM spans appear; output gates would show LLM span then rejection
 
 ---
 
@@ -289,17 +363,21 @@ From rag.retrieve span:
 
 ## Mapping to 2-Day Course Modules
 
-| Course Topic | Data in Phoenix | Test Activity |
-|---|---|---|
-| **Model Inputs & Outputs** | `llm.prompts.0`, `llm.completions.0.content` | Inspect what model saw and what it produced |
-| **Hallucination Detection** | `rag.query`, `retrieval.documents.*`, `llm.completions.0.content` | Compare response to retrieved docs |
-| **Retrieval Quality** | `quality.retrieval.top1_similarity`, `retrieval.documents.*.score` | Validate vector search effectiveness |
-| **Agent Reasoning** | `agent.chain`, `agent.tool` span hierarchy | Trace decision trees |
-| **Tool Usage** | `tool.name`, `tool.input`, `tool.output` | Verify correct tool invocation |
-| **Performance SLAs** | `total_time`, `generation_time`, `retrieval_time` | Check latency compliance |
-| **Error Handling** | `error: true` span attribute + exception trace | Understand failure modes |
-| **Token Economy** | `llm.usage.prompt_tokens`, `llm.usage.completion_tokens` | Track cost and efficiency |
-| **Consistency Testing** | Session traces side-by-side | Compare determinism across runs |
+| Course Topic | Module | Data in Phoenix | Test Activity |
+|---|---|---|---|
+| **Model Inputs & Outputs** | 6-8 | `input.value` (INPUT panel), `output.value` (OUTPUT panel) | Click any span — top panels show what went in and what came out |
+| **Hallucination Detection** | 6 | `rag.query`, `retrieval.documents.*`, `llm.completions.0.content` | Compare response to retrieved docs |
+| **Retrieval Quality** | 7 | `quality.retrieval.top1_similarity`, `retrieval.documents.*.score` | Validate vector search effectiveness |
+| **Handoff Integrity** | 6 | Parent `output.value` vs child `input.value` on adjacent CHAIN spans | Detect query mutation between agents |
+| **Agent Role Routing** | 6 | `agent.role` attribute on CHAIN spans | Confirm triage → rag_specialist routing |
+| **Agent Reasoning** | 6-7 | `agent.chain`, `agent.tool` span hierarchy | Trace decision trees |
+| **Tool Usage** | 7 | `tool.name`, `tool.input`, `tool.output`, `tool.is_retrieval` | Verify correct tool invocation |
+| **Performance SLAs** | 7 | `total_time`, `generation_time`, `retrieval_time` | Check latency compliance |
+| **Error Classification** | 7 | `error.type`, `error.message`, `error.class` | Diagnose error categories automatically |
+| **Token Economy** | 7 | `llm.usage.prompt_tokens`, `llm.usage.completion_tokens` | Track cost and efficiency |
+| **Security Gate** | 8 | `security.decision`, `security.reason`, `security.severity` on `security.gate` span | See if attack was blocked and why |
+| **Guardrail Layer** | 8 | Span tree depth after `security.gate` | Short tree = input block; deep tree with rejection = output block |
+| **Consistency Testing** | 6 | Session traces side-by-side | Compare determinism across runs |
 
 ---
 
