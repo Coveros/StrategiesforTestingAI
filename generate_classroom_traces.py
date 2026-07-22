@@ -118,37 +118,63 @@ def warmup_agent_crew() -> bool:
     """
     Warm up the agent/crew system with a test prompt.
     This ensures the model is loaded and ready before the actual traces.
+    Non-blocking: failures are logged but don't stop the script.
     
     Returns:
         True if warmup succeeded, False otherwise
     """
-    print("\n[WARMUP] Priming agent/crew system...")
+    print("\n[WARMUP] Priming agent/crew system (this may take 20-30 seconds on first run)...")
     
-    try:
-        response = requests.post(
-            f"{FLASK_URL}/api/chat",
-            json={
-                "message": "What is testing?",
-                "exercise_number": EXERCISE_NUMBER,
-                "mode": MODE,
-                "crew_mode": CREW_MODE,
-            },
-            timeout=120,
-        )
-        
-        if response.status_code == 200:
-            print("✓ Agent/crew system warmed up successfully\n")
-            return True
-        else:
-            print(f"✗ Warmup failed (HTTP {response.status_code})")
-            return False
+    max_retries = 2
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = requests.post(
+                f"{FLASK_URL}/api/chat",
+                json={
+                    "message": "What is testing?",
+                    "exercise_number": EXERCISE_NUMBER,
+                    "mode": MODE,
+                    "crew_mode": CREW_MODE,
+                },
+                timeout=180,  # 3 min timeout for first-run slowness
+            )
             
-    except requests.ConnectionError:
-        print(f"✗ Connection failed during warmup")
-        return False
-    except Exception as e:
-        print(f"✗ Warmup error: {e}")
-        return False
+            if response.status_code == 200:
+                print("✓ Agent/crew system warmed up successfully\n")
+                return True
+            elif response.status_code == 504:
+                if attempt < max_retries:
+                    print(f"  ⏳ Warmup timed out (attempt {attempt}/{max_retries}), retrying...")
+                    time.sleep(2)
+                    continue
+                else:
+                    print(f"  ⚠ Warmup timeout after {max_retries} attempts (model may be slow)")
+                    print("  → Continuing anyway. First trace may be slow.\n")
+                    return False
+            else:
+                print(f"  ⚠ Warmup returned HTTP {response.status_code}")
+                print("  → Continuing anyway.\n")
+                return False
+                
+        except requests.ConnectionError:
+            print(f"  ⚠ Connection failed during warmup")
+            print("  → Continuing anyway. First trace may be slow.\n")
+            return False
+        except requests.Timeout:
+            if attempt < max_retries:
+                print(f"  ⏳ Warmup timed out (attempt {attempt}/{max_retries}), retrying...")
+                time.sleep(2)
+                continue
+            else:
+                print(f"  ⚠ Warmup timeout after {max_retries} attempts")
+                print("  → Continuing anyway. First trace may be slow.\n")
+                return False
+        except Exception as e:
+            print(f"  ⚠ Warmup error: {e}")
+            print("  → Continuing anyway.\n")
+            return False
+    
+    return False
 
 
 def generate_traces() -> List[dict]:
@@ -282,8 +308,8 @@ def main():
     
     # Warm up agent/crew system
     if not warmup_agent_crew():
-        print("✗ Warmup failed. Check that Ollama is running and model is available.")
-        sys.exit(1)
+        print("⚠ Warmup did not complete (model may still be loading)")
+        print("  First trace will proceed anyway.\n")
     
     # Generate traces
     traces = generate_traces()
