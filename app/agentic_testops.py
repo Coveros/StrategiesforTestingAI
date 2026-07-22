@@ -312,6 +312,24 @@ class TestOpsAgent:
     def _is_truthy(self, value: Any) -> bool:
         return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
+    def warmup(self) -> bool:
+        """
+        Warm up the agent system by running a test inference.
+        This ensures the LLM is loaded and ready for the first real request.
+        
+        Returns:
+            True if warmup succeeded, False otherwise
+        """
+        try:
+            llm = self._get_llm()
+            # Simple deterministic prompt to test connectivity
+            response = llm.invoke("Reply with OK.")
+            logger.info("Agent/crew system warmup successful")
+            return True
+        except Exception as e:
+            logger.error("Agent/crew system warmup failed: %s", e)
+            return False
+
     def _get_llm(self):
         if self.llm is None:
             from langchain_ollama import ChatOllama

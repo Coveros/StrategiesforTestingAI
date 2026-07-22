@@ -60,6 +60,16 @@ EXERCISE_CATALOG = [
 # Initialize RAG pipeline
 rag_pipeline = None
 agentic_pipeline = TestOpsAgent()
+
+# Warm up agent/crew system on startup
+try:
+    if agentic_pipeline.warmup():
+        logger.info("Agent/crew warmup completed")
+    else:
+        logger.warning("Agent/crew warmup failed (non-critical)")
+except Exception as e:
+    logger.warning("Agent/crew warmup error (non-critical): %s", e)
+
 _rate_limit_buckets = defaultdict(deque)
 _last_rag_init_error = None
 

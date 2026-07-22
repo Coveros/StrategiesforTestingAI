@@ -114,6 +114,43 @@ def run_query(
         return None
 
 
+def warmup_agent_crew() -> bool:
+    """
+    Warm up the agent/crew system with a test prompt.
+    This ensures the model is loaded and ready before the actual traces.
+    
+    Returns:
+        True if warmup succeeded, False otherwise
+    """
+    print("\n[WARMUP] Priming agent/crew system...")
+    
+    try:
+        response = requests.post(
+            f"{FLASK_URL}/api/chat",
+            json={
+                "message": "What is testing?",
+                "exercise_number": EXERCISE_NUMBER,
+                "mode": MODE,
+                "crew_mode": CREW_MODE,
+            },
+            timeout=120,
+        )
+        
+        if response.status_code == 200:
+            print("✓ Agent/crew system warmed up successfully\n")
+            return True
+        else:
+            print(f"✗ Warmup failed (HTTP {response.status_code})")
+            return False
+            
+    except requests.ConnectionError:
+        print(f"✗ Connection failed during warmup")
+        return False
+    except Exception as e:
+        print(f"✗ Warmup error: {e}")
+        return False
+
+
 def generate_traces() -> List[dict]:
     """
     Generate all 12 traces and collect results.
@@ -241,6 +278,11 @@ def main():
     except requests.ConnectionError:
         print(f"✗ Cannot connect to Flask at {FLASK_URL}")
         print("   Start Flask with: python run.py")
+        sys.exit(1)
+    
+    # Warm up agent/crew system
+    if not warmup_agent_crew():
+        print("✗ Warmup failed. Check that Ollama is running and model is available.")
         sys.exit(1)
     
     # Generate traces
