@@ -10,12 +10,67 @@ Facilitator reference: [Instructor Facilitation Rubric](Exercise-Instructor-Faci
 ## Scenario
 You are auditing a real multi-agent flow in LangChain with core roles **Triage Agent** and **RAG Specialist** (and an optional **Validator Agent** when enabled). The orchestrator routes work between specialist capabilities instead of forcing retrieval every time. Your goal is to study the hand-off graph in Phoenix and diagnose how corrupted state can break retrieval.
 
-## Instructor Preparation: What to Watch For
+# Exercise 6 Instructor Notes: Multi-Agent Handoff and Trajectory Analysis
+Facilitator reference: [Instructor Facilitation Rubric](Exercise-Instructor-Facilitation-Rubric.md)
 
-### Signals Students Should Notice
-1. Baseline crew runs should show coherent handoff purpose and routed-query continuity.
-2. Corruption scenarios should surface changed routed-query state and retrieval degradation.
-3. Crew OFF control runs should not exhibit multi-agent handoff mutation indicators.
+## Two-Part Structure
+
+This exercise has two components:
+1. **Part 1 (30 min)**: Classroom demo using `generate_classroom_traces.py`
+2. **Part 2 (45-55 min)**: Individual student exercise on handoff corruption
+
+---
+
+## Part 1: Classroom Demo Preparation and Facilitation
+
+### What You'll Do
+1. Run `python generate_classroom_traces.py` in front of the class
+2. Walk through the resulting 12 traces in Phoenix
+3. Lead discussion on multi-agent behavior across 3 scenarios
+
+### Before Class
+- Ensure Flask is running: `python run.py`
+- Ensure Phoenix is running: `phoenix serve --host 0.0.0.0 --port 6006`
+- Ensure Ollama is running and model is warm
+- Test the script once: `python generate_classroom_traces.py`
+- Make note of the output file: `classroom_traces_results.json`
+
+### During Class
+1. **Announce** (2 min): "We're going to generate 12 example traces together and walk through them"
+2. **Run script** (6 min): Execute the script, let students watch progress
+3. **Open Phoenix** (2 min): Show http://localhost:6006 → Traces tab
+4. **Activity 1 - Consistency** (5 min):
+   - Show traces labeled "same_prompt"
+   - Expand two runs side-by-side
+   - Point out differences in tool calls, steps, latency
+   - Ask: "Why did the agent decide differently?"
+5. **Activity 2 - Robustness** (10 min):
+   - Filter "variation" traces
+   - Show how wording changes agent behavior
+   - Highlight where hallucinations appear
+   - Ask: "How would you make the agent more robust?"
+6. **Activity 3 - Diversity** (10 min):
+   - Show "different_prompt" traces
+   - Point out edge cases or failures
+   - Discuss efficiency differences
+   - Ask: "What guardrails would you add?"
+7. **Debrief** (5 min):
+   - Summarize key observations
+   - Bridge to Part 2 exercise
+   - Explain: "Next, you'll do this analysis yourselves with corruption scenarios"
+
+### Tips for Smooth Facilitation
+- Have script output projected so students can see progress
+- Keep Phoenix UI visible in another window for quick switching
+- Use this language: "Notice in the trace... What do you see in the span attributes?"
+- Pause at interesting traces to let students examine them
+- If a trace fails, acknowledge it: "This is a real failure case you'd debug in production"
+
+---
+
+## Part 2: Individual Exercise - Handoff Corruption (Existing Content)
+
+### Prerequisites
 
 ### Likely Issues, Defects, or Quality Challenges
 1. Students may treat shallow crew traces as failure instead of checking handoff fields.
@@ -27,11 +82,7 @@ You are auditing a real multi-agent flow in LangChain with core roles **Triage A
 2. Add integrity assertions comparing original and routed query for high-risk cases.
 3. Add a handoff-efficiency guardrail (max handoffs or min utility per handoff).
 
-## Student tasks
-1. Open `http://localhost:5000/?exercise=6`.
-2. Keep startup mode as **Ask**, then switch to **Agent**.
-3. Ensure **Crew Mode is ON** (Exercise 6 defaults this automatically outside instructor mode).
-4. Use these queries during this exercise:
+### What to Watch For in Student Traces
    - Compare two test strategies for a GenAI support bot and recommend one.
    - Create a release test plan with risks, gates, and rollback criteria.
    - Summarize noisy bug reports into top root causes and priorities.
