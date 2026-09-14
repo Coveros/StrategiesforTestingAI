@@ -1,4 +1,7 @@
+import json
 import os
+from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 import requests
@@ -6,6 +9,53 @@ from playwright.sync_api import APIResponse, Page
 
 
 BASE_URL = os.getenv("E2E_BASE_URL", "http://127.0.0.1:5000").rstrip("/")
+_RUN_EVIDENCE = []
+
+
+def record_case(test_name: str, prompt: str, payload: dict | None = None, **observations) -> None:
+    """Keep classroom-safe evidence for Exercise 3 analysis."""
+    entry = {
+        "test_name": test_name,
+        "prompt": prompt,
+        "recorded_at": datetime.now(timezone.utc).isoformat(),
+        "observations": observations,
+    }
+    if payload is not None:
+        entry["response"] = {
+            "status": payload.get("status"),
+            "mode": payload.get("mode"),
+            "exercise_number": payload.get("exercise_number"),
+            "session_id": payload.get("session_id"),
+            "response": payload.get("response", ""),
+            "sources": payload.get("sources", []),
+            "response_time": payload.get("response_time"),
+            "retrieval_time": payload.get("retrieval_time"),
+            "generation_time": payload.get("generation_time"),
+            "total_time": payload.get("total_time"),
+            "error": payload.get("error"),
+        }
+    _RUN_EVIDENCE.append(entry)
+
+
+def pytest_sessionfinish(session, exitstatus) -> None:
+    if not _RUN_EVIDENCE:
+        return
+    output_dir = Path(os.getenv("E2E_ARTIFACT_DIR", "artifacts/exercise2"))
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_file = output_dir / f"ui_golden_run_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    output_file.write_text(
+        json.dumps(
+            {
+                "suite": "exercise2_ui_golden",
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "exit_status": exitstatus,
+                "base_url": BASE_URL,
+                "cases": _RUN_EVIDENCE,
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
 
 
 @pytest.fixture(scope="session")

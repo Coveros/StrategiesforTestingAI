@@ -59,7 +59,7 @@ Frontend (HTML/CSS/JS) → Flask Backend → RAG Pipeline → Ollama (Local SLM)
 
 1. **Clone and Navigate**
    ```bash
-   cd "c:\Users\jpayne\Documents\Training\Notebooks for ML classes\TestingAITutorial"
+   cd "c:\Users\jpayne\Documents\Training\Notebooks for ML classes\StrategiesforTestingAI"
    ```
 
 2. **Create Virtual Environment**
@@ -150,7 +150,7 @@ These provide menu-driven interfaces to:
 ## Project Structure
 
 ```
-TestingAITutorial/
+StrategiesforTestingAI/
 ├── app/
 │   ├── __init__.py          # Python package initialization
 │   ├── agentic_testops.py   # Agentic backend used in Exercises 5-9

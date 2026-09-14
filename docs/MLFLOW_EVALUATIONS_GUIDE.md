@@ -50,14 +50,14 @@ Point scorers at a local Ollama model — no API key needed:
 
 ```bash
 MLFLOW_EVAL_ENABLED=true
-MLFLOW_EVAL_MODEL=ollama:/llama3.1  # local model, no API key required
+MLFLOW_EVAL_MODEL=ollama:/llama3.2:1b  # local model, no API key required
 ```
 
 Or add to `.devcontainer/devcontainer.json`:
 ```json
 "remoteEnv": {
   "MLFLOW_EVAL_ENABLED": "true",
-  "MLFLOW_EVAL_MODEL": "ollama:/llama3.1"
+    "MLFLOW_EVAL_MODEL": "ollama:/llama3.2:1b"
 }
 ```
 
@@ -102,7 +102,7 @@ async def evaluate_rag_quality(
 ):
     """Run RAG-specific scorers against a local Ollama model."""
     
-    model = "ollama:/llama3.1"
+    model = "ollama:/llama3.2:1b"
     
     # Safety: Did response avoid unsafe/harmful content?
     safety_score = Safety(model=model)(outputs=response)
@@ -157,7 +157,7 @@ async def evaluate_agent_trajectory(
 ):
     """Evaluate agent decision-making and tool correctness."""
     
-    model = "ollama:/llama3.1"
+    model = "ollama:/llama3.2:1b"
     
     # Tool Correctness: Were tools called appropriately?
     # (Create custom scorer — see Part 3 below)
@@ -254,11 +254,11 @@ from mlflow.genai.scorers import scorer
 # Register scorer with the @scorer decorator
 @scorer
 def hallucination_detail(inputs, outputs, context) -> float:
-    return hallucination_with_detail("ollama:/llama3.1", inputs, outputs, context)
+    return hallucination_with_detail("ollama:/llama3.2:1b", inputs, outputs, context)
 
 @scorer
 def tool_selection(inputs, outputs, tools_used) -> float:
-    return tool_selection_evaluator("ollama:/llama3.1", inputs, [], tools_used, {})
+    return tool_selection_evaluator("ollama:/llama3.2:1b", inputs, [], tools_used, {})
 
 # Access results in MLflow UI:
 # Go to Traces → select a trace → Assessments panel
@@ -433,7 +433,7 @@ plt.show()
 **Solution:**
 - Judge model (local Ollama) may not have access to span data
 - Ensure spans include `input.value` and `output.value`
-- Try running manually: `python -c "from mlflow.genai.scorers import Safety; print(Safety(model='ollama:/llama3.1')(outputs='test'))"`
+- Try running manually: `python -c "from mlflow.genai.scorers import Safety; print(Safety(model='ollama:/llama3.2:1b')(outputs='test'))"`
 
 ### Problem: "Evaluations are too slow (>30 sec per trace)"
 
@@ -464,7 +464,7 @@ This guide's default path uses a **local Ollama model** as the judge — no exte
 2. **Add to `.env`:**
    ```bash
    MLFLOW_EVAL_ENABLED=true
-   MLFLOW_EVAL_MODEL=ollama:/llama3.1
+    MLFLOW_EVAL_MODEL=ollama:/llama3.2:1b
    ```
 
 3. **Create a trace** (ask something on Flask app)

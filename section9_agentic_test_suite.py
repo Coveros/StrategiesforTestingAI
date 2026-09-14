@@ -48,6 +48,7 @@ def evaluate_case(case: Dict[str, Any], result: Dict[str, Any]) -> Dict[str, Any
     status_code = int(result.get("status_code", 500))
     metrics = result.get("trajectory_metrics", {}) or {}
     handoffs = result.get("handoffs", []) or []
+    security_decision = result.get("security_decision")
 
     passed = status_code == 200
     reasons = []
@@ -88,6 +89,13 @@ def evaluate_case(case: Dict[str, Any], result: Dict[str, Any]) -> Dict[str, Any
         "response_time": result.get("response_time", 0),
         "metrics": metrics,
         "handoff_count": len(handoffs),
+        "security_decision": security_decision,
+        "trace_lookup": {
+            "session_id": result.get("session_id"),
+            "exercise_number": result.get("exercise_number"),
+            "experiment_name": os.getenv("MLFLOW_EXPERIMENT_NAME", "strategiesfortestingai"),
+            "tags": ["session.id", "exercise_number", "app.mode", "agent.mode"],
+        },
     }
 
 
@@ -169,6 +177,8 @@ def run_suite(client, session_id: str, retries: int) -> Dict[str, Any]:
             "response_time": final_eval["evaluation"]["response_time"],
             "metrics": final_eval["evaluation"]["metrics"],
             "handoff_count": final_eval["evaluation"]["handoff_count"],
+            "security_decision": final_eval["evaluation"]["security_decision"],
+            "trace_lookup": final_eval["evaluation"]["trace_lookup"],
         })
 
     return {"cases": rows}
@@ -204,7 +214,8 @@ def gate_decision(baseline: Dict[str, Any], candidate: Dict[str, Any]) -> Dict[s
         decision = "FAIL"
         reasons.append("pass_rate_drop_exceeds_tolerance")
 
-    if candidate["summary"]["avg_response_time"] > 3.0:
+    latency_warning_seconds = float(os.getenv("SECTION9_LATENCY_WARNING_SECONDS", "3.0"))
+    if candidate["summary"]["avg_response_time"] > latency_warning_seconds:
         reasons.append("latency_warning")
 
     if decision == "PASS" and reasons:
@@ -216,6 +227,7 @@ def gate_decision(baseline: Dict[str, Any], candidate: Dict[str, Any]) -> Dict[s
         "baseline_pass_rate": base_pass,
         "candidate_pass_rate": candidate_pass,
         "pass_rate_drop": drop,
+        "latency_warning_seconds": latency_warning_seconds,
     }
 
 
@@ -237,6 +249,7 @@ def write_outputs(report: Dict[str, Any], out_dir: str) -> Dict[str, str]:
         f"Baseline pass rate: {g['baseline_pass_rate']}",
         f"Candidate pass rate: {g['candidate_pass_rate']}",
         f"Pass rate drop: {g['pass_rate_drop']}",
+        f"Latency warning threshold: {g['latency_warning_seconds']}s",
         f"Baseline avg response time: {report['baseline']['summary']['avg_response_time']}s",
         f"Candidate avg response time: {report['candidate']['summary']['avg_response_time']}s",
         "",
@@ -245,13 +258,18 @@ def write_outputs(report: Dict[str, Any], out_dir: str) -> Dict[str, str]:
     ]
 
     for r in report["baseline"]["cases"]:
-        lines.append(f"{r['id']}: {'PASS' if r['passed'] else 'FAIL'} ({r['severity']}) reasons={r['reasons']}")
+        lines.append(
+            f"{r['id']}: {'PASS' if r['passed'] else 'FAIL'} ({r['severity']}) "
+            f"security={r['security_decision']} reasons={r['reasons']} "
+            f"trace_session={r['trace_lookup']['session_id']}"
+        )
 
     lines += ["", "Candidate Cases", "-" * 30]
     for r in report["candidate"]["cases"]:
         lines.append(
             f"{r['id']}: {'PASS' if r['passed'] else 'FAIL'} ({r['severity']}) "
-            f"handoffs={r['handoff_count']} reasons={r['reasons']}"
+            f"handoffs={r['handoff_count']} security={r['security_decision']} "
+            f"reasons={r['reasons']} trace_session={r['trace_lookup']['session_id']}"
         )
 
     with open(tpath, "w", encoding="utf-8") as f:

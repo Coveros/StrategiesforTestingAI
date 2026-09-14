@@ -29,6 +29,12 @@ This exercise focuses on **Ask mode**, the deterministic RAG pipeline. A user as
    - `Chains` -> `rag.query`
    - `Retriever` -> `rag.retrieve`
    - `LLM` -> `rag.generate`
+   Also inspect the Inputs/Outputs panels and record, when present:
+   - query and prompt inputs
+   - retrieved document outputs
+   - generated answer output
+   - `generation_metrics.prompt_tokens`, `generation_metrics.completion_tokens`, and `generation_metrics.total_tokens`
+   - total trace duration compared with the API `total_time`
    Use this quick interpretation guide while reviewing traces:
    - `Chains` = top-level Ask mode workflow
    - `Retriever` = vector database lookup and ranking

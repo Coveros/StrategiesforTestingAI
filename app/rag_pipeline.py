@@ -35,6 +35,7 @@ class RAGPipeline:
         self.ollama_host = os.getenv('OLLAMA_HOST', 'http://127.0.0.1:11434').rstrip('/')
         self.ollama_model = os.getenv('OLLAMA_MODEL', 'llama3.2:1b')
         self.ollama_timeout_seconds = int(os.getenv('OLLAMA_TIMEOUT_SECONDS', '120'))
+        self._last_generation_metrics = {}
         self.tracer, self.mlflow_enabled = get_tracer(
             "strategiesfortestingai.rag",
             enable_env="ENABLE_MLFLOW_ASK_TRACING",
@@ -569,6 +570,7 @@ class RAGPipeline:
     ) -> str:
         """Generate response using Ollama with retrieved context."""
         try:
+            self._last_generation_metrics = {}
             # Prepare context from retrieved documents
             context = "\n\n".join(context_docs[:3])  # Use top 3 documents
             configured_default_temp = float(os.getenv('TEMPERATURE', '0.3'))
@@ -637,6 +639,19 @@ class RAGPipeline:
 
                 payload = self._provider_call_with_backoff(generate_call)
                 response_text = str(payload.get('response', '')).strip()
+                self._last_generation_metrics = {
+                    'prompt_tokens': payload.get('prompt_eval_count'),
+                    'completion_tokens': payload.get('eval_count'),
+                    'total_tokens': (
+                        (payload.get('prompt_eval_count') or 0) + (payload.get('eval_count') or 0)
+                        if payload.get('prompt_eval_count') is not None and payload.get('eval_count') is not None
+                        else None
+                    ),
+                    'provider_total_duration_ns': payload.get('total_duration'),
+                    'provider_load_duration_ns': payload.get('load_duration'),
+                    'provider_prompt_eval_duration_ns': payload.get('prompt_eval_duration'),
+                    'provider_eval_duration_ns': payload.get('eval_duration'),
+                }
                 
                 # Capture response output and metadata
                 if gen_span is not None:
@@ -658,6 +673,9 @@ class RAGPipeline:
                             gen_span.set_attribute("llm.usage.prompt_tokens", int(prompt_eval_count))
                         if eval_count is not None and prompt_eval_count is not None:
                             gen_span.set_attribute("llm.usage.total_tokens", int(eval_count) + int(prompt_eval_count))
+                        for metric_name, metric_value in self._last_generation_metrics.items():
+                            if metric_value is not None:
+                                gen_span.set_attribute(f"rag.provider.{metric_name}", int(metric_value))
                         
                         # Log payload for debugging if tokens missing
                         if eval_count is None or prompt_eval_count is None:
@@ -745,7 +763,8 @@ class RAGPipeline:
                     'retrieval_time': retrieval_results['retrieval_time'],
                     'generation_time': total_time - retrieval_results['retrieval_time'],
                     'total_time': total_time,
-                    'temperature': effective_temperature
+                    'temperature': effective_temperature,
+                    'generation_metrics': dict(self._last_generation_metrics),
                 }
 
                 self._add_quality_signal_attrs(

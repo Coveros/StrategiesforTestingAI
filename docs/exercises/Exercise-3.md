@@ -1,74 +1,96 @@
-# Exercise 3: Audit Test Results and Improve a Metric
+# Exercise 3: Analyze UI Golden-Run Evidence
 
 ## Prerequisites
-1. Exercise 2 completed with your 9-test regression suite in your Codespace.
-2. Regression test results from your Exercise 2 in `regression_test_results/`.
+1. Exercise 2 completed.
+2. The Flask application and MLflow are running.
+3. The Exercise 2 Playwright suite is available in the Testing beaker.
 
 ## Scenario
-Your team added 2 new tests to the golden test suite during Exercise 2. Now audit all 9 of your test results and find evaluation issues. The framework uses weighted thresholds (semantic similarity 40%, keyword match 25%, etc.) that might be too strict or too loose. You'll find one false positive and one false negative, then propose a metric improvement.
+
+Exercise 2 gave you a small, black-box UI golden suite. Exercise 3 teaches you
+to decide whether those tests are measuring the right things. You will analyze
+the evidence captured by the browser suite, compare it with the corresponding
+MLflow traces, and improve one validation rule.
+
+This exercise does **not** use the legacy code-based regression suite as the
+student workflow. The primary artifact is the JSON file produced by the
+Playwright run under `artifacts/exercise2/`.
+
+## Run the golden suite
+
+From the Testing beaker, run all seven Exercise 2 tests. Or run:
+
+```bash
+python -m pytest tests/e2e/test_exercise2_ui.py -v
+```
+
+The suite writes an artifact named like:
+
+```text
+artifacts/exercise2/ui_golden_run_YYYYMMDD_HHMMSS.json
+```
+
+The artifact contains the test name, prompt, response text, sources, timing
+fields, session ID, exercise number, and observed validation data. It is the
+starting point for your analysis.
 
 ## Student tasks
-1. Run regression tests and open the latest summary report in `regression_test_results/` (pattern: `regression_summary_YYYYMMDD_HHMMSS.txt`). Use this text report as your primary analysis artifact.
-2. Analyze your test results using the **Analyzing Your Test Results** guide below this task list.
-3. Use the JSON file (`regression_results_YYYYMMDD_HHMMSS.json`) only if you need deeper inspection beyond the summary report.
-4. Look at the scores for each test and identify:
-   - One false positive: a test that passed but should have failed based on response quality.
-   - One false negative: a test that failed but should have passed based on response quality.
-5. For each, document: Test ID, actual similarity/keyword scores, why the threshold decision was wrong.
-6. Use Copilot to draft 1 new metric that would catch that gap (e.g., PII detector, source citation checker, JSON validator). Use the **Sample Copilot prompts for new metrics** below if helpful.
-7. Use Copilot to apply the metric change in the regression framework and explain what was changed.
-8. Re-run regression tests and confirm whether your false positive/false negative issue improved.
-9. Propose where this metric should live long-term in the framework and what threshold it should use.
 
-## How to run and open the right artifact
-1. Run regression tests:
-   - `python -m regression_testing.regression_testing`
-2. Open the latest summary report in `regression_test_results/`:
-   - File name pattern: `regression_summary_YYYYMMDD_HHMMSS.txt`
-3. Use that report section-by-section:
-   - `CRITICAL FAILURES` and `BY CATEGORY` to find risk areas fast.
-   - `DETAILED RESULTS` to review query, response preview, score components, and gate checks.
-4. Only if needed, open the matching JSON file for raw full response text.
-5. After analysis, use Copilot to implement your metric fix and run the suite again to validate the change.
+1. Open the newest `ui_golden_run_*.json` file.
+2. Select one successful in-scope case and one case that failed or returned a
+   bounded validation error.
+3. For each selected case, record:
+   - response status and mode
+   - response length
+   - source count and source metadata
+   - response, retrieval, generation, and total latency
+   - whether the UI behavior matched the API payload
+4. Use `session_id` and `exercise_number` to find the matching trace in MLflow.
+5. Compare the trace to the browser evidence:
+   - Did the trace contain `rag.query`, `rag.retrieve`, and `rag.generate`?
+   - Did retriever and generator spans contain inputs and outputs?
+   - Did the trace duration agree with the API timing?
+   - Was the answer grounded in the retrieved source content?
+6. Identify one **test false positive** or **test false negative**:
+   - false positive: the suite passed, but trace/source evidence shows the
+     answer was not grounded or not useful
+   - false negative: the suite failed, but trace/source evidence shows the
+     response was an acceptable answer with expected model variation
+7. Ask Copilot to propose one better validation rule. Examples:
+   - require a source whose content overlaps the answer's key concept
+   - require a minimum source count only for in-scope RAG questions
+   - replace one brittle keyword with a small synonym set
+   - add a bounded latency warning without failing on latency alone
+8. Add the rule to the Playwright suite, rerun it, and compare the new JSON
+   artifact with the original.
+9. Explain whether the new rule reduced false signals or introduced a new risk.
 
-## Analyzing Your Test Results
+## Evidence table
 
-Look at each result in the test output:
-- **Semantic Similarity** (40% weight): How close to gold standard? Threshold for this exercise: 0.65
-- **Keyword Match** (25% weight): % of expected keywords found? Threshold for this exercise: 0.25
-- **Length** (15% weight): Does response length fall in expected range?
-- **Sources** (10% weight): Does response cite at least 1 source?
-- **Performance** (5% weight): Response time < 15 sec?
-- **Content** (5% weight): Response > 50 chars?
-
-Use these fixed lab thresholds for all submissions: Semantic Similarity 0.65 and Keyword Match 0.25.
-
-**False Positive Pattern (passed but should fail):**
-- A test passes gate checks, but qualitative review shows clear response issues (for example: irrelevant answer, unsafe content, missing grounding).
-- Use your own run data to identify why current metrics allowed this.
-
-**False Negative Pattern (failed but should pass):**
-- A test is semantically correct enough for classroom use, but strict thresholding or exact keyword matching causes a fail.
-- Use your own run data to identify which threshold/metric is too strict.
-
-Use findings from your own artifacts in `regression_test_results/`; do not reuse example IDs from this handout.
-
-Note: the framework attempts local Ollama mode first and automatically falls back to deterministic offline mode if provider or connectivity errors occur.
-
-## Evidence template
-| Finding Type | Test ID | Your Scores | Threshold Applied | Why Threshold is Wrong | Proposed Fix |
+| Case | Test result | Response/source evidence | MLflow trace evidence | Classification | Proposed rule |
 |---|---|---|---|---|---|
-| False Positive |  |  |  |  |  |
-| False Negative |  |  |  |  |  |
+| Selected case 1 |  |  |  |  |  |
+| Selected case 2 |  |  |  |  |  |
 
-## Sample Copilot prompts for new metrics
-1. "Write a Python function that returns True if a response contains any PII patterns (email, phone, SSN, credit card)."
-2. "Write a Python function that checks whether a response explicitly cites at least one source, e.g., 'according to X' or 'from X document'."
-3. "Write a Python function that validates whether JSON appears in a response and is syntactically valid."
-4. "Write a Python function that detects whether a response contains an explicit refusal phrase like 'cannot', 'cannot answer', or 'outside my scope'."
+## What makes a good validation rule?
 
-## Team debrief questions
-1. Which was easier to find in your results: false positives or false negatives?
-2. Did your new metric target a real gap, or would it add false signals?
-3. What trade-off does your metric introduce? (e.g., strictness vs. signal quality)
+A useful rule should be:
 
+- observable through the UI or response payload
+- tolerant of reasonable wording variation
+- tied to a real user or system requirement
+- explainable when it fails
+- connected to trace evidence when the issue is grounding, retrieval, latency,
+  tool behavior, or an orchestration decision
+
+Do not turn the generated answer into an exact snapshot. Exact prose matching
+will make the suite brittle without improving its ability to detect meaningful
+regressions.
+
+## Team debrief
+
+1. Which UI assertion was insufficient without MLflow trace evidence?
+2. Which source or span field gave the strongest grounding signal?
+3. Did your improved rule catch a real defect or merely a wording variation?
+4. Which validation belongs in the browser suite, and which belongs in a trace
+   or evaluation report?

@@ -4,7 +4,7 @@
 
 **Team Exercise (30 minutes max)**
 - Pre-generated traces available in MLflow
-- Focus: Diagnose handoff corruption and understand state mutation impact on multi-agent systems
+- Focus: Diagnose a bounded handoff and understand state mutation impact on multi-agent systems
 
 ## Prerequisites
 1. Flask app running: `python run.py`
@@ -48,6 +48,8 @@ As a team, diagnose how corrupted state between agents breaks retrieval quality.
    - Did the query text change between agents?
    - How many extra steps resulted from the mutation?
    - Where did the system loop or retry?
+   - Inspect `handoff.original_query`, `handoff.routed_query`, and `handoff.mutated` on the specialist span.
+   - Compare `trajectory_metrics.handoffs`, `trajectory_metrics.tool_calls`, and `trajectory_metrics.redundant_tool_calls`.
 4. **Fill corrupted row in table** (see below)
 
 ### Results Table
@@ -62,6 +64,13 @@ As a team, diagnose how corrupted state between agents breaks retrieval quality.
 1. **"What exactly was corrupted in the handoff?"** (Original query vs. mutated)
 2. **"What was the efficiency cost?"** (Extra steps due to retry loops)
 3. **"If you were designing this orchestrator, what guardrail would you add?"** (e.g., schema validation, checksums, explicit state contracts)
+
+### Runtime boundary
+
+Crew mode is intentionally bounded: the default configuration allows four crew
+iterations and a 25-second execution budget. This exercise inspects one
+specialist handoff and its contract; it does not require an unbounded retry
+loop. Use the pre-generated traces when the live provider is slow.
 
 ### Optional: Control Test (Extra)
 If time permits, run the same corrupted query with **crew mode OFF** (single-agent).

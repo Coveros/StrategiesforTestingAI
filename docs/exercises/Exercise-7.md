@@ -1,118 +1,108 @@
-# Exercise 7: Reliability and Overhead (Ask vs Agent + Crew Handoff Focus)
+# Exercise 7: Validate NFR Evidence in MLflow
 
 ## Prerequisites
-1. Exercise 6 completed.
-2. Use live traces from MLflow during this exercise.
-3. Ability to use Ask mode, Agent mode, and Crew Mode in the UI.
-4. Optional automation runner available in your Codespace: `python section7_nfr_quickrun.py`.
+1. Exercise 6 completed, or the instructor-provided traces are available.
+2. Flask and MLflow are running in the Codespace.
+3. The application has handled at least one Ask, single-agent, and crew request.
+4. Optional automation is available with `python section7_nfr_quickrun.py`.
 
-## Trace Reuse Optimization: No New Prompts Needed ⏱️
+## Goal
 
-**You do not need to run new prompts for this exercise.** The 12 traces generated in Exercise 6 Part 1 (via `python generate_classroom_traces.py`) already capture Ask, Agent, and Crew modes with varying input characteristics:
+Determine whether the system provides enough evidence to assess latency,
+token/cost overhead, reliability, and orchestration overhead. This exercise is
+about validating the measurement system as well as measuring the application.
 
-- **5 traces (same_prompt)**: Identical input, test consistency and latency variation
-- **4 traces (variation)**: Robustness tests with reworded questions
-- **3 traces (different_prompt)**: Edge cases and diverse query types
+Do not fill a missing metric with an estimate. Record `not emitted` when the
+trace does not contain the field, then explain why that limits the conclusion.
 
-These traces have already captured all NFR metadata: response latency, token counts, error status, tool calls, and handoff behavior.
+## Metrics evidence map
 
-**To proceed:**
-1. Ensure Exercise 6 Part 1 has completed: `python generate_classroom_traces.py` (or verify `classroom_traces_results.json` exists)
-2. Open MLflow: http://localhost:5001 → **Traces tab**
-3. Filter or search for traces with tags: `scenario: same_prompt` or `scenario: variation` or `scenario: different_prompt`
-4. Proceed to "Student tasks" below
+| Metric | Ask/RAG source | Agent/crew source | Evidence location |
+|---|---|---|---|
+| End-to-end latency | `rag.query` duration and API `total_time` | root agent trace duration and API `response_time` | MLflow trace duration and response JSON |
+| Retrieval latency | API `retrieval_time` | retrieval/tool span duration | response JSON or child span |
+| Generation latency | API `generation_time` | LLM span duration | response JSON or LLM span |
+| Prompt tokens | Ollama `prompt_eval_count` | LangChain/MLflow LLM usage | `generation_metrics.prompt_tokens` or LLM span |
+| Completion tokens | Ollama `eval_count` | LangChain/MLflow LLM usage | `generation_metrics.completion_tokens` or LLM span |
+| Total tokens | sum of prompt and completion tokens | MLflow LLM usage | `generation_metrics.total_tokens` or LLM span |
+| Provider durations | Ollama duration fields | provider/autolog fields when emitted | `generation_metrics` or `rag.provider.*` span attributes |
+| Tool calls | not applicable | trajectory metadata and tool spans | UI Agent Execution block and trace |
+| Handoffs | not applicable | handoff metadata and spans | UI handoff block and trace |
+| Error/timeout | API status and error payload | error span/API status | trace status and response JSON |
 
-**Why reuse?** Saves ~6 minutes of inference time and focuses the exercise on *analysis* rather than data generation.
+## Activity 1: Compare Ask and agent overhead
 
-# Exercise 7: Reliability and NFR Testing
+Use the same question in Ask mode and single-agent mode. Capture one trace for
+ each mode, then record:
 
-## Prerequisites
-1. Exercise 6 completed (traces available in MLflow)
-2. Flask app running: `python run.py`
-3. MLflow running on http://localhost:5001
+1. end-to-end latency
+2. retrieval and generation latency where available
+3. prompt, completion, and total tokens
+4. tool-call count
+5. retry or redundant-call count
+6. error or timeout status
 
-## Team Exercise - NFR Metrics Analysis (30 minutes)
+Calculate overhead only when both values are present:
 
-### Overview
-Using pre-generated traces from Exercise 6, analyze **two key non-functional requirements**:
-1. **Latency & Token Overhead**: Does agent mode cost more than ask mode?
-2. **Error Resilience**: How does the system handle malformed inputs?
+```text
+latency overhead = (agent latency - Ask latency) / Ask latency * 100
+ token overhead = (agent tokens - Ask tokens) / Ask tokens * 100
+```
 
-### Role Assignments
-- **MLflow Queries**: Filters traces by mode (ask vs agent) and scenario
-- **Metrics Collector**: Extracts latency, token counts, and error info
-- **Evidence Scribe**: Records findings in results table
-- **Proposer**: Suggests one efficiency improvement
+## Activity 2: Validate repeatability
 
-### Activities (30 minutes)
+Run the same Ask question three times or use the pre-generated `same_prompt`
+traces. Compare:
 
-#### Activity 1: Latency & Token Overhead (15 minutes)
-1. **In MLflow Traces tab**, find 2-3 traces from Exercise 6:
-   - One "same_prompt" trace run in **Ask mode**
-   - One "same_prompt" trace run in **Agent mode** (crew OFF)
-   - Compare side-by-side
-2. **Extract metrics from each trace:**
-   - Response latency (total span duration)
-   - Token count (prompt + completion combined)
-   - Tool calls made
-   - Any retry loops?
-3. **Calculate overhead:**
-   - Token overhead = (Agent tokens - Ask tokens) / Ask tokens × 100%
-   - Latency overhead = (Agent latency - Ask latency) / Ask latency × 100%
-4. **Record in table** (see below)
+- median and maximum latency
+- token-count variation
+- retrieved source consistency
+- response structure
+- trace structure
 
-#### Activity 2: Error Resilience (10 minutes)
-1. **Run these test prompts in the UI** (agent mode, crew OFF):
-   - `What are the key challenges in testing GenAI applications?` (normal)
-   - `xqz@@##123###?? en espanol ???` (malformed)
-2. **For each, note:**
-   - Did the system crash or return bounded response?
-   - How many tool calls were attempted?
-   - Did error handling kick in?
-3. **In MLflow**, inspect the error trace:
-   - Find the error span (red indicator)
-   - What was the error type? (malformed input, tool error, timeout?)
-4. **Record pass/fail** in table
+Then compare reworded `variation` traces and explain whether the variation is a
+quality change, an expected wording change, or a retrieval change.
 
-### Results Table
+## Activity 3: Error resilience
 
-| Test | Mode | Latency (sec) | Tokens | Tool Calls | Status | Insight |
-|---|---|---:|---:|---:|---|---|
-| Same Prompt - Ask | Ask | | | | | |
-| Same Prompt - Agent | Agent | | | | | |
-| **Overhead** | | **+X%** | **+X%** | | | |
-| Normal Prompt | Agent | | | | Pass/Fail | |
-| Malformed Input | Agent | | | | Pass/Fail | [Error type] |
+Use one normal prompt and one malformed or unusual prompt. Record whether the
+system:
 
-### Team Debrief (5 minutes)
+- returns a bounded response
+- returns a documented error
+- times out
+- creates a trace with an error status
+- attempts unnecessary tool retries
 
-1. **"Where does the biggest overhead come from?"** (Extra tokens? Tool calls? Handoffs?)
-2. **"Does the system degrade gracefully on malformed input?"** (Bounded? Retry logic?)
-3. **"If you could optimize one thing, what would it be?"** (Fewer tool calls? Determinism? Caching?)
-|---|---|---|---|---|---|---|
-| Latency Overhead | Ask |  |  |  |  |  |
-| Latency Overhead | Single-agent |  |  |  |  |  |
-| Long-Input Stability | Ask |  |  |  |  |  |
-| Long-Input Stability | Single-agent |  |  |  |  |  |
-| Malformed Input Handling | Ask |  |  |  |  |  |
-| Malformed Input Handling | Single-agent |  |  |  |  |  |
-| Loop Containment | Single-agent |  |  |  |  |  |
-| Loop Containment | Crew control |  |  |  |  |  |
-| Handoff Resilience | Single-agent control |  |  |  |  |  |
-| Handoff Resilience | Crew |  |  |  |  |  |
-| Crew Overhead (Optional) | Crew baseline |  |  |  |  |  |
+Run the malformed case live only once. Use pre-generated traces for comparison
+when possible so the class does not spend its time repeating slow inference.
+
+## Results table
+
+| Case | Mode | Latency | Prompt tokens | Completion tokens | Total tokens | Tools | Handoffs | Status | Evidence |
+|---|---|---:|---:|---:|---:|---:|---:|---|---|
+| Same prompt | Ask |  |  |  |  | N/A | N/A |  |  |
+| Same prompt | Single-agent |  |  |  |  |  |  |  |  |
+| Same prompt | Crew |  |  |  |  |  |  |  |  |
+| Reworded prompt | Ask |  |  |  |  | N/A | N/A |  |  |
+| Reworded prompt | Agent |  |  |  |  |  |  |  |  |
+| Malformed prompt | Agent |  |  |  |  |  |  |  |  |
 
 ## Optional automation
+
 Run:
 
 ```bash
 python section7_nfr_quickrun.py
 ```
 
-This generates JSON and TXT artifacts in `regression_test_results/` using the current supported prompts and mode comparisons.
+Use the generated artifact as a comparison aid, then verify at least one result
+against its MLflow trace. The artifact is not a substitute for checking whether
+the claimed metric was actually emitted.
 
-## Team debrief questions
-1. Which mode introduced the most overhead relative to the value it added?
-2. Did the system fail safely, fail noisily, or silently degrade?
-3. What one NFR check should be automated first in CI or smoke testing?
+## Team debrief
 
+1. Which NFR metric was reliably available in every mode?
+2. Which metric was missing or mode-dependent?
+3. Did agent or crew overhead come from tokens, tools, handoffs, or retries?
+4. Which metric should become a release threshold in Exercise 9?

@@ -31,6 +31,8 @@ Trace interpretation note:
 3. Open the two generated artifacts in `regression_test_results/`:
    - `section9_agentic_ci_*.json`
    - `section9_agentic_ci_summary_*.txt`
+   The default latency warning threshold is 3 seconds. It can be changed for a
+   classroom or service target with `SECTION9_LATENCY_WARNING_SECONDS`.
 4. Extract these fields for your decision table:
    - gate decision: `PASS`, `PASS_WITH_WARNINGS`, or `FAIL`
    - reasons list
@@ -38,14 +40,20 @@ Trace interpretation note:
    - candidate pass rate
    - baseline and candidate latency indicators from the summary output
    - pass rate drop
+   - MLflow trace IDs or session/exercise tags for the baseline and candidate cases
+
 5. Compare pass rate and latency between baseline and candidate.
-6. Apply the **Decision workflow (required)** section below before writing recommendations.
-7. Each person creates a short decision memo summarizing the evidence and their Ship / No-Ship recommendation with rationale. Include:
+6. Open at least one baseline and one candidate trace in MLflow. Use the trace to
+   confirm the failure shape, handoff behavior, security decision, or trajectory
+   metric behind the artifact result. A passing artifact without trace evidence
+   is incomplete release evidence.
+7. Apply the **Decision workflow (required)** section below before writing recommendations.
+8. Each person creates a short decision memo summarizing the evidence and their Ship / No-Ship recommendation with rationale. Include:
    - a summary of the gate decision and key evidence points
    - a clear Ship / No-Ship recommendation based on the workflow below
    - if Ship, any accepted risks or mitigations
    - if No-Ship, the main reasons and the first corrective action
-8. Conduct a final board vote and record your decision.
+9. Conduct a final board vote and record your decision.
 
 ## Decision workflow (required)
 Use this checklist to make your final decision:

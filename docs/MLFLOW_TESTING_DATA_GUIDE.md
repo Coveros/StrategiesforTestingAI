@@ -152,6 +152,29 @@ To detect handoff corruption, compare adjacent spans:
 - **Convergence**: Do agents reach conclusions or get stuck in loops?
 - **Consistency**: Run same prompt twice; do agents make same decisions?
 
+### Trajectory Metrics Glossary
+
+Agent responses expose `trajectory_metrics` in the API payload, and the same
+values are summarized in the UI Agent Execution block. Interpret them as:
+
+| Field | Meaning |
+|---|---|
+| `steps` | Recorded action/observation or orchestration steps |
+| `tool_calls` | Number of tool invocations |
+| `handoffs` | Number of agent-to-agent handoffs |
+| `redundant_tool_calls` | Repeated calls with the same tool and query |
+| `early_termination` | The run ended without the expected tool path |
+| `degraded_mode` | A fallback or recovery path was used |
+| `circuit_open` | A circuit breaker prevented further work |
+| `failures_seen` | Failures observed during the trajectory |
+| `policy_bypass` | Policy handling was bypassed or flagged |
+| `poisoned_retrieval` | Handoff mutation affected retrieval input |
+| `handoff_contract_failures` | Handoff metadata failed its consistency check |
+| `sharepoint_access_failure` | SharePoint/tool access failed, when that tool is enabled |
+
+For Exercise 6, compare `handoff.original_query`, `handoff.routed_query`,
+`handoff.query_changed`, and `handoff.integrity_status` alongside these metrics.
+
 ---
 
 ### 4. **Performance & Latency Breakdown**

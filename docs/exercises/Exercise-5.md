@@ -26,6 +26,13 @@ In this exercise you test a real LangChain ReAct single-agent workflow in **Agen
 10. Capture evidence in both places:
    - MLflow trace tree / span repetition
    - UI metadata (`Trajectory`, `Tools Called`, `Trace`)
+   Record the actual trajectory fields rather than inferring them from span depth:
+   - `trajectory_metrics.steps`
+   - `trajectory_metrics.tool_calls`
+   - `trajectory_metrics.redundant_tool_calls`
+   - `trajectory_metrics.early_termination`
+   - `trajectory_metrics.degraded_mode`
+   - trace duration and LLM token usage when emitted
 11. Record results in this table as you run each scenario:
 
 | Scenario | Prompt | Expected Trajectory | Actual Trajectory | Pass/Fail | Evidence |
@@ -35,6 +42,8 @@ In this exercise you test a real LangChain ReAct single-agent workflow in **Agen
 | Safety block |  |  |  |  |  |
 
 12. Write one test idea that would fail when span repetition or redundant tool calls exceed a threshold.
+   Use a bounded threshold such as two repeated calls for the same tool/query;
+   do not require the loop to run until the request budget expires.
 13. As a control, toggle **Crew Mode ON** and rerun the same prompt once. Note that the explicit loop trigger is designed for the single-agent path, so the multi-agent path should behave differently.
 
 ## Team debrief questions

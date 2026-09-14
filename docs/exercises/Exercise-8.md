@@ -42,6 +42,8 @@ Optional: Reuse **Handoff Corruption** trace from Exercise 6 if time permits (el
    - Find the LLM span where the injection occurred
    - Did the model override its system prompt?
    - Look for early rejection vs. attempted execution
+   - Inspect the security decision span and record `security.decision` as `blocked` or `allowed`.
+
 4. **Record in table** (see below)
 
 #### Activity 2: Harmful Content Detection (10 minutes)
@@ -57,6 +59,8 @@ Optional: Reuse **Handoff Corruption** trace from Exercise 6 if time permits (el
    - Look for input vs. output layer rejection
    - Compare: Did the LLM attempt completion, or was it blocked pre-generation?
    - What was the decision basis? (keyword filter, model judgment, explicit guard)
+    - If no dedicated guardrail span is present, record that as an observability gap;
+       do not infer a block from the final prose alone.
 4. **Record in table** (see below)
 
 #### Activity 3: Optional - Handoff Corruption Reuse (5-10 min, if time)

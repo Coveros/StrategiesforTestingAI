@@ -1,8 +1,8 @@
 """MLflow-backed tracing helpers.
 
-Drop-in replacement for app/phoenix_tracing.py: same get_tracer()/start_span()
-call shape so app/rag_pipeline.py and app/agentic_testops.py did not need to be
-rewritten, only re-pointed at this module. Spans are created with
+MLflow-backed replacement for the earlier Phoenix integration. The same
+get_tracer()/start_span() call shape keeps app/rag_pipeline.py and
+app/agentic_testops.py stable. Spans are created with
 mlflow.start_span() and a curated set of attributes is mirrored onto the
 current trace's tags via mlflow.update_current_trace() so traces stay
 searchable/filterable in the MLflow UI (equivalent to Phoenix's attribute

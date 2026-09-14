@@ -416,7 +416,7 @@ class RegressionTestFramework:
         if len(normalized) <= max_len:
             return normalized
         return normalized[: max_len - 3] + "..."
-    
+
     def evaluate_response_quality(self, test_case: Dict[str, Any], response_data: Dict[str, Any]) -> Dict[str, Any]:
         """Evaluate response quality against gold standard."""
         
@@ -480,7 +480,6 @@ class RegressionTestFramework:
         content_quality_pass = is_substantial
         
         test_passed = primary_pass and secondary_pass and content_quality_pass and not contains_error_message
-        
         return {
             'test_id': test_case['id'],
             'category': test_case['category'],

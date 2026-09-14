@@ -326,6 +326,7 @@ class TestOpsAgent:
             "failures_seen": 0,
             "policy_bypass": False,
             "poisoned_retrieval": False,
+            "handoff_contract_failures": 0,
             "sharepoint_access_failure": False,
         }
 
@@ -739,6 +740,17 @@ class TestOpsAgent:
             stripped = re.sub(r"[^a-zA-Z0-9\s]", " ", stripped)
             return re.sub(r"\s+", " ", stripped).strip().lower()
 
+        def build_handoff_contract(original_query: str, routed_query: str, mutated: bool) -> Dict[str, Any]:
+            query_changed = original_query != routed_query
+            return {
+                "contract_version": "1",
+                "original_query": original_query,
+                "routed_query": routed_query,
+                "query_changed": query_changed,
+                "mutated": mutated,
+                "integrity_status": "mutated" if query_changed else "preserved",
+            }
+
         @tool
         def rag_agent_tool(user_query: str) -> str:
             """Use this to answer factual questions utilizing the knowledge base."""
@@ -748,6 +760,10 @@ class TestOpsAgent:
                 routed_query = mutate_query(user_query)
                 mutated = True
 
+            handoff_contract = build_handoff_contract(user_query, routed_query, mutated)
+            if handoff_contract["query_changed"] != handoff_contract["mutated"]:
+                metrics["handoff_contract_failures"] += 1
+
             handoffs.append(
                 {
                     "from": "TriageAgent",
@@ -756,6 +772,9 @@ class TestOpsAgent:
                     "mutated": mutated,
                     "original_query": user_query,
                     "routed_query": routed_query,
+                    "contract_version": handoff_contract["contract_version"],
+                    "query_changed": handoff_contract["query_changed"],
+                    "integrity_status": handoff_contract["integrity_status"],
                 }
             )
 
@@ -766,6 +785,8 @@ class TestOpsAgent:
                 attrs={
                     "tool.name": "rag_agent_tool",
                     "tool.input": user_query[:500],
+                    "handoff.contract_version": handoff_contract["contract_version"],
+                    "handoff.integrity_status": handoff_contract["integrity_status"],
                 },
             ) as tool_span:
                 with start_span(
@@ -777,8 +798,13 @@ class TestOpsAgent:
                         "handoff.mutated": mutated,
                         "handoff.original_query": user_query,
                         "handoff.routed_query": routed_query,
+                        "handoff.contract_version": handoff_contract["contract_version"],
+                        "handoff.query_changed": handoff_contract["query_changed"],
+                        "handoff.integrity_status": handoff_contract["integrity_status"],
                     },
-                ):
+                ) as specialist_span:
+                    if specialist_span is not None and hasattr(specialist_span, "set_inputs"):
+                        specialist_span.set_inputs({"original_query": user_query, "routed_query": routed_query})
                     if self.crew_specialist_mode == "react":
                         nested = self._run_single_agent(
                             message=routed_query,
@@ -801,6 +827,8 @@ class TestOpsAgent:
 
                 output = nested.get("response", "No response from RAG specialist")
                 try:
+                    if tool_span is not None and hasattr(tool_span, "set_outputs"):
+                        tool_span.set_outputs({"response": output, "handoff": handoff_contract})
                     tool_span.set_attribute("tool.output", output[:500])
                     tool_span.set_attribute("tool.execution_result", "success")
                 except Exception:
@@ -1079,6 +1107,7 @@ class TestOpsAgent:
                     trajectory_metrics=metrics,
                     crew_mode=crew_mode,
                     exercise_number=exercise_number,
+                    security_decision="blocked",
                 )
 
             if self._is_injection_attempt(message):
@@ -1099,6 +1128,7 @@ class TestOpsAgent:
                     trajectory_metrics=metrics,
                     crew_mode=crew_mode,
                     exercise_number=exercise_number,
+                    security_decision="blocked",
                 )
             
             # Request passed security gates
@@ -1208,6 +1238,7 @@ class TestOpsAgent:
 
             payload["mlflow_trace_enabled"] = self.mlflow_enabled
             payload["exercise_number"] = exercise_number
+            payload["security_decision"] = "allowed"
             return payload
         except Exception as exc:
             self.stats["errors"] += 1
@@ -1435,6 +1466,7 @@ class TestOpsAgent:
         exercise_number: Optional[int],
         bootstrap_applied: bool = False,
         bootstrap_reason: Optional[str] = None,
+        security_decision: Optional[str] = None,
     ) -> Dict[str, Any]:
         payload = {
             "response": response,
@@ -1448,6 +1480,7 @@ class TestOpsAgent:
             "trajectory_metrics": trajectory_metrics,
             "bootstrap_applied": bootstrap_applied,
             "bootstrap_reason": bootstrap_reason,
+            "security_decision": security_decision,
             "state_snapshot": {
                 "tracked_failure": self.session_state.get(session_id, {}).get("tracked_failure"),
                 "persona": self.session_state.get(session_id, {}).get("persona", "default"),
