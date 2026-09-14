@@ -2,7 +2,7 @@
 
 ## Prerequisites
 1. Exercise 8 completed.
-2. Ability to view tool calls or live Phoenix traces using Agent Mode in the UI.
+2. Ability to view tool calls or live MLflow traces using Agent Mode in the UI.
 3. Instructor mode enabled to force trace visibility and crew mode when needed.
 4. Section 9 automation suite available in your Codespace: `python section9_agentic_test_suite.py`.
 
@@ -11,7 +11,7 @@ You are the release board deciding Ship / No-Ship using baseline versus candidat
 
 Trace interpretation note:
 - This exercise is primarily artifact-driven (JSON/TXT gate evidence).
-- Phoenix traces are supporting evidence for failure shape and handoff integrity.
+- MLflow traces are supporting evidence for failure shape and handoff integrity.
 - In current defaults, crew traces may be shallower than single-agent traces; do not treat depth parity as a release gate by itself.
 
 ## What Baseline vs Candidate Means in This Lab

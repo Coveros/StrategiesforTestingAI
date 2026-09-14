@@ -9,7 +9,7 @@
 - `output.value` — Result produced by an agent
 - Enables side-by-side comparison: `Parent output` vs `Child input` to detect mutations
 
-**How to Use in Phoenix:**
+**How to Use in MLflow:**
 1. Run a multi-agent prompt
 2. Click on each span in the chain
 3. Compare `input.value` (what it received) vs `output.value` (what it produced)
@@ -23,7 +23,7 @@
 - `error.message` — Full error text for debugging
 - **Automatic:** Span duration (latency), token counts (already captured)
 
-**How to Use in Phoenix:**
+**How to Use in MLflow:**
 1. Filter traces for retrieval tool spans
 2. Check `retrieval.documents_returned` count
 3. Compare `error.type` across runs to identify failure patterns
@@ -42,7 +42,7 @@ Captures every request's security decision:
 - `error.type` — tool_execution_failed / not_found / timeout / connection_error / permission_denied
 - Classified automatically based on error message patterns
 
-**How to Use in Phoenix:**
+**How to Use in MLflow:**
 1. Look for `security.gate.ex8` spans in your traces
 2. Students attempting injection will see: `security.decision=blocked, reason=prompt_injection_detected`
 3. Students attempting harmful requests will see: `security.decision=blocked, reason=harmful_intent_detected`
@@ -67,10 +67,10 @@ Low-priority enhancements (not free/automatic):
 - `trajectory.redundant_calls` — Requires pattern analysis
 - `user.id` / `request.id` — Requires request correlation in Flask
 
-## How to Access in Phoenix
+## How to Access in MLflow
 
 ### Finding Security Spans:
-1. Open Phoenix → Traces tab
+1. Open MLflow → Traces tab
 2. Filter by span name: search for `security.gate`
 3. Click to see: decision, reason, severity
 
@@ -94,7 +94,7 @@ python run.py
 python generate_classroom_traces.py
 ```
 
-In Phoenix (http://localhost:6006):
+In MLflow (http://localhost:5001):
 - Look for `security.gate.ex6` spans (one per request)
 - Look for nested `agent.chain` spans with `agent.role` attributes
 - Look for error classification in tool spans

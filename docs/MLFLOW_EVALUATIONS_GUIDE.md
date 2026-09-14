@@ -1,28 +1,22 @@
-# Phoenix Evaluations Guide: Automated AI Testing Metrics
+# MLflow Evaluations Guide: Automated AI Testing Metrics
 
-## About Evaluations: Cost and API Keys
+## About Evaluations: No API Key Required
 
-Phoenix Evaluations use external LLM services to score your outputs. You have options:
+MLflow Evaluations use `mlflow.genai.scorers` to score your outputs. Unlike the previous Phoenix-based setup, scorers can run against a **local Ollama model** (`model="ollama:/<model-name>"`), so no external API key, quota, or per-call cost applies.
 
-**Free Tier Options:**
-- **Cohere** — Free tier (limited requests/month)
-- **HuggingFace** — Free tier (limited inference)
-- **Ollama** (local) — Completely free, but limited evaluation support
-- **Anthropic Claude** — Free trial credits ($5-10)
+**Local Option (default for this course):**
+- **Ollama** (local) — Free, no API key, uses the same model already running for the course
 
-**Paid Options:**
-- **OpenAI GPT-4** — $0.01-0.05 per evaluation
-- **Anthropic Claude (post-trial)** — Varies by model
+**Optional External Options** (if you want to compare judge models):
+- **OpenAI GPT-4**, **Anthropic Claude**, **Cohere** — supported by `mlflow.genai.scorers` if you configure the relevant API key
 
-**Cost Estimate:** If you run 100 evaluations on free tier, cost is $0-5. On paid tier, budget $1-5 per 100 traces.
-
-**Bottom Line:** You *can* use a free API key (Cohere, HuggingFace) with limited quota, or free credits (Claude trial). This guide is still **optional** — you can test AI systems effectively using free **traces** alone.
+**Bottom Line:** This guide's default path needs **no API key at all**. It is still **optional** — you can test AI systems effectively using free **traces** alone.
 
 ---
 
 ## Overview
 
-Phoenix Evaluations are **automated scoring functions** that assess LLM quality across multiple dimensions:
+MLflow Evaluations are **automated scoring functions** that assess LLM quality across multiple dimensions:
 - **Hallucination Detection**: Did the model make up facts not in the context?
 - **Relevance**: How well did the model answer the user's question?
 - **Groundedness**: Did the model only use provided sources?
@@ -37,60 +31,39 @@ This guide shows how to set up, run, and interpret evaluations for your 2-day te
 
 ### About Cost
 
-Built-in evaluators use **external LLM API calls**. You have free and paid options:
-
-- **Free Tier**: Cohere (limited quota), HuggingFace (limited), Claude trial ($5-10 free)
-- **Paid**: OpenAI GPT-4 ($0.01-0.05 per evaluation)
-
-If you use a free tier API, evaluations are free (subject to rate limits). If you use a paid API, budget accordingly.
+Built-in scorers run against whatever judge model you configure. The default for this course is a **local Ollama model — no external API calls, no cost, no rate limits**.
 
 ### What's Available Out of the Box
 
-Phoenix ships with evaluators powered by Claude/GPT/Cohere:
+`mlflow.genai.scorers` ships with built-in scorers:
 
-| Evaluator | Purpose | Input | Output |
+| Scorer | Purpose | Input | Output |
 |---|---|---|---|
-| **Hallucination** | Detects unsupported claims | LLM output + context | score 0-1 |
-| **Relevance** | Grades answer quality | User query + output | score 0-1 |
-| **Groundedness** | Ensures source fidelity | Context + output | score 0-1 |
-| **QA Correctness** | Compares to reference answer | Output + gold standard | score 0-1 |
+| **Safety** | Flags unsafe/harmful content | LLM output | score 0-1 |
+| **RelevanceToQuery** | Grades answer quality | User query + output | score 0-1 |
+| **RetrievalGroundedness** | Ensures source fidelity | Context + output | score 0-1 |
+| **Correctness** | Compares to reference answer | Output + gold standard | score 0-1 |
 
-### Step 1: Enable Built-In Evaluators in Your App
+### Step 1: Enable Built-In Scorers in Your App
 
-Choose your API provider (free or paid):
+Point scorers at a local Ollama model — no API key needed:
 
-**Option A: Free Tier (Cohere)**
 ```bash
-PHOENIX_EVAL_ENABLED=true
-PHOENIX_EVAL_MODEL=cohere  # Free tier available
-PHOENIX_EVAL_API_KEY=YOUR_COHERE_KEY
-```
-
-**Option B: Free Trial (Anthropic Claude)**
-```bash
-PHOENIX_EVAL_ENABLED=true
-PHOENIX_EVAL_MODEL=claude-3-haiku
-PHOENIX_EVAL_API_KEY=sk-ant-YOUR_KEY
-```
-
-**Option C: Paid (OpenAI)**
-```bash
-PHOENIX_EVAL_ENABLED=true
-PHOENIX_EVAL_MODEL=gpt-4-turbo
-PHOENIX_EVAL_API_KEY=sk-proj-YOUR_KEY
+MLFLOW_EVAL_ENABLED=true
+MLFLOW_EVAL_MODEL=ollama:/llama3.1  # local model, no API key required
 ```
 
 Or add to `.devcontainer/devcontainer.json`:
 ```json
 "remoteEnv": {
-  "PHOENIX_EVAL_ENABLED": "true",
-  "PHOENIX_EVAL_MODEL": "cohere"
+  "MLFLOW_EVAL_ENABLED": "true",
+  "MLFLOW_EVAL_MODEL": "ollama:/llama3.1"
 }
 ```
 
-### Step 2: Access Evaluators Tab in Phoenix UI
+### Step 2: Access Evaluators Tab in MLflow UI
 
-1. Go to http://localhost:6006
+1. Go to http://localhost:5001
 2. Click **Evaluators** tab (next to Traces)
 3. You should see a list of available evaluators
 4. Click **"Run All"** or select specific evaluators
@@ -118,7 +91,7 @@ Results appear in:
 **Setup Code** (add to `app/rag_pipeline.py` or new file `app/evaluations.py`):
 
 ```python
-from phoenix.evals import OpenAIModel, hallucination_evaluator, relevance_evaluator
+from mlflow.genai.scorers import RelevanceToQuery, RetrievalGroundedness, Safety
 import asyncio
 
 async def evaluate_rag_quality(
@@ -127,34 +100,23 @@ async def evaluate_rag_quality(
     context: str,
     retrieved_docs: List[str],
 ):
-    """Run RAG-specific evaluators."""
+    """Run RAG-specific scorers against a local Ollama model."""
     
-    client = OpenAIModel(model="gpt-4-turbo")
+    model = "ollama:/llama3.1"
     
-    # Hallucination: Did response make up facts?
-    hallucination_score = await hallucination_evaluator(
-        client,
-        query=query,
-        response=response,
-        context=context,  # Concatenated retrieved docs
-    )
+    # Safety: Did response avoid unsafe/harmful content?
+    safety_score = Safety(model=model)(outputs=response)
     
-    # Relevance: How well did it answer?
-    relevance_score = await relevance_evaluator(
-        client,
-        query=query,
-        response=response,
-    )
+    # RelevanceToQuery: How well did it answer?
+    relevance_score = RelevanceToQuery(model=model)(inputs=query, outputs=response)
     
-    # Groundedness: Only used context?
-    groundedness_score = await groundedness_evaluator(
-        client,
-        context=context,
-        response=response,
+    # RetrievalGroundedness: Only used context?
+    groundedness_score = RetrievalGroundedness(model=model)(
+        inputs=query, outputs=response, context=context,
     )
     
     return {
-        "hallucination": hallucination_score,
+        "safety": safety_score,
         "relevance": relevance_score,
         "groundedness": groundedness_score,
     }
@@ -169,7 +131,7 @@ def ask():
     response_data = rag.query(query)
     
     # Optionally run evaluations
-    if os.getenv("PHOENIX_EVAL_ENABLED") == "true":
+    if os.getenv("MLFLOW_EVAL_ENABLED") == "true":
         try:
             eval_scores = asyncio.run(evaluate_rag_quality(
                 query=query,
@@ -195,17 +157,13 @@ async def evaluate_agent_trajectory(
 ):
     """Evaluate agent decision-making and tool correctness."""
     
-    client = OpenAIModel(model="gpt-4-turbo")
+    model = "ollama:/llama3.1"
     
     # Tool Correctness: Were tools called appropriately?
-    # (Create custom evaluator — see Part 3 below)
+    # (Create custom scorer — see Part 3 below)
     
     # Final Answer Quality: Does agent response make sense?
-    relevance = await relevance_evaluator(
-        client,
-        query=query,
-        response=agent_response,
-    )
+    relevance = RelevanceToQuery(model=model)(inputs=query, outputs=agent_response)
     
     return {"tool_correctness": ..., "response_relevance": relevance}
 ```
@@ -219,7 +177,7 @@ async def evaluate_agent_trajectory(
 This evaluator checks if the response references facts **not** in the retrieved context:
 
 ```python
-from phoenix.evals import OpenAIModel
+from mlflow.genai.scorers import scorer
 from pydantic import BaseModel, Field
 
 class HallucinationClassification(BaseModel):
@@ -229,12 +187,12 @@ class HallucinationClassification(BaseModel):
     unsupported_facts: List[str] = Field(default_factory=list, description="Facts not in context")
 
 async def hallucination_with_detail(
-    client,
+    model,
     query: str,
     response: str,
     context: str,
 ) -> HallucinationClassification:
-    """Detailed hallucination detection."""
+    """Detailed hallucination detection using a custom scorer."""
     
     prompt = f"""
     User Query: {query}
@@ -253,7 +211,7 @@ async def hallucination_with_detail(
     Also list any facts in the response NOT found in context.
     """
     
-    completion = client.create_message(prompt=prompt)
+    completion = model.create_message(prompt=prompt)
     # Parse response into HallucinationClassification
     return parse_structured_output(completion, HallucinationClassification)
 ```
@@ -262,7 +220,7 @@ async def hallucination_with_detail(
 
 ```python
 async def tool_selection_evaluator(
-    client,
+    model,
     query: str,
     tools_available: List[str],
     tools_used: List[str],
@@ -284,23 +242,26 @@ async def tool_selection_evaluator(
     - 0.0 = Wrong tool for the job
     """
     
-    completion = client.create_message(prompt=prompt)
+    completion = model.create_message(prompt=prompt)
     return parse_result(completion)
 ```
 
-### Registering Custom Evaluators
+### Registering Custom Scorers
 
 ```python
-from phoenix.experiments import EvaluationDataset
+from mlflow.genai.scorers import scorer
 
-# Register evaluator
-evaluator_registry = {
-    "hallucination_detail": hallucination_with_detail,
-    "tool_selection": tool_selection_evaluator,
-}
+# Register scorer with the @scorer decorator
+@scorer
+def hallucination_detail(inputs, outputs, context) -> float:
+    return hallucination_with_detail("ollama:/llama3.1", inputs, outputs, context)
 
-# Access in Phoenix UI:
-# Go to Evaluators → Custom → Select "hallucination_detail"
+@scorer
+def tool_selection(inputs, outputs, tools_used) -> float:
+    return tool_selection_evaluator("ollama:/llama3.1", inputs, [], tools_used, {})
+
+# Access results in MLflow UI:
+# Go to Traces → select a trace → Assessments panel
 ```
 
 ---
@@ -311,23 +272,23 @@ evaluator_registry = {
 
 ```python
 import asyncio
-from phoenix.client import Client
+import mlflow
 
 async def batch_evaluate_traces():
     """Evaluate all traces from today."""
     
-    client = Client()
-    project = client.get_project("strategiesfortestingai")
+    client = mlflow.MlflowClient()
+    experiment = client.get_experiment_by_name("strategiesfortestingai")
     
     # Fetch all traces
-    traces = project.traces()
+    traces = client.search_traces(experiment_ids=[experiment.experiment_id])
     
     results = []
     for trace in traces:
         eval_result = await evaluate_trace(trace)
         results.append({
-            "trace_id": trace.id,
-            "timestamp": trace.start_time,
+            "trace_id": trace.info.trace_id,
+            "timestamp": trace.info.timestamp_ms,
             **eval_result,
         })
     
@@ -342,13 +303,13 @@ df = pd.DataFrame(results)
 df.to_csv("evaluation_results.csv", index=False)
 ```
 
-### Via Phoenix UI (No Code Required)
+### Via MLflow UI (No Code Required)
 
-1. **Evaluators Tab** → **Batch Run**
-2. Select evaluators (hallucination, relevance, groundedness)
+1. **Traces Tab** → select traces → **Evaluate**
+2. Select scorers (Safety, RelevanceToQuery, RetrievalGroundedness)
 3. Select date range (e.g., "last 24 hours")
-4. Click **Run All**
-5. Results populate automatically
+4. Click **Run**
+5. Results populate as trace **Assessments**
 
 ---
 
@@ -366,7 +327,7 @@ df.to_csv("evaluation_results.csv", index=False)
 
 ### Example Results Dashboard
 
-After running evaluations, Phoenix shows:
+After running evaluations, MLflow shows:
 
 ```
 Trace ID: trace-123
@@ -459,70 +420,62 @@ plt.show()
 
 ## Part 7: Troubleshooting Evaluations
 
-### Problem: "Evaluations Tab is empty"
+### Problem: "No assessments show up on my traces"
 
 **Solution:**
-1. Check Phoenix is running: `pgrep -f "phoenix.*serve"`
+1. Check MLflow is running: `pgrep -f "mlflow.*server"`
 2. Verify at least one trace exists in Traces tab
-3. Go to **Projects → [Your Project] → Configuration**
-4. Click **"Auto-detect evaluators"** if available
+3. Confirm `MLFLOW_EVAL_ENABLED=true` is set
+4. Confirm Ollama is running and the model in `MLFLOW_EVAL_MODEL` is pulled
 
-### Problem: "Evaluations run but scores are all 0 or 1"
+### Problem: "Scores are all 0 or 1"
 
 **Solution:**
-- Evaluator model (GPT-4) may not have access to span data
-- Ensure spans include `llm.prompts.0`, `llm.completions.0.content`, `input.value`
-- Try running manually: `python -c "from phoenix.evals import hallucination_evaluator; ..."`
+- Judge model (local Ollama) may not have access to span data
+- Ensure spans include `input.value` and `output.value`
+- Try running manually: `python -c "from mlflow.genai.scorers import Safety; print(Safety(model='ollama:/llama3.1')(outputs='test'))"`
 
 ### Problem: "Evaluations are too slow (>30 sec per trace)"
 
 **Solution:**
-- Use cheaper model: `gpt-3.5-turbo` instead of `gpt-4`
+- Use a smaller local Ollama model (e.g., `llama3.2:1b`)
 - Sample traces: evaluate only 10% of all traces
 - Run evaluations overnight in batch mode
 
-### Problem: "I don't see my custom evaluator in Phoenix UI"
+### Problem: "I don't see my custom scorer in MLflow UI"
 
 **Solution:**
-- Custom evaluators don't auto-appear in UI
-- Create them in a Python script and call manually
-- Or submit to Phoenix's evaluator registry (advanced)
+- Custom scorers don't auto-appear in UI
+- Create them with the `@scorer` decorator and call manually
+- Or register them for automated runs (advanced)
 
 ---
 
 ## Quick Start (5 Minutes)
 
-### ⚠️ Before You Start: Do You Have a Free or Paid API Key?
+### No API Key Needed
 
-**If NO API key** → Skip this section. Use free **Traces** tab instead (see PHOENIX_TESTING_DATA_GUIDE.md).
-
-**If YES API key (free or paid)** → Continue below.
-
-Free options: [Get Cohere key](https://dashboard.cohere.com) | [Get Claude trial](https://console.anthropic.com)
+This guide's default path uses a **local Ollama model** as the judge — no external API key, quota, or cost. Optional external judge models (OpenAI, Claude, Cohere) are supported by `mlflow.genai.scorers` if you'd rather compare judge models, but are not required.
 
 ### Setup Steps
 
-1. **Get an API key** (free or paid):
-   - **Cohere Free Tier**: https://dashboard.cohere.com
-   - **Claude Trial**: https://console.anthropic.com ($5-10 free credits)
-   - **OpenAI**: https://platform.openai.com (paid)
+1. **Confirm Ollama is running** and has the model pulled (the same model used for the course app is fine).
 
 2. **Add to `.env`:**
    ```bash
-   PHOENIX_EVAL_ENABLED=true
-   PHOENIX_EVAL_MODEL=cohere          # or claude-3-haiku or gpt-4-turbo
-   PHOENIX_EVAL_API_KEY=YOUR_KEY_HERE
+   MLFLOW_EVAL_ENABLED=true
+   MLFLOW_EVAL_MODEL=ollama:/llama3.1
    ```
 
 3. **Create a trace** (ask something on Flask app)
 
-4. **Open Phoenix → Evaluators tab**
+4. **Open the MLflow UI → Traces tab**
 
-5. **Click "Run All Evaluators"** (uses your free/paid quota)
+5. **Select traces → Evaluate** (runs the configured scorers)
 
-6. **Wait 10 seconds, then refresh**
+6. **Wait a few seconds, then refresh**
 
-7. **View scores in Traces tab or Evaluators tab**
+7. **View scores as Assessments on each trace**
 
 That's it! You now have automated quality metrics for all three modes (Ask, Agent, Crew).
 
@@ -530,6 +483,6 @@ That's it! You now have automated quality metrics for all three modes (Ask, Agen
 
 ## References
 
-- [Phoenix Evaluations Docs](https://docs.arize.com/phoenix/evals)
-- [OpenAI Evals Library](https://github.com/openai/evals)
+- [MLflow GenAI Scorers Docs](https://mlflow.org/docs/latest/genai/eval-monitor/scorers/)
+- [MLflow Evaluation Docs](https://mlflow.org/docs/latest/genai/eval-monitor/)
 - [LLM Evaluators Best Practices](https://arxiv.org/abs/2401.10020)

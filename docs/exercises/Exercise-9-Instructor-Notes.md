@@ -3,7 +3,7 @@ Facilitator reference: [Instructor Facilitation Rubric](Exercise-Instructor-Faci
 
 ## Prerequisites
 1. Exercise 8 completed.
-2. Ability to view tool calls or live Phoenix traces using Agent Mode in the UI.
+2. Ability to view tool calls or live MLflow traces using Agent Mode in the UI.
 3. Instructor mode enabled to force trace visibility and crew mode when needed.
 4. Section 9 automation suite available in your Codespace: `python section9_agentic_test_suite.py`.
 
@@ -29,7 +29,7 @@ You are the release board deciding Ship / No-Ship using baseline versus candidat
 
 Instructor guidance on evidence weighting:
 - Treat JSON/TXT suite artifacts as the primary release-gate evidence.
-- Use Phoenix as supporting evidence to explain trajectory shape and handoff integrity.
+- Use MLflow as supporting evidence to explain trajectory shape and handoff integrity.
 - Crew traces may be shallower than single-agent traces in default settings; do not grade depth parity as a gate failure by itself.
 
 ## What Baseline vs Candidate Means in This Lab

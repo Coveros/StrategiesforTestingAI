@@ -3,12 +3,12 @@
 ## Overview
 
 **Team Exercise (30 minutes max)**
-- Pre-generated traces available in Phoenix
+- Pre-generated traces available in MLflow
 - Focus: Diagnose handoff corruption and understand state mutation impact on multi-agent systems
 
 ## Prerequisites
 1. Flask app running: `python run.py`
-2. Phoenix running on http://localhost:6006
+2. MLflow running on http://localhost:5001
 3. Pre-generated traces from `python generate_classroom_traces.py` (run by instructor offline)
 
 ## Team Exercise - Handoff Corruption Diagnosis (30 minutes)
@@ -17,7 +17,7 @@
 As a team, diagnose how corrupted state between agents breaks retrieval quality. Understand where handoffs introduce mutation and efficiency loss.
 
 ### Role Assignments (Divide these among 3-5 team members)
-- **Phoenix Navigator**: Opens Phoenix and filters traces
+- **MLflow Navigator**: Opens MLflow and filters traces
 - **Trajectory Analyst**: Examines span sequences and tool calls
 - **Evidence Scribe**: Records findings in the results table
 - **Debugger** (optional): Proposes fixes based on findings
@@ -31,7 +31,7 @@ As a team, diagnose how corrupted state between agents breaks retrieval quality.
    ```
 2. **Capture baseline evidence:**
    - In the UI response, record: Steps taken, tools called, final recommendation
-   - In Phoenix, find this trace and click into the **Triage Agent → RAG Specialist handoff**
+   - In MLflow, find this trace and click into the **Triage Agent → RAG Specialist handoff**
    - Compare: Is the original query intact when passed to RAG Specialist?
 3. **Fill baseline row in table** (see below)
 
@@ -42,7 +42,7 @@ As a team, diagnose how corrupted state between agents breaks retrieval quality.
    ```
 2. **Capture corrupted evidence:**
    - In UI response, note: Did retrieval fail? Was the query modified?
-   - In Phoenix, inspect the same **Triage Agent → RAG Specialist handoff**
+   - In MLflow, inspect the same **Triage Agent → RAG Specialist handoff**
    - Compare original query vs. what RAG Specialist received
 3. **Analyze side-by-side:**
    - Did the query text change between agents?
@@ -55,7 +55,7 @@ As a team, diagnose how corrupted state between agents breaks retrieval quality.
 | Run Type | Query Summary | Actual Steps | Handoff Query Intact? | Retrieval Success? | Root Cause |
 |---|---|---:|---|---|---|
 | Baseline | Compare test strategies | | Yes / No | Yes / No | — |
-| Corrupted | Regression failures | | Yes / No | Yes / No | [Find in Phoenix] |
+| Corrupted | Regression failures | | Yes / No | Yes / No | [Find in MLflow] |
 
 ### Team Debrief (5 minutes)
 

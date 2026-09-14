@@ -4,7 +4,7 @@
 
 Use this page to progressively introduce quality evaluation across Exercises 1-9.
 
-- Phoenix shows runtime behavior: latency, spans, tool loops, handoffs.
+- MLflow shows runtime behavior: latency, spans, tool loops, handoffs.
 - Evaluation scoring shows output quality: retrieval relevance, grounding, answer quality, safety.
 - Release decisions should combine both.
 
@@ -12,7 +12,7 @@ Use this page to progressively introduce quality evaluation across Exercises 1-9
 
 Track two lanes in each exercise run:
 
-1. System lane (Phoenix)
+1. System lane (MLflow)
 - Trace shape correctness
 - Tool call count and retries
 - Latency (avg and p95)
@@ -30,10 +30,10 @@ Track two lanes in each exercise run:
 | 1 | Exploratory mindset on probabilistic systems | Manual rubric only: relevance, clarity, obvious hallucination | No hard gate yet; discussion-based pass | Prompt log + 1-2 examples of variable outputs |
 | 2 | Goldens and expected behavior | Relevance score, Completeness score, Basic hallucination flag | Average relevance >= 0.70, completeness >= 0.65 | Golden test outputs and rubric notes |
 | 3 | Formal evaluation and threshold tuning | Weighted quality score, false positive/false negative review, robustness pass rate | Weighted score >= 0.72 and robustness pass >= 0.80 | Evaluation report and tuned threshold rationale |
-| 4 | Ask-mode observability + retrieval verification | Hit@3, Precision@3, avg similarity, faithfulness spot-check | Hit@3 >= 0.85, Precision@3 >= 0.70 | Phoenix linear trace (Chains -> Retriever -> LLM) + retrieval scorecard |
-| 5 | Single-agent trajectory diagnostics | Tool-loop count, retry depth, answer faithfulness after loop attempts | No infinite loops; faithfulness >= 0.75 | Phoenix trajectory + post-run answer quality checks |
-| 6 | Multi-agent handoff integrity | Handoff success rate, retrieval success by specialist, faithfulness per handoff | Handoff success >= 0.85, faithfulness >= 0.78 | Phoenix graph + specialist output rubric |
-| 7 | Reliability and NFR under load | p95 latency, throughput, error rate, quality-on-load drift | p95 latency within target and quality drop <= 10% | Load run logs + Phoenix timing + quality deltas |
+| 4 | Ask-mode observability + retrieval verification | Hit@3, Precision@3, avg similarity, faithfulness spot-check | Hit@3 >= 0.85, Precision@3 >= 0.70 | MLflow linear trace (Chains -> Retriever -> LLM) + retrieval scorecard |
+| 5 | Single-agent trajectory diagnostics | Tool-loop count, retry depth, answer faithfulness after loop attempts | No infinite loops; faithfulness >= 0.75 | MLflow trajectory + post-run answer quality checks |
+| 6 | Multi-agent handoff integrity | Handoff success rate, retrieval success by specialist, faithfulness per handoff | Handoff success >= 0.85, faithfulness >= 0.78 | MLflow graph + specialist output rubric |
+| 7 | Reliability and NFR under load | p95 latency, throughput, error rate, quality-on-load drift | p95 latency within target and quality drop <= 10% | Load run logs + MLflow timing + quality deltas |
 | 8 | Security and containment under adversarial prompts | Prompt injection resistance, refusal correctness, harmful output rate | Attack containment >= 0.90, harmful output rate <= 0.05 | Red-team prompts, outcomes, and trace evidence |
 | 9 | Ship/no-ship governance | Combined gate: quality + reliability + security + trace evidence | All critical thresholds met; no critical regressions | Decision memo with explicit pass/fail per gate |
 
@@ -51,13 +51,13 @@ Track two lanes in each exercise run:
 
 - Use the existing evaluator foundation in tests/evaluation_framework.py.
 - Continue using regression gating in regression_testing/regression_testing.py.
-- Keep Phoenix for diagnostics and root-cause analysis, not as the only quality signal.
+- Keep MLflow for diagnostics and root-cause analysis, not as the only quality signal.
 
 ## Instructor facilitation pattern (repeat each exercise)
 
 1. Run prompt set for the exercise.
 2. Score quality metrics (retrieval and/or generation).
-3. Inspect Phoenix traces for causal diagnosis.
+3. Inspect MLflow traces for causal diagnosis.
 4. Apply remediation.
 5. Re-run and compare before vs after.
 

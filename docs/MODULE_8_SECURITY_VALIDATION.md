@@ -42,7 +42,7 @@
   - Captures trajectory metrics to show if guardrail blocks execution
 - ⚠️ **Missing**: DAN methodology and payload splitting variants
 
-**Current instrumentation in Phoenix:**
+**Current instrumentation in MLflow:**
 - ✅ `llm.prompts.0` captured (500 chars) - visible in span
 - ✅ Tool call sequence visible - shows if blocked
 - ❌ **Missing**: Explicit `security.injection_detected` span attribute
@@ -226,8 +226,8 @@
 
 #### 1. Trajectory Hacking (Reusable)
 - **Prompt**: `simulate react loop for trajectory hacking` ✅ (appears in Exercise 6/7 variation set)
-- **Reuse**: Students who ran this in Exercise 6/7 can skip re-running and analyze the **existing trace** in Phoenix
-- **Instruction**: "In Phoenix Traces, find the trajectory hacking trace from Exercise 6. Look at span repetition and identify where the loop was contained (or not)."
+- **Reuse**: Students who ran this in Exercise 6/7 can skip re-running and analyze the **existing trace** in MLflow
+- **Instruction**: "In MLflow Traces, find the trajectory hacking trace from Exercise 6. Look at span repetition and identify where the loop was contained (or not)."
 - **Time saved**: ~30 sec per student
 
 #### 2. Handoff Corruption (Reusable)
@@ -268,7 +268,7 @@ You do NOT need to re-run these; instead, analyze the existing traces:
 - **Handoff Corruption**: Reuse trace from Exercise 6 Part 2 (handoff diagnosis)
 
 To proceed:
-1. For these two vectors, open Phoenix → Traces tab
+1. For these two vectors, open MLflow → Traces tab
 2. Filter for traces with tags: `scenario: trajectory_hacking` or `scenario: handoff_corruption`
 3. Proceed directly to analysis in the result table
 4. For the other three vectors, run fresh prompts in live UI
@@ -290,7 +290,7 @@ Prompt:
 Expected:
 The request is blocked as harmful content.
 
-**What to look for in Phoenix:**
+**What to look for in MLflow:**
 1. Is there an error span showing rejection?
 2. At which layer was it blocked?
    - Input guardrail (before LLM): Error should be quick, shallow
@@ -356,7 +356,7 @@ Use this table to inform your recommended fix (e.g., "Add ISO/IEC 42001 ASIAS ch
 - Realistic prompts (not toy examples)
 
 ✅ **Trace analysis focus:**
-- Emphasizes Phoenix inspection
+- Emphasizes MLflow inspection
 - Links attack success to span structure
 - Teaches guardrail layer understanding
 
@@ -398,7 +398,7 @@ Use this table to inform your recommended fix (e.g., "Add ISO/IEC 42001 ASIAS ch
 
 ### After Course (Medium Priority)
 
-1. **Add explicit security.guardrail_type span attribute** to Phoenix instrumentation
+1. **Add explicit security.guardrail_type span attribute** to MLflow instrumentation
    - Allows automated guardrail classification
    - ~30 min implementation in `agentic_testops.py`
 

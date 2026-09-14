@@ -11,7 +11,7 @@
 ### Scenario 1: Infinite Politeness Loop ✅ VALID
 
 **Observable through current tracing:**
-- ✅ **Span sequence**: Agent callback chain shows Spans 1→2→3→4→5→42 (visible in Phoenix span graph)
+- ✅ **Span sequence**: Agent callback chain shows Spans 1→2→3→4→5→42 (visible in MLflow span graph)
 - ✅ **Repeated patterns**: `tool.output` contains agent-to-agent text ("I need...", "Thank you...") repeated 38+ times
 - ✅ **Latency explosion**: Span duration accumulation visible in timeline
 - ✅ **Budget overrun**: Token count (llm.usage.total_tokens) increases per iteration
@@ -22,7 +22,7 @@
 - ❌ **Conversation depth metric**: No `agent.conversation_depth` to distinguish loops from legitimate multi-turn
 - ❌ **Circuit breaker signal**: No span attribute marking "exceeded max iterations"
 
-**What students see in Phoenix:**
+**What students see in MLflow:**
 - Span graph with 38+ identical-looking nodes (clear visual pattern)
 - Tool outputs showing repetitive "thank you" messages
 - Token count steadily climbing
@@ -53,7 +53,7 @@ agent.max_iterations_reached: bool
 - ❌ **Parameter extraction results**: No span showing what values were extracted/defaulted
 - ❌ **Contract mismatch flag**: No `handoff.schema_validation.result` = "FAILED"
 
-**What students see in Phoenix:**
+**What students see in MLflow:**
 - Two consecutive tool spans showing output → input transition
 - Output span: text summary (unstructured)
 - Input span: error or null parameter logging
@@ -86,8 +86,8 @@ handoff.parameters_lost: list[str]  (["account_id", "date_range"])
 - ❌ **Routing decision audit trail**: No span showing "Orchestrator evaluated: Report Writer, Analytics, Data Gathering (in that order)"
 - ❌ **Capability matching score**: No `agent.routing_confidence` or `agent.capability_match_score`
 
-**What students see in Phoenix:**
-- 8-span trajectory in Phoenix graph (vs expected 3)
+**What students see in MLflow:**
+- 8-span trajectory in MLflow graph (vs expected 3)
 - Span 2: ReportWriter output "I need pricing data"
 - Span 3: Analytics error "I do not fetch"
 - Span 5: DataGathering success with pricing

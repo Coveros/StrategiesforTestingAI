@@ -1,8 +1,8 @@
-# Phoenix Observability Data Guide for AI Testing
+# MLflow Observability Data Guide for AI Testing
 
 ## Overview
 
-Your application now emits rich telemetry data to Phoenix that supports comprehensive AI system testing. This guide explains what data is available and how to use it for the testing scenarios covered in the 2-day course.
+Your application now emits rich telemetry data to MLflow that supports comprehensive AI system testing. This guide explains what data is available and how to use it for the testing scenarios covered in the 2-day course.
 
 ---
 
@@ -16,9 +16,9 @@ Your application now emits rich telemetry data to Phoenix that supports comprehe
 - **Model Parameters**: Temperature, max tokens, model name
 - **Token Usage**: Prompt tokens, completion tokens, total tokens (when available from Ollama)
 - **Finish Reason**: "stop", "length", or error state
-- **Input/Output panels**: Every span now emits `input.value` and `output.value` for Phoenix's dedicated Input and Output panels
+- **Input/Output panels**: Every span now emits `input.value` and `output.value` for MLflow's dedicated Input and Output panels
 
-**Where to Find in Phoenix:**
+**Where to Find in MLflow:**
 
 > **Important**: `input.value` and `output.value` appear in the **INPUT** and **OUTPUT** panels at the **top** of the span detail view — NOT in the Attributes section. All other custom fields (e.g., `agent.role`, `security.decision`) appear in the **Attributes** section below.
 
@@ -61,7 +61,7 @@ Attributes Section (below Input/Output):
 - **Retrieval Metrics**: Number of docs returned, top-1 similarity, average similarity
 - **Context Quality**: Whether retrieved docs are relevant to the query
 
-**Where to Find in Phoenix:**
+**Where to Find in MLflow:**
 ```
 Span Type: RETRIEVER
 Span Names: rag.retrieve
@@ -103,7 +103,7 @@ Attributes Section:
 - **Tool Outputs**: Results returned by each tool
 - **Agent Metadata**: Session ID, exercise number, agent mode
 
-**Where to Find in Phoenix:**
+**Where to Find in MLflow:**
 ```
 Span Type: AGENT (root span - click this first)
 Span Names: Triage Agent.ex6, Single-Agent ReAct.ex5
@@ -164,7 +164,7 @@ To detect handoff corruption, compare adjacent spans:
 - **Cold vs Warm**: First request vs subsequent requests
 - **Quality Signals**: Response length, completeness metrics
 
-**Where to Find in Phoenix:**
+**Where to Find in MLflow:**
 ```
 Span Timing (View → Latency or Timeline):
   - Span duration shown in milliseconds
@@ -200,7 +200,7 @@ RAG Attributes:
 - **Failure Context**: Which operation failed (LLM, retrieval, tool, agent)
 - **Session Context**: Session ID and exercise context tied to the error
 
-**Where to Find in Phoenix:**
+**Where to Find in MLflow:**
 ```
 Span Type: Any (marked with error)
 Attributes:
@@ -231,7 +231,7 @@ Attributes:
 - **Reason**: Why (harmful intent, prompt injection, or passed all gates)
 - **Severity**: Critical / high / medium / low classification
 
-**Where to Find in Phoenix:**
+**Where to Find in MLflow:**
 ```
 Span Type: SECURITY
 Span Names: security.gate.ex8 (or ex6, ex7, etc.)
@@ -263,7 +263,7 @@ Attributes Section:
 - **Session Metadata**: Consistent session IDs for tracking student progress
 - **Exercise Context**: Which exercise is being tested
 
-**Where to Find in Phoenix:**
+**Where to Find in MLflow:**
 ```
 From rag.query span:
   - quality.response.total_time_ms
@@ -286,12 +286,12 @@ From rag.retrieve span:
 
 ---
 
-## How to Query This Data in Phoenix
+## How to Query This Data in MLflow
 
-### Via Phoenix UI - Finding Token Usage:
+### Via MLflow UI - Finding Token Usage:
 
 **Step 1: Open Traces Tab**
-1. Go to http://localhost:6006
+1. Go to http://localhost:5001
 2. Click **Traces** tab (main table view)
 
 **Step 2: Find Your Request**
@@ -323,7 +323,7 @@ From rag.retrieve span:
   - `quality.retrieval.top1_similarity` — Best match score
   - `rag.query` — The original user question
 
-## Phoenix Tabs Explained
+## MLflow Tabs Explained
 
 ### **Traces Tab** (Your Primary Focus)
 - **Purpose**: View raw execution data from your LLM app
@@ -336,14 +336,14 @@ From rag.retrieve span:
 - **Contains**: Quality scores (hallucination, relevance, groundedness)
 - **How to use**: Measure aggregate quality across many traces
 - **Example**: "Grade 100 traces for hallucination; get average score of 0.87"
-- **See**: [PHOENIX_EVALUATIONS_GUIDE.md](PHOENIX_EVALUATIONS_GUIDE.md) for setup
+- **See**: [MLFLOW_EVALUATIONS_GUIDE.md](MLFLOW_EVALUATIONS_GUIDE.md) for setup
 
 ### **Projects / Config Tab** (Settings)
 - **Purpose**: Map span attributes to input/output roles
 - **Contains**: Input key mappings, output key mappings, custom fields
-- **How to use**: Tell Phoenix how to interpret your span structure
+- **How to use**: Tell MLflow how to interpret your span structure
 - **Example**: "Treat `llm.prompts.0` as Input, `llm.completions.0.content` as Output"
-- **Default**: Phoenix auto-detects OpenInference conventions (your code uses these)
+- **Default**: MLflow auto-detects OpenInference conventions (your code uses these)
 
 ### Via Span Timeline:
 
@@ -363,7 +363,7 @@ From rag.retrieve span:
 
 ## Mapping to 2-Day Course Modules
 
-| Course Topic | Module | Data in Phoenix | Test Activity |
+| Course Topic | Module | Data in MLflow | Test Activity |
 |---|---|---|---|
 | **Model Inputs & Outputs** | 6-8 | `input.value` (INPUT panel), `output.value` (OUTPUT panel) | Click any span — top panels show what went in and what came out |
 | **Hallucination Detection** | 6 | `rag.query`, `retrieval.documents.*`, `llm.completions.0.content` | Compare response to retrieved docs |
@@ -385,10 +385,10 @@ From rag.retrieve span:
 
 ### Problem: Only seeing span names, no attributes
 **Solution:**
-- Ensure Phoenix is running: `pgrep -f "phoenix.*serve"`
+- Ensure MLflow is running: `pgrep -f "mlflow.*serve"`
 - Restart Flask app: `python run.py`
 - Wait 30 seconds for first inference to warm up (cold-start timeout)
-- Refresh Phoenix UI and create a new trace
+- Refresh MLflow UI and create a new trace
 
 ### Problem: Spans exist but token counts are missing
 **Solution (Ask/RAG mode):**
@@ -425,7 +425,7 @@ From rag.retrieve span:
 ## Next Steps
 
 1. **Create a trace** using the Flask app at http://localhost:5000
-2. **Open Phoenix** → Traces tab
+2. **Open MLflow** → Traces tab
 3. **Click on your trace** and expand nested spans
 4. **Right panel** shows all attributes
 5. **Use this data** to test hallucination, retrieval quality, agent logic, etc.

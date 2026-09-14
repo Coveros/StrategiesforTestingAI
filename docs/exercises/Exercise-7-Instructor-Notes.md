@@ -3,7 +3,7 @@ Facilitator reference: [Instructor Facilitation Rubric](Exercise-Instructor-Faci
 
 ## Prerequisites
 1. Exercise 6 completed.
-2. Use live traces from Phoenix during this exercise.
+2. Use live traces from MLflow during this exercise.
 3. Ability to use Ask mode, Agent mode, and Crew Mode in the UI.
 4. Optional automation runner available in your Codespace: `python section7_nfr_quickrun.py`.
 
@@ -46,7 +46,7 @@ The goal is to compare reliability, latency, and trajectory overhead primarily a
    - Malformed Input Handling
    - Single-Agent Loop Containment
    - Multi-Agent Handoff Resilience
-6. For your assigned role, run the exact prompts below and capture evidence from response metadata and Phoenix.
+6. For your assigned role, run the exact prompts below and capture evidence from response metadata and MLflow.
 7. Record Pass/Fail/Mixed with one evidence note per required mode.
 8. As a team, identify the weakest NFR area and propose one fix with the smallest blast radius.
 
@@ -94,7 +94,7 @@ For each run, capture:
 8. `trajectory_metrics.degraded_mode`
 9. `trajectory_metrics.poisoned_retrieval`
 10. `handoffs` count (if present)
-11. One Phoenix observation from live traces (trace shape, span depth, or handoff graph)
+11. One MLflow observation from live traces (trace shape, span depth, or handoff graph)
 
 ## NFR scorecard
 | NFR Area | Mode | Expected Behavior | Actual Behavior | Pass/Fail/Mixed | Evidence | Recommended Fix |

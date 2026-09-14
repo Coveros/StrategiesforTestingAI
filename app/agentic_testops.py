@@ -10,348 +10,9 @@ from typing import Any, Dict, List, Optional
 if TYPE_CHECKING:
     from app.rag_pipeline import RAGPipeline
 
-try:
-    from langchain_core.callbacks import BaseCallbackHandler
-except Exception:
-    class BaseCallbackHandler:  # type: ignore[no-redef]
-        pass
-
-from app.phoenix_tracing import OPENINFERENCE_SPAN_KIND, get_tracer, start_span
+from app.mlflow_tracing import get_tracer, start_span
 
 logger = logging.getLogger(__name__)
-
-
-class AgentTrajectorySpanCallback(BaseCallbackHandler):
-    """Emit detailed child spans for agent internals (chain, llm, tool events)."""
-
-    def __init__(
-        self,
-        tracer: Any,
-        *,
-        session_id: str,
-        exercise_number: Optional[int],
-        agent_mode: str,
-        enabled: bool,
-    ) -> None:
-        super().__init__()
-        self.tracer = tracer
-        self.session_id = session_id
-        self.exercise_number = exercise_number
-        self.agent_mode = agent_mode
-        self.enabled = bool(enabled and tracer is not None)
-        self._active_spans: Dict[str, Dict[str, Any]] = {}
-
-    def _normalize_name(self, base: str) -> str:
-        if isinstance(self.exercise_number, int) and self.exercise_number > 0:
-            return f"{base}.ex{self.exercise_number}"
-        return base
-
-    def _start(self, run_id: Any, name: str, span_kind: str, attrs: Optional[Dict[str, Any]] = None) -> None:
-        if not self.enabled:
-            return
-
-        if run_id is None:
-            return
-
-        run_key = str(run_id)
-        if run_key in self._active_spans:
-            # Some runtimes can emit overlapping start callbacks for the same run id.
-            # Keep a single span to avoid duplicate timing nodes.
-            return
-
-        try:
-            span_context = self.tracer.start_as_current_span(self._normalize_name(name))
-            span = span_context.__enter__()
-            span.set_attribute(OPENINFERENCE_SPAN_KIND, span_kind)
-            span.set_attribute("session.id", self.session_id)
-            span.set_attribute("agent.mode", self.agent_mode)
-            if self.exercise_number is not None:
-                span.set_attribute("exercise_number", self.exercise_number)
-                span.set_attribute("course.exercise.number", self.exercise_number)
-            if attrs:
-                for key, value in attrs.items():
-                    if value is None:
-                        continue
-                    if isinstance(value, (bool, int, float, str)):
-                        span.set_attribute(key, value)
-                    else:
-                        span.set_attribute(key, str(value))
-
-            self._active_spans[run_key] = {
-                "span": span,
-                "context": span_context,
-            }
-        except Exception:
-            return
-
-    def _end(self, run_id: Any, error: Optional[Any] = None) -> None:
-        if not self.enabled:
-            return
-
-        if run_id is None:
-            return
-
-        active = self._active_spans.pop(str(run_id), None)
-        if active is None:
-            return
-
-        span = active.get("span")
-        span_context = active.get("context")
-
-        try:
-            if error is not None:
-                span.record_exception(error)
-                span.set_attribute("error", True)
-
-            if span_context is not None:
-                span_context.__exit__(type(error) if error is not None else None, error, getattr(error, "__traceback__", None))
-            elif span is not None:
-                span.end()
-        except Exception:
-            return
-
-    def on_chain_start(self, serialized: Dict[str, Any], inputs: Dict[str, Any], run_id: Any = None, **kwargs: Any) -> Any:
-        run_id = run_id or kwargs.get("run_id")
-        serialized = serialized or {}
-        chain_name = serialized.get("name") or serialized.get("id") or "chain"
-        
-        attrs = {"chain.name": str(chain_name)}
-        
-        # Capture input value for handoff contract verification (Module 6)
-        if inputs:
-            try:
-                if isinstance(inputs, dict):
-                    input_value = inputs.get("input") or inputs.get("input_str") or next(iter(inputs.values()), "")
-                    if input_value:
-                        input_str = str(input_value)[:1000]
-                        attrs["input.value"] = input_str
-                        attrs["input.mime_type"] = "text/plain"
-            except Exception:
-                pass
-        
-        # Extract agent role from chain name (e.g., "Triage Agent" → "triage")
-        # This helps identify handoff source in multi-agent traces
-        try:
-            if "triage" in chain_name.lower():
-                attrs["agent.role"] = "triage"
-            elif "rag" in chain_name.lower() or "specialist" in chain_name.lower():
-                attrs["agent.role"] = "rag_specialist"
-            elif "validator" in chain_name.lower():
-                attrs["agent.role"] = "validator"
-        except Exception:
-            pass
-        
-        self._start(run_id, "agent.chain", "CHAIN", attrs=attrs)
-
-    def on_chain_end(self, outputs: Dict[str, Any], run_id: Any = None, **kwargs: Any) -> Any:
-        run_id = run_id or kwargs.get("run_id")
-        active = self._active_spans.get(str(run_id), {})
-        span = active.get("span")
-        
-        # Capture output value for handoff contract verification (Module 6)
-        if span is not None and outputs:
-            try:
-                if isinstance(outputs, dict):
-                    output_value = outputs.get("output") or outputs.get("text") or next(iter(outputs.values()), "")
-                    if output_value:
-                        output_str = str(output_value)[:1000]
-                        span.set_attribute("output.value", output_str)
-                        span.set_attribute("output.mime_type", "text/plain")
-                else:
-                    output_str = str(outputs)[:1000]
-                    span.set_attribute("output.value", output_str)
-                    span.set_attribute("output.mime_type", "text/plain")
-            except Exception:
-                pass
-        
-        self._end(run_id)
-
-    def on_chain_error(self, error: BaseException, run_id: Any = None, **kwargs: Any) -> Any:
-        run_id = run_id or kwargs.get("run_id")
-        self._end(run_id, error=error)
-
-    def on_chat_model_start(self, serialized: Dict[str, Any], messages: List[Any], run_id: Any = None, **kwargs: Any) -> Any:
-        run_id = run_id or kwargs.get("run_id")
-        serialized = serialized or {}
-        model_name = serialized.get("name") or serialized.get("id") or "chat_model"
-        
-        attrs = {
-            "llm.model_name": str(model_name),
-            "llm.invocation_parameters.temperature": self._get_temp_from_serialized(serialized),
-        }
-        
-        # Capture message content for debugging
-        if messages:
-            try:
-                prompt_text = "\n".join([getattr(m, "content", str(m))[:500] for m in messages])
-                attrs["llm.messages.0.content"] = prompt_text
-                attrs["llm.messages.count"] = len(messages)
-            except Exception:
-                pass
-        
-        self._start(run_id, "agent.llm", "LLM", attrs=attrs)
-
-    def _get_temp_from_serialized(self, serialized: Dict[str, Any]) -> float:
-        """Extract temperature from LangChain serialized config."""
-        try:
-            return float(serialized.get("kwargs", {}).get("temperature", 0.0))
-        except (ValueError, TypeError, AttributeError):
-            return 0.0
-
-    def on_llm_start(self, serialized: Dict[str, Any], prompts: List[str], run_id: Any = None, **kwargs: Any) -> Any:
-        run_id = run_id or kwargs.get("run_id")
-        serialized = serialized or {}
-        model_name = serialized.get("name") or serialized.get("id") or "llm"
-        
-        attrs = {
-            "llm.model_name": str(model_name),
-            "llm.invocation_parameters.temperature": self._get_temp_from_serialized(serialized),
-        }
-        
-        # Capture prompt content for retrieval testing
-        if prompts:
-            try:
-                prompt_preview = prompts[0][:500] if prompts else ""
-                attrs["llm.prompts.0"] = prompt_preview
-                attrs["llm.prompts.count"] = len(prompts)
-            except Exception:
-                pass
-        
-        self._start(run_id, "agent.llm", "LLM", attrs=attrs)
-
-    def on_llm_end(self, response: Any, run_id: Any = None, **kwargs: Any) -> Any:
-        run_id = run_id or kwargs.get("run_id")
-        active = self._active_spans.get(str(run_id), {})
-        span = active.get("span")
-        
-        # Capture LLM output and token usage
-        if span is not None and response is not None:
-            try:
-                # Capture text response
-                if hasattr(response, "generations") and response.generations:
-                    text_out = response.generations[0][0].text[:500] if response.generations[0] else ""
-                    span.set_attribute("llm.completions.0.finish_reason", "stop")
-                    span.set_attribute("llm.completions.0.content", text_out)
-                elif hasattr(response, "content"):
-                    span.set_attribute("llm.completions.0.content", str(response.content)[:500])
-                
-                # Capture token usage if available
-                if hasattr(response, "usage_metadata") and response.usage_metadata:
-                    usage = response.usage_metadata
-                    prompt_tokens = usage.get("input_tokens", 0)
-                    completion_tokens = usage.get("output_tokens", 0)
-                    span.set_attribute("llm.usage.prompt_tokens", int(prompt_tokens))
-                    span.set_attribute("llm.usage.completion_tokens", int(completion_tokens))
-                    span.set_attribute("llm.usage.total_tokens", int(prompt_tokens) + int(completion_tokens))
-                else:
-                    # Log missing token data for debugging
-                    if hasattr(response, "__dict__"):
-                        logger.debug("Response missing usage_metadata. Response attributes: %s", list(response.__dict__.keys()))
-            except Exception as e:
-                logger.warning("Error capturing LLM output: %s", e)
-        
-        self._end(run_id)
-
-    def on_llm_error(self, error: BaseException, run_id: Any = None, **kwargs: Any) -> Any:
-        run_id = run_id or kwargs.get("run_id")
-        active = self._active_spans.get(str(run_id), {})
-        span = active.get("span")
-        
-        # Classify error type for Module 8 security analysis
-        if span is not None and error is not None:
-            error_str = str(error).lower()
-            error_type = "unknown"
-            
-            if "timeout" in error_str or "timed out" in error_str:
-                error_type = "timeout"
-            elif "rate limit" in error_str or "429" in error_str:
-                error_type = "rate_limit"
-            elif "invalid" in error_str or "validation" in error_str:
-                error_type = "validation_error"
-            elif "authentication" in error_str or "unauthorized" in error_str:
-                error_type = "auth_error"
-            elif "injection" in error_str or "override" in error_str:
-                error_type = "injection_detected"
-            
-            span.set_attribute("error.type", error_type)
-            span.set_attribute("error.message", str(error)[:200])
-            span.set_attribute("error.class", error.__class__.__name__)
-        
-        self._end(run_id, error=error)
-
-    def on_tool_start(self, serialized: Dict[str, Any], input_str: str, run_id: Any = None, **kwargs: Any) -> Any:
-        run_id = run_id or kwargs.get("run_id")
-        serialized = serialized or {}
-        tool_name = serialized.get("name") or serialized.get("id") or "tool"
-        
-        # Detect if this is a retrieval tool (Module 7 NFR analysis)
-        is_retrieval = "retriev" in tool_name.lower() or "search" in tool_name.lower() or "kb" in tool_name.lower()
-        
-        attrs = {
-            "tool.name": str(tool_name),
-            "tool.input": str(input_str),
-            "tool.is_retrieval": is_retrieval,
-        }
-        
-        self._start(
-            run_id,
-            "agent.tool",
-            "TOOL",
-            attrs=attrs,
-        )
-
-    def on_tool_end(self, output: Any, run_id: Any = None, **kwargs: Any) -> Any:
-        run_id = run_id or kwargs.get("run_id")
-        active = self._active_spans.get(str(run_id), {})
-        span = active.get("span")
-        
-        # Capture tool output for test analysis
-        if span is not None and output is not None:
-            try:
-                output_str = str(output)[:1000]
-                span.set_attribute("tool.output", output_str)
-                span.set_attribute("tool.execution_result", "success")
-                
-                # Detect retrieval tool results (Module 7)
-                if "retriev" in span.get_attributes().get("tool.name", "").lower():
-                    try:
-                        # Try to count documents if it's a list or contains doc markers
-                        if isinstance(output, list):
-                            span.set_attribute("retrieval.documents_returned", len(output))
-                        elif "document" in output_str.lower():
-                            doc_count = output_str.count("document") // 2  # Rough estimate
-                            span.set_attribute("retrieval.documents_returned", max(1, doc_count))
-                    except Exception:
-                        pass
-            except Exception:
-                pass
-        
-        self._end(run_id)
-
-    def on_tool_error(self, error: BaseException, run_id: Any = None, **kwargs: Any) -> Any:
-        run_id = run_id or kwargs.get("run_id")
-        active = self._active_spans.get(str(run_id), {})
-        span = active.get("span")
-        
-        # Classify tool error for Module 8 security/reliability
-        if span is not None and error is not None:
-            error_str = str(error).lower()
-            tool_error_type = "tool_execution_failed"
-            
-            if "not found" in error_str or "404" in error_str:
-                tool_error_type = "not_found"
-            elif "timeout" in error_str:
-                tool_error_type = "timeout"
-            elif "connection" in error_str or "network" in error_str:
-                tool_error_type = "connection_error"
-            elif "permission" in error_str or "denied" in error_str:
-                tool_error_type = "permission_denied"
-            
-            span.set_attribute("tool.execution_result", "error")
-            span.set_attribute("error.type", tool_error_type)
-            span.set_attribute("error.message", str(error)[:200])
-        
-        self._end(run_id, error=error)
 
 
 class TestOpsAgent:
@@ -360,7 +21,7 @@ class TestOpsAgent:
     Supports:
     - Single-agent ReAct mode (crew_mode=False)
     - Multi-agent router mode (crew_mode=True)
-    - Phoenix OpenTelemetry span hooks (when available)
+    - MLflow autolog span capture (chain/llm/tool spans via mlflow.langchain.autolog())
     """
 
     def __init__(self) -> None:
@@ -390,6 +51,8 @@ class TestOpsAgent:
         self.crew_specialist_mode = str(os.getenv("AGENT_CREW_SPECIALIST_MODE", "direct")).strip().lower()
         self.crew_enable_validator = self._is_truthy(os.getenv("AGENT_CREW_ENABLE_VALIDATOR", "false"))
         self.crew_router_mode = str(os.getenv("AGENT_CREW_ROUTER_MODE", "heuristic")).strip().lower()
+        # No-op since the migration to mlflow.langchain.autolog(); kept so existing
+        # .env files setting AGENT_DETAILED_TRACING don't need to change.
         self.enable_detailed_tracing = self._is_truthy(os.getenv("AGENT_DETAILED_TRACING", "true"))
         bootstrap_mode = str(os.getenv("AGENT_BOOTSTRAP_ON_ZERO_TOOLS", "auto")).strip().lower()
         instructor_mode = self._is_truthy(os.getenv("EXERCISE_HUB_ENABLE_INSTRUCTOR", "false"))
@@ -405,9 +68,9 @@ class TestOpsAgent:
 
         self.rag_pipeline: Optional["RAGPipeline"] = None
 
-        self.tracer, self.phoenix_enabled = get_tracer(
+        self.tracer, self.mlflow_enabled = get_tracer(
             "strategiesfortestingai.agentic",
-            enable_env="ENABLE_PHOENIX_AGENT_TRACING",
+            enable_env="ENABLE_MLFLOW_AGENT_TRACING",
             default_enabled=True,
             default_project_name="strategiesfortestingai",
         )
@@ -448,6 +111,8 @@ class TestOpsAgent:
                 base_url=self.ollama_host,
                 temperature=self.temperature,
                 num_predict=self.max_tokens,
+                # Refresh the model's TTL on every call so idle gaps don't evict it.
+                keep_alive=os.getenv('OLLAMA_KEEP_ALIVE', '30m'),
                 sync_client_kwargs={"timeout": self.request_timeout_seconds},
                 async_client_kwargs={"timeout": self.request_timeout_seconds},
             )
@@ -636,7 +301,7 @@ class TestOpsAgent:
         return start_span(self.tracer, name, attrs=attrs)
 
     def _span_name(self, base_name: str, exercise_number: Optional[int]) -> str:
-        """Make span names searchable by exercise in Phoenix name search."""
+        """Make span names searchable by exercise in MLflow trace search."""
         if isinstance(exercise_number, int) and exercise_number > 0:
             return f"{base_name}.ex{exercise_number}"
         return base_name
@@ -855,17 +520,9 @@ class TestOpsAgent:
         tool_calls: List[Dict[str, Any]] = []
         state = self._get_state(session_id)
         metrics = self._empty_trajectory_metrics()
+        # mlflow.langchain.autolog() (enabled in app/mlflow_tracing.py) captures
+        # chain/llm/tool spans automatically; no manual callback needed here.
         callbacks: List[Any] = []
-        if self.enable_detailed_tracing:
-            callbacks.append(
-                AgentTrajectorySpanCallback(
-                    self.tracer,
-                    session_id=session_id,
-                    exercise_number=exercise_number,
-                    agent_mode="single",
-                    enabled=self.phoenix_enabled,
-                )
-            )
 
         @tool
         def query_knowledge_base(query: str) -> str:
@@ -904,7 +561,7 @@ class TestOpsAgent:
         )
 
         if force_loop_bug:
-            missing_keyword = os.getenv("AGENT_TRAJECTORY_KEYWORD", "PHOENIX_NEVER_FOUND_KEYWORD")
+            missing_keyword = os.getenv("AGENT_TRAJECTORY_KEYWORD", "TRACE_NEVER_FOUND_KEYWORD")
             system_text += (
                 "\nBUG-INJECTION: You must find the exact keyword "
                 f"'{missing_keyword}' in a retrieved document before finalizing. "
@@ -978,7 +635,7 @@ class TestOpsAgent:
             if not output:
                 output = "I could not produce an answer from the available context."
 
-            # Emit output on the root agent span so Phoenix renders it in the Output panel
+            # Emit output on the root agent span so MLflow renders it in the Output panel
             try:
                 agent_span.set_attribute("output.value", output[:1000])
                 agent_span.set_attribute("output.mime_type", "text/plain")
@@ -1026,17 +683,9 @@ class TestOpsAgent:
         handoffs: List[Dict[str, Any]] = []
         metrics = self._empty_trajectory_metrics()
         state = self._get_state(session_id)
+        # mlflow.langchain.autolog() (enabled in app/mlflow_tracing.py) captures
+        # chain/llm/tool spans automatically; no manual callback needed here.
         callbacks: List[Any] = []
-        if self.enable_detailed_tracing:
-            callbacks.append(
-                AgentTrajectorySpanCallback(
-                    self.tracer,
-                    session_id=session_id,
-                    exercise_number=exercise_number,
-                    agent_mode="multi",
-                    enabled=self.phoenix_enabled,
-                )
-            )
 
         if self.crew_router_mode == "react":
             try:
@@ -1354,7 +1003,7 @@ class TestOpsAgent:
         if not output:
             output = "I could not produce a multi-agent answer for that request."
 
-        # Emit output on the root triage span so Phoenix renders it in the Output panel
+        # Emit output on the root triage span so MLflow renders it in the Output panel
         try:
             triage_span.set_attribute("output.value", output[:1000])
             triage_span.set_attribute("output.mime_type", "text/plain")
@@ -1557,7 +1206,7 @@ class TestOpsAgent:
             if state.get("persona") == "pirate":
                 payload["response"] = f"Ahoy matey. {payload['response']} Arrr."
 
-            payload["phoenix_trace_enabled"] = self.phoenix_enabled
+            payload["mlflow_trace_enabled"] = self.mlflow_enabled
             payload["exercise_number"] = exercise_number
             return payload
         except Exception as exc:
@@ -1819,7 +1468,7 @@ class TestOpsAgent:
             "fallback_responses": self.stats["fallback_responses"],
             "errors": self.stats["errors"],
             "active_sessions": len(self.session_state),
-            "phoenix_trace_enabled": self.phoenix_enabled,
+            "mlflow_trace_enabled": self.mlflow_enabled,
         }
 
     def reset_session_state(self, session_id: str, reset_circuit_breaker: bool = False) -> Dict[str, Any]:

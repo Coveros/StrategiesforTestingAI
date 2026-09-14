@@ -12,7 +12,7 @@ langgraph-prebuilt>=0.1.0
 langchain-ollama>=0.2.0
 
 # LLM observability (local, open-source)
-arize-phoenix
+mlflow>=3.16.0
 
 # Vector database
 chromadb>=1.5.0

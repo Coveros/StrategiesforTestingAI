@@ -1,12 +1,12 @@
-# Module 6 Instructor Cheat Sheet — Phoenix Navigation
+# Module 6 Instructor Cheat Sheet — MLflow Navigation
 
-Keep this open during class while walking through Phoenix traces.
+Keep this open during class while walking through MLflow traces.
 
 ---
 
 ## Scenario 1: Infinite Politeness Loop
 
-**What students should see in Phoenix:**
+**What students should see in MLflow:**
 - Span tree with many identical-looking `agent.chain` nodes (10+ repeats)
 - `tool.output` on each span contains repetitive "thank you" / "I need..." text
 - Span durations accumulating → total latency well above SLA
@@ -24,7 +24,7 @@ Keep this open during class while walking through Phoenix traces.
 
 ## Scenario 2: Silent Context Loss (Handoff Corruption)
 
-**What students should see in Phoenix:**
+**What students should see in MLflow:**
 - Parent span: `output.value` (OUTPUT panel) contains a text summary
 - Child span: `input.value` (INPUT panel) contains a *different* or *truncated* query
 - Downstream spans show null-like errors or retrieval misses
@@ -34,7 +34,7 @@ Keep this open during class while walking through Phoenix traces.
 
 **If students can't find it:**
 - Run: `simulate handoff corruption for retrieval query about 2024 regression failures`
-- In Phoenix, click the `Triage Agent.ex6` span → expand children
+- In MLflow, click the `Triage Agent.ex6` span → expand children
 - Click `RAG Specialist.ex6` child span
 - Compare: parent OUTPUT panel text vs. child INPUT panel text — they should differ
 
@@ -46,7 +46,7 @@ Keep this open during class while walking through Phoenix traces.
 
 ## Scenario 3: Span Thrashing & Inefficient Routing
 
-**What students should see in Phoenix:**
+**What students should see in MLflow:**
 - More spans than expected (e.g., 6 spans vs. optimal 3)
 - One or more spans with `tool.execution_result: error` or rejection text in `tool.output`
 - Total trace duration >> expected SLA
@@ -55,15 +55,15 @@ Keep this open during class while walking through Phoenix traces.
 > "Count actual steps vs. optimal steps. At which span should routing have been different?"
 
 **If students can't find it:**
-- Click trace timeline view in Phoenix → count spans
+- Click trace timeline view in MLflow → count spans
 - Look for red/error-marked spans — these are the wrong-agent calls
 - Check `tool.output` on error spans for "I do not..." rejection messages
 
 ---
 
-## Quick Phoenix Navigation Reference
+## Quick MLflow Navigation Reference
 
-| What to look for | Where in Phoenix |
+| What to look for | Where in MLflow |
 |---|---|
 | User's original message | Click root span → **INPUT panel** (top of detail) |
 | Agent's final response | Click root span → **OUTPUT panel** (top of detail) |
@@ -84,4 +84,4 @@ Keep this open during class while walking through Phoenix traces.
 | INPUT/OUTPUT panels empty | Span was generated before today's warmup fix — run a fresh prompt |
 | No `security.gate` span | Flask not restarted after code update — `python run.py` |
 | Tokens show 0 | Cold-start request — second run will have counts |
-| Spans exist but no attributes | Phoenix not receiving data — check http://localhost:6006 is up |
+| Spans exist but no attributes | MLflow not receiving data — check http://localhost:5001 is up |

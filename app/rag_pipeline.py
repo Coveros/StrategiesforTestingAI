@@ -10,7 +10,7 @@ import chromadb
 import requests
 from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
-from app.phoenix_tracing import get_tracer, start_span
+from app.mlflow_tracing import get_tracer, start_span
 
 # Load environment variables from project root for consistent behavior
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -35,9 +35,9 @@ class RAGPipeline:
         self.ollama_host = os.getenv('OLLAMA_HOST', 'http://127.0.0.1:11434').rstrip('/')
         self.ollama_model = os.getenv('OLLAMA_MODEL', 'llama3.2:1b')
         self.ollama_timeout_seconds = int(os.getenv('OLLAMA_TIMEOUT_SECONDS', '120'))
-        self.tracer, self.phoenix_enabled = get_tracer(
+        self.tracer, self.mlflow_enabled = get_tracer(
             "strategiesfortestingai.rag",
-            enable_env="ENABLE_PHOENIX_ASK_TRACING",
+            enable_env="ENABLE_MLFLOW_ASK_TRACING",
             default_enabled=True,
             default_project_name="strategiesfortestingai",
         )
@@ -47,7 +47,7 @@ class RAGPipeline:
             'documents_loaded': 0,
             'average_retrieval_time': 0,
             'errors': 0,
-            'phoenix_ask_tracing_enabled': self.phoenix_enabled,
+            'mlflow_ask_tracing_enabled': self.mlflow_enabled,
             'warmup_enabled': False,
             'warmup_completed': False,
             'warmup_time': 0.0,
@@ -56,7 +56,7 @@ class RAGPipeline:
         # Rate limiting tracking
         self._last_provider_call_time = 0
         self._min_spacing = 0.1  # spacing between local provider calls
-        self.phoenix_quality_signals_enabled = self._is_truthy_env('PHOENIX_QUALITY_SIGNALS_ENABLED', False)
+        self.mlflow_quality_signals_enabled = self._is_truthy_env('MLFLOW_QUALITY_SIGNALS_ENABLED', False)
         
         self._initialize_components()
         self._warm_up_runtime()
@@ -68,8 +68,8 @@ class RAGPipeline:
         return str(value).strip().lower() in ('1', 'true', 'yes', 'on')
 
     def _add_quality_signal_attrs(self, span: Any, attrs: Dict[str, Any]) -> None:
-        """Attach optional Phoenix quality attributes to an active span."""
-        if not self.phoenix_quality_signals_enabled:
+        """Attach optional MLflow quality attributes to an active span."""
+        if not self.mlflow_quality_signals_enabled:
             return
         if span is None or not attrs:
             return
@@ -83,7 +83,7 @@ class RAGPipeline:
                     span.set_attribute(key, str(value))
         except Exception:
             # Quality signal attributes are optional and should never break core flow.
-            logger.debug("Skipped setting optional Phoenix quality signal attributes", exc_info=True)
+            logger.debug("Skipped setting optional MLflow quality signal attributes", exc_info=True)
     
     def _initialize_components(self):
         """Initialize all pipeline components."""
@@ -120,7 +120,10 @@ class RAGPipeline:
                 self._retrieve_documents('genai testing warmup', n_results=1)
 
             # Warm Ollama model/runtime with a tiny deterministic completion.
-            keep_alive = os.getenv('OLLAMA_KEEP_ALIVE', '10m')
+            # A cold model load (disk read + first-token compile) can take 30-50s+
+            # on CPU-only setups, so the warmup timeout must not be capped below that.
+            keep_alive = os.getenv('OLLAMA_KEEP_ALIVE', '30m')
+            warmup_timeout = int(os.getenv('OLLAMA_WARMUP_TIMEOUT_SECONDS', '120'))
 
             def warmup_generate_call():
                 response = requests.post(
@@ -135,7 +138,7 @@ class RAGPipeline:
                             "num_predict": 8,
                         },
                     },
-                    timeout=min(30, self.ollama_timeout_seconds),
+                    timeout=max(warmup_timeout, self.ollama_timeout_seconds),
                 )
                 response.raise_for_status()
                 return response.json()
@@ -435,7 +438,7 @@ class RAGPipeline:
         return text[:max_length - 3] + "..."
 
     def _span_name(self, base_name: str, exercise_number: Optional[int]) -> str:
-        """Make span names searchable by exercise in Phoenix name search."""
+        """Make span names searchable by exercise in MLflow trace search."""
         if isinstance(exercise_number, int) and exercise_number > 0:
             return f"{base_name}.ex{exercise_number}"
         return base_name
@@ -470,6 +473,12 @@ class RAGPipeline:
                     "input.mime_type": "text/plain",
                 },
             ) as retrieve_span:
+                if retrieve_span is not None and hasattr(retrieve_span, "set_inputs"):
+                    try:
+                        retrieve_span.set_inputs({"query": query, "n_results": n_results})
+                    except Exception:
+                        pass
+
                 # Generate query embedding
                 query_embedding = self._generate_query_embedding(query)
 
@@ -482,7 +491,27 @@ class RAGPipeline:
 
                 distances = results['distances'][0] if results.get('distances') else []
                 similarities = [max(0.0, min(1.0, 1 - float(dist))) for dist in distances]
-                
+
+                # Populate MLflow's RETRIEVER-native outputs (a list of
+                # {page_content, metadata} dicts) so the UI's Inputs/Outputs
+                # panel renders retrieved documents, not just span attributes.
+                if retrieve_span is not None and hasattr(retrieve_span, "set_outputs") and results.get('documents'):
+                    try:
+                        docs = results['documents'][0] if results['documents'] else []
+                        metas = results['metadatas'][0] if results.get('metadatas') else []
+                        retrieve_span.set_outputs([
+                            {
+                                "page_content": doc,
+                                "metadata": {
+                                    **(metas[idx] if idx < len(metas) else {}),
+                                    "similarity": round(similarities[idx], 4) if idx < len(similarities) else None,
+                                },
+                            }
+                            for idx, doc in enumerate(docs)
+                        ])
+                    except Exception:
+                        pass
+
                 # Capture retrieved documents for test analysis
                 if retrieve_span is not None and results.get('documents'):
                     try:
@@ -502,7 +531,7 @@ class RAGPipeline:
                         "quality.retrieval.avg_similarity": round(sum(similarities) / len(similarities), 4) if similarities else None,
                     },
                 )
-                # Emit output summary for Phoenix Input/Output panel
+                # Emit output summary for MLflow Input/Output panel
                 try:
                     docs = results['documents'][0] if results.get('documents') else []
                     output_summary = f"{len(docs)} documents retrieved. Top: {docs[0][:200] if docs else 'none'}"
@@ -580,6 +609,12 @@ class RAGPipeline:
                     "app.mode": "rag",
                 },
             ) as gen_span:
+                if gen_span is not None and hasattr(gen_span, "set_inputs"):
+                    try:
+                        gen_span.set_inputs({"prompt": prompt, "temperature": effective_temperature})
+                    except Exception:
+                        pass
+
                 def generate_call():
                     response = requests.post(
                         f"{self.ollama_host}/api/generate",
@@ -587,6 +622,9 @@ class RAGPipeline:
                             "model": self.ollama_model,
                             "prompt": prompt,
                             "stream": False,
+                            # Refresh the model's TTL on every call so idle gaps between
+                            # queries (class discussion, reading instructions) don't evict it.
+                            "keep_alive": os.getenv('OLLAMA_KEEP_ALIVE', '30m'),
                             "options": {
                                 "temperature": effective_temperature,
                                 "num_predict": int(os.getenv('MAX_TOKENS', '600')),
@@ -603,6 +641,8 @@ class RAGPipeline:
                 # Capture response output and metadata
                 if gen_span is not None:
                     try:
+                        if hasattr(gen_span, "set_outputs"):
+                            gen_span.set_outputs(response_text)
                         gen_span.set_attribute("output.value", response_text[:1000])
                         gen_span.set_attribute("output.mime_type", "text/plain")
                         gen_span.set_attribute("llm.completions.0.content", response_text[:1000])
@@ -650,7 +690,7 @@ class RAGPipeline:
                 span_kind="CHAIN",
                 attrs={
                     "input.value": user_query,
-                    "rag.phoenix_enabled": self.phoenix_enabled,
+                    "rag.mlflow_enabled": self.mlflow_enabled,
                     "session.id": session_id,
                     "exercise_number": exercise_number,
                     "course.exercise.number": exercise_number,
@@ -718,7 +758,7 @@ class RAGPipeline:
                         "quality.response.retrieval_time_ms": round(retrieval_results['retrieval_time'] * 1000, 2),
                     },
                 )
-                # Emit output on root RAG span for Phoenix Input/Output panel
+                # Emit output on root RAG span for MLflow Input/Output panel
                 try:
                     query_span.set_attribute("output.value", response_text[:1000])
                     query_span.set_attribute("output.mime_type", "text/plain")
@@ -752,7 +792,7 @@ class RAGPipeline:
             'average_retrieval_time': round(self.stats['average_retrieval_time'], 3),
             'documents_loaded': self.stats['documents_loaded'],
             'error_count': self.stats['errors'],
-            'phoenix_ask_tracing_enabled': self.stats['phoenix_ask_tracing_enabled'],
+            'mlflow_ask_tracing_enabled': self.stats['mlflow_ask_tracing_enabled'],
             'warmup_enabled': self.stats['warmup_enabled'],
             'warmup_completed': self.stats['warmup_completed'],
             'warmup_time': self.stats['warmup_time'],

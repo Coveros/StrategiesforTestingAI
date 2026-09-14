@@ -198,7 +198,7 @@ def run_suite(session_id: str, include_trace: bool) -> Dict[str, Any]:
                     "response_time": _safe_get(payload, "response_time"),
                     "trajectory_metrics": _safe_get(payload, "trajectory_metrics", {}),
                     "handoffs": _safe_get(payload, "handoffs", []),
-                    "phoenix_trace_enabled": _safe_get(payload, "phoenix_trace_enabled", False),
+                    "mlflow_trace_enabled": _safe_get(payload, "mlflow_trace_enabled", False),
                 },
             }
         )

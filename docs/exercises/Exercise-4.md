@@ -3,15 +3,15 @@
 ## Prerequisites
 1. Exercise 3 completed.
 2. A running GenAI testing assistant in your Codespace at [http://localhost:5000](http://localhost:5000).
-3. A running Arize Phoenix instance in your Codespace at [http://localhost:6006](http://localhost:6006).
-4. An Arize Phoenix demo has been completed.
+3. A running MLflow instance in your Codespace at [http://localhost:5001](http://localhost:5001).
+4. An MLflow demo has been completed.
 
 ## Scenario
-This exercise focuses on **Ask mode**, the deterministic RAG pipeline. A user asks one question, the app retrieves context from the vector database, and then sends the query plus context to the LLM in one straight shot. In Phoenix, students should see a clean linear trace with exactly 3 spans: **Chains -> Retriever -> LLM**.
+This exercise focuses on **Ask mode**, the deterministic RAG pipeline. A user asks one question, the app retrieves context from the vector database, and then sends the query plus context to the LLM in one straight shot. In MLflow, students should see a clean linear trace with exactly 3 spans: **Chains -> Retriever -> LLM**.
 
 ## Student tasks
 1. Open the UI at `http://localhost:5000/?exercise=4` and stay in **Ask** mode.
-2. Open Phoenix at `http://localhost:6006` and prepare to inspect traces.
+2. Open MLflow at `http://localhost:5001` and prepare to inspect traces.
 3. Run these 3 target queries in Ask mode:
    - What are the key differences between black-box and white-box testing for GenAI?
    - According to production best practices, what is the recommended batch size for GenAI evaluations?
@@ -21,7 +21,7 @@ This exercise focuses on **Ask mode**, the deterministic RAG pipeline. A user as
    - top 3 `sources[*].metadata.source`
    - top 3 `sources[*].similarity`
    - `retrieval_time`, `generation_time`, `total_time`
-5. In Phoenix, capture trace evidence and confirm whether the path is the expected straight-line sequence:
+5. In MLflow, capture trace evidence and confirm whether the path is the expected straight-line sequence:
    - `Chains`
    - `Retriever`
    - `LLM`
@@ -35,7 +35,7 @@ This exercise focuses on **Ask mode**, the deterministic RAG pipeline. A user as
    - `LLM` = answer generation from retrieved context
 6. Record results in this table as you run each case:
 
-| Case ID | Query | UI Evidence | Phoenix Evidence | Failure Type | Owner |
+| Case ID | Query | UI Evidence | MLflow Evidence | Failure Type | Owner |
 |---|---|---|---|---|---|
 | case1 |  |  |  |  |  |
 | case2 |  |  |  |  |  |
@@ -54,7 +54,7 @@ This exercise focuses on **Ask mode**, the deterministic RAG pipeline. A user as
 11. Use the same 3 case IDs (`case1`, `case2`, `case3`) in your bug reports so your evidence is easy to audit.
 
 ## Contingency only (if live tracing is unavailable)
-Use precomputed evidence only when the live path is blocked (for example: local provider outage, network failure, or Phoenix service unavailable):
+Use precomputed evidence only when the live path is blocked (for example: local provider outage, network failure, or MLflow service unavailable):
 - `artifacts/precomputed/trace_samples/exercise4_trace_cases_20260416_190513.json`
 
 ## Team debrief questions

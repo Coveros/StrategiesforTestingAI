@@ -8,7 +8,7 @@ Facilitator reference: [Instructor Facilitation Rubric](Exercise-Instructor-Faci
 4. Ability to capture trace/trajectory evidence.
 
 ## Scenario
-You are auditing a real multi-agent flow in LangChain with core roles **Triage Agent** and **RAG Specialist** (and an optional **Validator Agent** when enabled). The orchestrator routes work between specialist capabilities instead of forcing retrieval every time. Your goal is to study the hand-off graph in Phoenix and diagnose how corrupted state can break retrieval.
+You are auditing a real multi-agent flow in LangChain with core roles **Triage Agent** and **RAG Specialist** (and an optional **Validator Agent** when enabled). The orchestrator routes work between specialist capabilities instead of forcing retrieval every time. Your goal is to study the hand-off graph in MLflow and diagnose how corrupted state can break retrieval.
 
 # Exercise 6 Instructor Notes: Multi-Agent Handoff and Trajectory Analysis
 Facilitator reference: [Instructor Facilitation Rubric](Exercise-Instructor-Facilitation-Rubric.md)
@@ -25,12 +25,12 @@ This exercise has two components:
 
 ### What You'll Do
 1. Run `python generate_classroom_traces.py` in front of the class
-2. Walk through the resulting 12 traces in Phoenix
+2. Walk through the resulting 12 traces in MLflow
 3. Lead discussion on multi-agent behavior across 3 scenarios
 
 ### Before Class
 - Ensure Flask is running: `python run.py`
-- Ensure Phoenix is running: `phoenix serve --host 0.0.0.0 --port 6006`
+- Ensure MLflow is running: `mlflow server --backend-store-uri sqlite:///mlflow_data/mlflow.db --host 0.0.0.0 --port 5001`
 - Ensure Ollama is running and model is warm
 - Test the script once: `python generate_classroom_traces.py`
 - Make note of the output file: `classroom_traces_results.json`
@@ -41,7 +41,7 @@ Use [MODULE_6_SCRIPT_TRACE_WALKTHROUGH.md](../MODULE_6_SCRIPT_TRACE_WALKTHROUGH.
 
 1. **Announce** (2 min): "We're going to generate 12 example traces together and walk through them"
 2. **Run script** (6 min): Execute the script, let students watch progress
-3. **Open Phoenix** (2 min): Show http://localhost:6006 → Traces tab
+3. **Open MLflow** (2 min): Show http://localhost:5001 → Traces tab
 4. **Activity 1 - Consistency** (5 min):
    - Show traces labeled "same_prompt" (refer to walkthrough guide for key metrics)
    - Expand two runs side-by-side
@@ -64,7 +64,7 @@ Use [MODULE_6_SCRIPT_TRACE_WALKTHROUGH.md](../MODULE_6_SCRIPT_TRACE_WALKTHROUGH.
 
 ### Tips for Smooth Facilitation
 - Have script output projected so students can see progress
-- Keep Phoenix UI visible in another window for quick switching
+- Keep MLflow UI visible in another window for quick switching
 - Use this language: "Notice in the trace... What do you see in the span attributes?"
 - Pause at interesting traces to let students examine them
 - If a trace fails, acknowledge it: "This is a real failure case you'd debug in production"
@@ -95,9 +95,9 @@ Use [MODULE_6_SCRIPT_TRACE_WALKTHROUGH.md](../MODULE_6_SCRIPT_TRACE_WALKTHROUGH.
 5. Run one non-corruption query first and capture baseline evidence from metadata.
    - In the response's **Agent Execution** block, capture: `Trajectory` (steps/tools/handoffs/redundant), `Tools Called`, and `Trace` (if shown).
    - Record this as your baseline row for that query.
-6. In Phoenix, inspect the baseline run as an agent graph and confirm you can see the flow between **Triage Agent** and **RAG Specialist**. If Validator is enabled in your environment, include it in the observed flow.
+6. In MLflow, inspect the baseline run as an agent graph and confirm you can see the flow between **Triage Agent** and **RAG Specialist**. If Validator is enabled in your environment, include it in the observed flow.
 7. Run the handoff-corruption scenario: `simulate handoff corruption for retrieval query about 2024 regression failures`.
-8. Capture corrupted-run evidence from UI metadata and Phoenix traces.
+8. Capture corrupted-run evidence from UI metadata and MLflow traces.
 9. Compare baseline vs corrupted run for handoff count, retrieval quality, and redundant tool calls.
 10. Record results in this table for both runs:
 
@@ -106,7 +106,7 @@ Use [MODULE_6_SCRIPT_TRACE_WALKTHROUGH.md](../MODULE_6_SCRIPT_TRACE_WALKTHROUGH.
 | Baseline |  |  |  |  |  |  |
 | Corrupted |  |  |  |  |  |  |
 
-11. In Phoenix, click into the hand-off between **Triage Agent** and **RAG Specialist** and compare the original query with the routed query.
+11. In MLflow, click into the hand-off between **Triage Agent** and **RAG Specialist** and compare the original query with the routed query.
 12. Calculate Efficiency Score = Optimal Steps / Actual Steps.
 13. As a team, propose one fix for handoff integrity and one guardrail for loop control.
 14. As a control, run the same corruption prompt once with **Crew Mode OFF** and note that the handoff mutation should not appear in the single-agent path.

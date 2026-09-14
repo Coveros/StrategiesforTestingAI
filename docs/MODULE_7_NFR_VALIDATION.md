@@ -1,8 +1,8 @@
-# Module 7 NFR Testing: Phoenix Setup & Exercise Validation
+# Module 7 NFR Testing: MLflow Setup & Exercise Validation
 
 ## Executive Summary
 
-✅ **Your Module 7 concepts are well-aligned with Phoenix observability and our current instrumentation.** All major NFR categories (robustness, graceful degradation, latency, cost) are observable and testable. However, **Exercise 7 does not yet exist**—we need to create it to support hands-on NFR testing.
+✅ **Your Module 7 concepts are well-aligned with MLflow observability and our current instrumentation.** All major NFR categories (robustness, graceful degradation, latency, cost) are observable and testable. However, **Exercise 7 does not yet exist**—we need to create it to support hands-on NFR testing.
 
 ---
 
@@ -15,13 +15,13 @@
 - Dependency breaks (500 errors, timeouts from LLM/Vector DB)
 - Graceful degradation & fallbacks
 
-**What we currently capture in Phoenix:**
+**What we currently capture in MLflow:**
 - ✅ **Error spans**: Exception events recorded via `span.record_exception(error)`
 - ✅ **Timeout tracking**: `ollama_timeout_seconds` configured, timeouts visible in span latency
 - ✅ **Error metadata**: Logged via logger.error() and captured in trace
 - ✅ **Fallback status**: Can emit attributes like `app.fallback_triggered=true` on error paths
 
-**What students see in Phoenix:**
+**What students see in MLflow:**
 - Error spans in Traces tab with exception details
 - LLM spans with `error=true` attribute
 - Tool spans showing `tool.execution_result=error`
@@ -58,7 +58,7 @@ def on_tool_error(self, error: BaseException, run_id: Any = None, **kwargs: Any)
     self._end(run_id, error=error)  # Captures exception in span
 ```
 
-**What students see in Phoenix:**
+**What students see in MLflow:**
 - ✅ Tool error spans with exception details
 - ✅ LLM completion failures with empty response
 - ⚠️ **Missing**: Explicit `http.status_code=429` attribute or `retry_after` header capture
@@ -86,7 +86,7 @@ if status_code == 429:
 - ⚠️ **Missing**: No fallback chain implementation in code
 - ⚠️ **Missing**: No circuit breaker pattern
 
-**What students see in Phoenix:**
+**What students see in MLflow:**
 - Span showing first failure
 - But no span showing fallback path triggered
 - No attribute like `app.fallback_model=llama` or `circuit_breaker.state=OPEN`
@@ -114,11 +114,11 @@ except requests.Timeout:
 - **TTT** (Trace Total Time): End-to-end multi-step latency
 
 **Current instrumentation:**
-- ✅ **Span duration**: Phoenix automatically captures start/end time per span
-- ✅ **Trace duration**: Sum of all spans visible in Phoenix trace graph
+- ✅ **Span duration**: MLflow automatically captures start/end time per span
+- ✅ **Trace duration**: Sum of all spans visible in MLflow trace graph
 - ⚠️ **Missing**: No explicit TTFT/TBT attributes (streaming not implemented)
 
-**What students see in Phoenix:**
+**What students see in MLflow:**
 - Trace details showing: "Duration: 42.3s"
 - Per-span latencies: LLM span (30s), retrieval span (2s), generation span (10s)
 - Latency Percentiles dashboard (if configured)
@@ -128,7 +128,7 @@ except requests.Timeout:
 - TTFT = latency of first LLM span start to first completion token (no explicit field, but visible in span timeline)
 
 **Example student task:**
-"In Phoenix Traces tab, find the slowest trace in your 12-trace batch from Exercise 6. Calculate TTT and identify the bottleneck span."
+"In MLflow Traces tab, find the slowest trace in your 12-trace batch from Exercise 6. Calculate TTT and identify the bottleneck span."
 
 ---
 
@@ -188,7 +188,7 @@ span.set_attribute("llm.usage.prompt_tokens", int(prompt_tokens))
 span.set_attribute("llm.usage.completion_tokens", int(completion_tokens))
 ```
 
-**What students see in Phoenix:**
+**What students see in MLflow:**
 - ✅ Each span shows `llm.usage.*_tokens` attributes
 - ✅ Token counts accumulate across trace spans
 - ⚠️ **Missing**: Estimated cost in USD (requires pricing metadata)
@@ -200,7 +200,7 @@ span.set_attribute("llm.usage.completion_tokens", int(completion_tokens))
 - "Loop tax": count repeated tool calls and their token cost
 
 **What students CANNOT directly see:**
-- Estimated USD cost per trace (Phoenix has this if we provide pricing)
+- Estimated USD cost per trace (MLflow has this if we provide pricing)
 - Cache hit rate (no cache implemented for local Ollama)
 
 **Recommendation for Exercise 7:**
@@ -262,11 +262,11 @@ Create a fuzzing scenario (not full fuzzing framework, but structured):
 - ✅ Tier 1: Existing regression suite uses mocks (section9_agentic_test_suite.py)
 - ✅ Tier 2: Using llama3.2:1b locally (no API cost, mini model equivalent)
 - ✅ Tier 3: Optional—students could configure OpenAI/Claude if desired
-- ✅ Cost auditing: Phoenix captures tokens for all tiers
+- ✅ Cost auditing: MLflow captures tokens for all tiers
 
 **What students can demonstrate:**
 - Run traces with Ollama (free local)
-- Track tokens in Phoenix
+- Track tokens in MLflow
 - Estimate costs if they switched to GPT-4o mini or Claude
 - Compare token efficiency across exercise runs
 
@@ -287,7 +287,7 @@ Tier 3 (Production Model) - Full cost: Optional GPT-4o ($0.30/1M input)
 
 ---
 
-## Phoenix Observability Readiness
+## MLflow Observability Readiness
 
 ### What We Have ✅
 
@@ -304,7 +304,7 @@ Tier 3 (Production Model) - Full cost: Optional GPT-4o ($0.30/1M input)
 | LLM I/O | prompts, completions, model_name, temperature | ✅ |
 | Tokens | prompt_tokens, completion_tokens, total_tokens | ✅ |
 | Errors | error, exception details | ✅ |
-| Latency | span duration (auto from Phoenix) | ✅ |
+| Latency | span duration (auto from MLflow) | ✅ |
 | Context | session.id, exercise_number, app.mode | ✅ |
 | Quality | retrieval scores, tool execution result | ✅ |
 | **Cost estimation** | *estimated_usd* | ❌ Missing |
@@ -361,7 +361,7 @@ Tier 3 (Production Model) - Full cost: Optional GPT-4o ($0.30/1M input)
 **Exercise 7 Structure (90-120 minutes):**
 
 **Part 1 (Setup, 10 min):**
-- Open live Phoenix Traces tab
+- Open live MLflow Traces tab
 - Reuse 12 traces from Exercise 6 Part 1 (classroom_traces_results.json)
 - Each trace already has: latency, tokens, error status, tool calls captured
 
@@ -374,7 +374,7 @@ Tier 3 (Production Model) - Full cost: Optional GPT-4o ($0.30/1M input)
   5. **Handoff Resilience**: Verify multi-agent handoffs survive corruption
 
 **Part 3 (Scorecard & Debrief, 10-20 min):**
-- Fill NFR scorecard with evidence from Phoenix
+- Fill NFR scorecard with evidence from MLflow
 - Team identifies weakest NFR area
 - Propose one fix with smallest blast radius
 
@@ -389,22 +389,22 @@ Tier 3 (Production Model) - Full cost: Optional GPT-4o ($0.30/1M input)
 ## Recommendations
 
 ### Immediate (Ready for this term) ✅
-1. Module 7 concepts are sound and well-aligned with Phoenix
+1. Module 7 concepts are sound and well-aligned with MLflow
 2. **Exercise 7 exists and is ready to teach**
 3. **Key optimization: Explicitly link Exercise 7 to Exercise 6 traces**
    - Add intro section to Exercise-7.md: "Use the 12 traces from Exercise 6 Part 1 for this analysis"
-   - Point to `classroom_traces_results.json` and Phoenix Traces tab filter
+   - Point to `classroom_traces_results.json` and MLflow Traces tab filter
    - Saves students 6+ minutes of inference time
 4. Students can observe latency, tokens, and errors using existing traces
 
 ### Short-term (Before next term, <2 hrs)
 1. Update Exercise-7.md preamble to explicitly reuse Exercise 6 traces
 2. Add optional span attributes for better diagnostics (cost estimation, loop detection)
-3. Create example scorecard row showing how to read Phoenix traces for NFR metrics
+3. Create example scorecard row showing how to read MLflow traces for NFR metrics
 
 ### Medium-term (End of course or next iteration)
 1. Add AI fuzzing scenario as optional Exercise 7 extension
-2. Build cost estimation dashboard aggregation in Phoenix (if using paid APIs)
+2. Build cost estimation dashboard aggregation in MLflow (if using paid APIs)
 3. Add queue management simulation (concurrent user test harness)
 
 ---
@@ -420,7 +420,7 @@ Tier 3 (Production Model) - Full cost: Optional GPT-4o ($0.30/1M input)
 
 ## Conclusion
 
-✅ **Your Module 7 is pedagogically sound, Phoenix-ready, and Exercise 7 is ready to teach.**
+✅ **Your Module 7 is pedagogically sound, MLflow-ready, and Exercise 7 is ready to teach.**
 
 All major NFR concepts are **observable and testable** within the current setup. Exercise 7 smartly reuses the 12 traces from Exercise 6 for analysis rather than running new prompts, which is efficient and reduces classroom time.
 
@@ -434,7 +434,7 @@ same traces for NFR metrics instead.
 
 To proceed:
 1. Ensure Exercise 6 Part 1 has completed: `python generate_classroom_traces.py`
-2. Open Phoenix: http://localhost:6006 → Traces tab
+2. Open MLflow: http://localhost:5001 → Traces tab
 3. Filter for the 12 traces by scenario tag (same_prompt, variation, different_prompt)
 4. Proceed to "Student tasks" below
 ```

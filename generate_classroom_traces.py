@@ -3,10 +3,10 @@
 Exercise 6: Classroom Demo - Generate Multi-Agent Traces for Analysis
 
 This script generates 12 example traces that instructors and students can
-run together to examine multi-agent trajectories in Phoenix.
+run together to examine multi-agent trajectories in MLflow.
 
 Run this script alongside the instructor during the Exercise 6 classroom session,
-then open Phoenix at http://localhost:6006 to walk through the results together.
+then open the MLflow UI at http://localhost:5001 to walk through the results together.
 
 Usage:
     python generate_classroom_traces.py
@@ -16,7 +16,7 @@ The script will:
 2. Generate 4 traces with VARIATIONS of the same question (robustness testing)
 3. Generate 3 traces with DIFFERENT questions (diversity/edge cases)
 
-Total: 12 traces to examine and discuss in Phoenix
+Total: 12 traces to examine and discuss in MLflow
 """
 
 import requests
@@ -271,7 +271,7 @@ def print_summary(traces: List[dict]) -> None:
     print("\n" + "=" * 70)
     print("NEXT STEPS")
     print("=" * 70)
-    print(f"1. Open Phoenix in your browser: http://localhost:6006")
+    print(f"1. Open the MLflow UI in your browser: http://localhost:5001")
     print(f"2. Click the 'Traces' tab")
     print(f"3. Review the {len(traces)} traces just generated")
     print(f"4. Compare traces across scenarios (consistency, robustness, edge cases)")

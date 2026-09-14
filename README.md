@@ -51,7 +51,7 @@ Frontend (HTML/CSS/JS) → Flask Backend → RAG Pipeline → Ollama (Local SLM)
 - Python 3.8+
 - Ollama installed (https://ollama.com) or Codespaces devcontainer auto-setup enabled
 - Local SLM model pulled (default: `llama3.2:1b`)
-- Arize Phoenix available for trace and trajectory inspection in Exercises 4-6
+- MLflow available for trace and trajectory inspection in Exercises 4-6
 - 2GB+ RAM for vector database
 - Windows PowerShell (for Windows users)
 
@@ -75,10 +75,8 @@ Frontend (HTML/CSS/JS) → Flask Backend → RAG Pipeline → Ollama (Local SLM)
    ```
 
 4. **Configure Environment**
-   ```bash
-  copy .env.template .env
-   # Optional: adjust OLLAMA_MODEL and AGENT_MODEL in .env
-   ```
+   The repository includes a shared `.env` configuration. Adjust `OLLAMA_MODEL` and
+   `AGENT_MODEL` there only when using a different local model.
 
    Pull a model locally if not already present:
    ```bash
@@ -91,16 +89,20 @@ Frontend (HTML/CSS/JS) → Flask Backend → RAG Pipeline → Ollama (Local SLM)
    - `AGENT_REQUEST_TIMEOUT_SECONDS=300` to avoid client-side timeouts on local CPU inference
    - `AGENT_BOOTSTRAP_ON_ZERO_TOOLS=auto` enables a transparent one-step bootstrap in student mode only
    - Set `AGENT_BOOTSTRAP_ON_ZERO_TOOLS=false` for pure-autonomy instructor demonstrations
+   - `OLLAMA_KEEP_ALIVE=30m` (default) keeps the model loaded between queries. Without it,
+     Ollama unloads the model after 5 minutes idle, and the next query pays a slow ~30-50s
+     reload. Increase this (or set `-1` for never-unload) if class discussions between
+     queries commonly exceed 30 minutes.
 
    Exercise Hub defaults to Student View only. Set `EXERCISE_HUB_ENABLE_INSTRUCTOR=True` in `.env` only for instructor-led sessions.
 
    Student agentic access is available via `?agent=1`. Exercise pages automatically pass exercise context back to chat for exercise-aware defaults.
 
-   Phoenix tracing is enabled by default for both Ask mode and Agent mode:
-   - `ENABLE_PHOENIX_ASK_TRACING=true`
-   - `ENABLE_PHOENIX_AGENT_TRACING=true`
-   - `PHOENIX_QUALITY_SIGNALS_ENABLED=false` (optional quality-related span attributes; keep false to preserve baseline Exercise 4-6 behavior)
-   - `PHOENIX_PROJECT_NAME=strategiesfortestingai`
+   MLflow tracing is enabled by default for both Ask mode and Agent mode:
+   - `ENABLE_MLFLOW_ASK_TRACING=true`
+   - `ENABLE_MLFLOW_AGENT_TRACING=true`
+   - `MLFLOW_QUALITY_SIGNALS_ENABLED=false` (optional quality-related span attributes; keep false to preserve baseline Exercise 4-6 behavior)
+   - `MLFLOW_EXPERIMENT_NAME=strategiesfortestingai`
 
 5. **Run Application**
    ```bash
@@ -112,21 +114,21 @@ Frontend (HTML/CSS/JS) → Flask Backend → RAG Pipeline → Ollama (Local SLM)
    python -m pip install -r requirements.txt
    ```
 
-6. **Start Phoenix (recommended for Exercises 4-6)**
+6. **Start MLflow (recommended for Exercises 4-6)**
    ```bash
-   phoenix serve --host 0.0.0.0 --port 6006
+   mlflow server --backend-store-uri sqlite:///mlflow_data/mlflow.db --host 0.0.0.0 --port 5001
    ```
 
    Then open:
    - Chat app: http://localhost:5000
-   - Phoenix UI: http://localhost:6006
+   - MLflow UI: http://localhost:5001
 
 7. **Access Application**
    - Open http://localhost:5000
    - Chat interface should load
    - Try: "What are the key challenges in testing GenAI applications?"
    - Use the bottom **Ask / Agent** toggle in chat to switch modes
-   - In Exercise 4, Ask mode is the intended path for Phoenix trace analysis
+   - In Exercise 4, Ask mode is the intended path for MLflow trace analysis
    - In Exercise 5-9 flows, Exercise Hub sends `exercise=<n>` so trace/crew defaults can auto-adjust by exercise context
 
 ## 🚀 Quick Start (Alternative)
@@ -192,7 +194,6 @@ TestingAITutorial/
 ├── section9_agentic_test_suite.py # Exercise 9 CI-style artifact generator
 ├── temperature_demo.py      # Exercise 1 temperature variability demo
 ├── requirements.txt         # Python dependencies
-├── .env.template           # Environment variable template  
 ├── run.py                  # Application entry point
 ├── launch.py               # Interactive launcher menu
 └── README.md               # This file (main project overview)
@@ -205,15 +206,15 @@ TestingAITutorial/
 - **Local Embeddings**: Uses sentence-transformers for vector search
 - **ChromaDB Vector Store**: Local, persistent document storage
 - **Custom Python RAG Pipeline**: Purpose-built for classroom testing exercises
-- **Ask-mode Phoenix tracing**: Linear `Chains -> Retriever -> LLM` spans for Exercise 4
+- **Ask-mode MLflow tracing**: Linear `Chains -> Retriever -> LLM` spans for Exercise 4
 - **Source Attribution**: Shows retrieved documents and similarity scores
 - **Real-time Performance Metrics**: Response times and statistics
 
-### 🔭 **Phoenix Observability**
+### 🔭 **MLflow Observability**
 - **Ask mode tracing**: Shows the deterministic RAG path for Exercise 4
 - **Single-agent trajectories**: Visualizes repeated tool loops for Exercise 5
 - **Multi-agent handoff graph**: Shows Triage -> Specialist -> Validator flow for Exercise 6
-- **Shared tracing setup**: Uses the same Phoenix project for Ask and Agent investigations
+- **Shared tracing setup**: Uses the same MLflow project for Ask and Agent investigations
 
 ### 🎨 **Professional Frontend**
 - **Modern UI**: Clean, responsive design with animations
@@ -241,10 +242,10 @@ TestingAITutorial/
 
 ### Exercise Progression
 - Exercises 1-3: RAG testing fundamentals (exploratory testing, goldens, evaluation)
-- Exercise 4: Ask-mode Phoenix trace analysis for deterministic RAG
+- Exercise 4: Ask-mode MLflow trace analysis for deterministic RAG
 - Section bridge: `docs/Section-Bridge-RAG-to-Agentic.md`
 - Exercise 5: Single-agent trajectory hacking and span repetition
-- Exercise 6: Multi-agent handoff corruption and Phoenix graph analysis
+- Exercise 6: Multi-agent handoff corruption and MLflow graph analysis
 - Exercise 7: Reliability and overhead across Ask, single-agent, and crew modes
 - Exercise 8: Red teaming the current agentic system
 - Exercise 9: Ship / No-Ship decision from current automation evidence
@@ -261,15 +262,15 @@ TestingAITutorial/
 - `GET /api/health` service health
 
 ### Environment Setup
-- Copy `.env.template` to `.env`
+- Use the committed `.env` configuration
 - Confirm `OLLAMA_MODEL` and `OLLAMA_HOST` in `.env`
-- Confirm `ENABLE_PHOENIX_ASK_TRACING=true` and `ENABLE_PHOENIX_AGENT_TRACING=true`
+- Confirm `ENABLE_MLFLOW_ASK_TRACING=true` and `ENABLE_MLFLOW_AGENT_TRACING=true`
 - Ensure selected model is present locally: `ollama pull <model>`
 
-### Phoenix Setup
-- Start Phoenix locally: `phoenix serve --host 0.0.0.0 --port 6006`
-- Open Phoenix UI: http://localhost:6006
-- Use Phoenix in:
+### MLflow Setup
+- Start MLflow locally: `mlflow server --backend-store-uri sqlite:///mlflow_data/mlflow.db --host 0.0.0.0 --port 5001`
+- Open MLflow UI: http://localhost:5001
+- Use MLflow in:
    - Exercise 4 for Ask-mode traces
    - Exercise 5 for single-agent trajectories
    - Exercise 6 for multi-agent handoff graphs
@@ -305,7 +306,7 @@ python tests/evaluation_framework.py --offline
 python experiments/retrieval_experiments.py
 ```
 
-Exercise 4 itself is now centered on Phoenix-based Ask-mode trace analysis.
+Exercise 4 itself is now centered on MLflow-based Ask-mode trace analysis.
 Use `experiments/retrieval_experiments.py` only as optional follow-up support if you want to investigate retrieval behavior more deeply after the trace review.
 
 ### Running Exercise 7 and 9 Automation
@@ -410,7 +411,7 @@ print(f"Quality Gate: {'PASSED' if gate_passed else 'FAILED'}")
 1. Complete student labs in order: Exercise 1 -> 4 (RAG section)
 2. Deliver the section bridge before starting Exercise 5
 3. Complete Exercise 5 -> 9 (agentic section)
-4. Use Phoenix in Exercises 4-6 for trace and trajectory analysis
+4. Use MLflow in Exercises 4-6 for trace and trajectory analysis
 5. Use Section 7 and 9 automation scripts for standardized evidence
 
 ### 🔬 **Intermediate Track**  
@@ -441,10 +442,10 @@ print(f"Quality Gate: {'PASSED' if gate_passed else 'FAILED'}")
 - Ensure Ollama is installed and running: `ollama serve`
 - Verify connectivity: `curl http://127.0.0.1:11434/api/tags`
 
-**"Phoenix UI is not reachable"**
-- Start Phoenix manually: `phoenix serve --host 0.0.0.0 --port 6006`
-- Verify the port is open at http://localhost:6006
-- Keep `ENABLE_PHOENIX_ASK_TRACING` and `ENABLE_PHOENIX_AGENT_TRACING` enabled in `.env`
+**"MLflow UI is not reachable"**
+- Start MLflow manually: `mlflow server --backend-store-uri sqlite:///mlflow_data/mlflow.db --host 0.0.0.0 --port 5001`
+- Verify the port is open at http://localhost:5001
+- Keep `ENABLE_MLFLOW_ASK_TRACING` and `ENABLE_MLFLOW_AGENT_TRACING` enabled in `.env`
 
 **"Model not found in Ollama"**
 - Pull the model referenced by `OLLAMA_MODEL` in `.env`
@@ -461,8 +462,7 @@ print(f"Quality Gate: {'PASSED' if gate_passed else 'FAILED'}")
 - If unavailable, the regression framework still runs with reduced semantic checks
 
 **"OLLAMA_MODEL or OLLAMA_HOST missing"**
-- Copy `.env.template` to `.env`
-- Ensure `OLLAMA_HOST` and `OLLAMA_MODEL` are set
+- Ensure `OLLAMA_HOST` and `OLLAMA_MODEL` are set in `.env`
 
 **"ChromaDB initialization failed"**
 - Ensure you have write permissions in the project directory

@@ -2,7 +2,7 @@
 
 ## Summary
 
-I've created a solution for your goal: **Have students run batch traces together with you, then walk through them in Phoenix, then do individual exercises.**
+I've created a solution for your goal: **Have students run batch traces together with you, then walk through them in MLflow, then do individual exercises.**
 
 ## What's New
 
@@ -20,14 +20,14 @@ python generate_classroom_traces.py
 **Output:** 
 - 12 traces sent to Ollama (takes ~5-7 minutes)
 - Results saved to `classroom_traces_results.json`
-- Phoenix auto-receives all traces
+- MLflow auto-receives all traces
 
 ### 2. **Updated Exercise 6 (Student-Facing)**
 Restructured with two parts:
 
 **Part 1 (30 min): Classroom Demo**
 - Instructor runs the script while students watch
-- Class explores the 12 traces together in Phoenix
+- Class explores the 12 traces together in MLflow
 - Guided activities: Consistency → Robustness → Diversity
 - Discussion questions to frame multi-agent behavior
 
@@ -52,7 +52,7 @@ Detailed facilitation guide including:
 - 12 traces generated live in front of class
 
 ✅ **"See all the results and walk through them"**
-- Results automatically appear in Phoenix
+- Results automatically appear in MLflow
 - Instructor can filter by scenario ("same_prompt", "variation", "different_prompt")
 - Students examine prompts, tool calls, hallucinations together
 
@@ -67,13 +67,13 @@ Detailed facilitation guide including:
 
 ### Pre-Class Setup
 1. Test the script once: `python generate_classroom_traces.py`
-2. Ensure Flask, Phoenix, and Ollama are all running
+2. Ensure Flask, MLflow, and Ollama are all running
 3. Have Exercise 6 document open
 
 ### During Class (90 minutes total)
 1. **Part 1 Demo (30 min)**:
    - Run the script in front of class (5-7 min)
-   - Open Phoenix and walk through traces (20 min)
+   - Open MLflow and walk through traces (20 min)
    - Discuss observations (5 min)
 
 2. **Part 2 Exercise (45-55 min)**:
@@ -108,4 +108,4 @@ Run 1/5:
 SUMMARY: Total traces generated: 12
 ```
 
-Then in Phoenix, you'll have 12 traces to walk through with students.
+Then in MLflow, you'll have 12 traces to walk through with students.

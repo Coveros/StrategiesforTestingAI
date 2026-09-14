@@ -19,9 +19,9 @@ fi
 
 python -m pip install -r requirements.txt
 
-echo "Verifying Arize Phoenix installation..."
-python -c "import phoenix" >/dev/null 2>&1 || {
-  echo "Warning: Arize Phoenix import check failed. Retry with: python -m pip install -r requirements.txt"
+echo "Verifying MLflow installation..."
+python -c "import mlflow" >/dev/null 2>&1 || {
+  echo "Warning: MLflow import check failed. Retry with: python -m pip install -r requirements.txt"
 }
 
 ensure_ollama_prerequisites() {
@@ -159,18 +159,18 @@ wait_for_ollama() {
 }
 
 print_status_summary() {
-  local phoenix_cli="no"
-  local phoenix_running="no"
+  local mlflow_cli="no"
+  local mlflow_running="no"
   local ollama_cli="no"
   local ollama_running="no"
   local model_ready="no"
 
-  if command -v phoenix >/dev/null 2>&1; then
-    phoenix_cli="yes"
+  if command -v mlflow >/dev/null 2>&1; then
+    mlflow_cli="yes"
   fi
 
-  if pgrep -f "phoenix.*serve" >/dev/null 2>&1; then
-    phoenix_running="yes"
+  if pgrep -f "mlflow server" >/dev/null 2>&1; then
+    mlflow_running="yes"
   fi
 
   if command -v ollama >/dev/null 2>&1; then
@@ -186,14 +186,14 @@ print_status_summary() {
 
   echo ""
   echo "========== Devcontainer Setup Status =========="
-  echo "Phoenix CLI available : ${phoenix_cli}"
-  echo "Phoenix running       : ${phoenix_running}"
+  echo "MLflow CLI available  : ${mlflow_cli}"
+  echo "MLflow running        : ${mlflow_running}"
   echo "Ollama CLI available  : ${ollama_cli}"
   echo "Ollama running        : ${ollama_running}"
   echo "Model (${MODEL}) ready : ${model_ready}"
   echo "App URL               : http://localhost:5000"
-  echo "Phoenix URL           : http://localhost:6006"
-  echo "Logs                  : /tmp/ollama.log, /tmp/phoenix.log"
+  echo "MLflow URL            : http://localhost:5001"
+  echo "Logs                  : /tmp/ollama.log, /tmp/mlflow.log"
   echo "==============================================="
 }
 

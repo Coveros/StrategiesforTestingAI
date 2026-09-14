@@ -2,7 +2,7 @@
 
 ## Prerequisites
 1. Exercise 6 completed.
-2. Use live traces from Phoenix during this exercise.
+2. Use live traces from MLflow during this exercise.
 3. Ability to use Ask mode, Agent mode, and Crew Mode in the UI.
 4. Optional automation runner available in your Codespace: `python section7_nfr_quickrun.py`.
 
@@ -18,7 +18,7 @@ These traces have already captured all NFR metadata: response latency, token cou
 
 **To proceed:**
 1. Ensure Exercise 6 Part 1 has completed: `python generate_classroom_traces.py` (or verify `classroom_traces_results.json` exists)
-2. Open Phoenix: http://localhost:6006 → **Traces tab**
+2. Open MLflow: http://localhost:5001 → **Traces tab**
 3. Filter or search for traces with tags: `scenario: same_prompt` or `scenario: variation` or `scenario: different_prompt`
 4. Proceed to "Student tasks" below
 
@@ -27,9 +27,9 @@ These traces have already captured all NFR metadata: response latency, token cou
 # Exercise 7: Reliability and NFR Testing
 
 ## Prerequisites
-1. Exercise 6 completed (traces available in Phoenix)
+1. Exercise 6 completed (traces available in MLflow)
 2. Flask app running: `python run.py`
-3. Phoenix running on http://localhost:6006
+3. MLflow running on http://localhost:5001
 
 ## Team Exercise - NFR Metrics Analysis (30 minutes)
 
@@ -39,7 +39,7 @@ Using pre-generated traces from Exercise 6, analyze **two key non-functional req
 2. **Error Resilience**: How does the system handle malformed inputs?
 
 ### Role Assignments
-- **Phoenix Queries**: Filters traces by mode (ask vs agent) and scenario
+- **MLflow Queries**: Filters traces by mode (ask vs agent) and scenario
 - **Metrics Collector**: Extracts latency, token counts, and error info
 - **Evidence Scribe**: Records findings in results table
 - **Proposer**: Suggests one efficiency improvement
@@ -47,7 +47,7 @@ Using pre-generated traces from Exercise 6, analyze **two key non-functional req
 ### Activities (30 minutes)
 
 #### Activity 1: Latency & Token Overhead (15 minutes)
-1. **In Phoenix Traces tab**, find 2-3 traces from Exercise 6:
+1. **In MLflow Traces tab**, find 2-3 traces from Exercise 6:
    - One "same_prompt" trace run in **Ask mode**
    - One "same_prompt" trace run in **Agent mode** (crew OFF)
    - Compare side-by-side
@@ -69,7 +69,7 @@ Using pre-generated traces from Exercise 6, analyze **two key non-functional req
    - Did the system crash or return bounded response?
    - How many tool calls were attempted?
    - Did error handling kick in?
-3. **In Phoenix**, inspect the error trace:
+3. **In MLflow**, inspect the error trace:
    - Find the error span (red indicator)
    - What was the error type? (malformed input, tool error, timeout?)
 4. **Record pass/fail** in table

@@ -3,7 +3,7 @@ Facilitator reference: [Instructor Facilitation Rubric](Exercise-Instructor-Faci
 
 ## Prerequisites
 1. Exercise 7 completed.
-2. Use live traces from Phoenix during this exercise.
+2. Use live traces from MLflow during this exercise.
 3. Ability to view traces and handoffs in Agent Mode.
 
 ## Scenario
@@ -43,7 +43,7 @@ Instructor note on trace interpretation:
    - Handoff Corruption
    - Persona / Config Drift
 4. Each person runs their vector in the mode(s) specified below and records expected vs actual behavior.
-5. Capture evidence in both the UI metadata and Phoenix.
+5. Capture evidence in both the UI metadata and MLflow.
 6. As a team, classify each vector as one of:
    - Guardrail Block
    - Trajectory Failure
@@ -111,7 +111,7 @@ The second answer shifts style without changing the question. This is not a safe
 7. `trajectory_metrics.degraded_mode`
 8. `trajectory_metrics.poisoned_retrieval`
 9. `handoffs` count and handoff details (if present)
-10. One Phoenix observation from live traces about where behavior became unsafe, degraded, drifted, or was correctly contained
+10. One MLflow observation from live traces about where behavior became unsafe, degraded, drifted, or was correctly contained
 
 ## Result table
 | Attack Vector | Mode | Prompt | Expected Behavior | Actual Behavior | Classification | Flag Captured (Y/N) | Evidence |
