@@ -23,11 +23,15 @@ def get_project_venv_python() -> str | None:
     parent_dir = os.path.dirname(base_dir)
     if os.name == "nt":
         candidates = [
+            os.path.join(base_dir, ".venv", "Scripts", "python.exe"),
+            os.path.join(parent_dir, ".venv", "Scripts", "python.exe"),
             os.path.join(base_dir, "training-env", "Scripts", "python.exe"),
             os.path.join(parent_dir, "training-env", "Scripts", "python.exe"),
         ]
     else:
         candidates = [
+            os.path.join(base_dir, ".venv", "bin", "python"),
+            os.path.join(parent_dir, ".venv", "bin", "python"),
             os.path.join(base_dir, "training-env", "bin", "python"),
             os.path.join(parent_dir, "training-env", "bin", "python"),
         ]
