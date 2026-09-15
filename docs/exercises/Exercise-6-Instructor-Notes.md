@@ -6,6 +6,7 @@ Facilitator reference: [Instructor Facilitation Rubric](Exercise-Instructor-Faci
 2. Agent mode enabled in the UI.
 3. Crew Mode enabled in the UI.
 4. Ability to capture trace/trajectory evidence.
+5. MLflow running on http://localhost:5001.
 
 ## Scenario
 You are auditing a real multi-agent flow in LangChain with core roles **Triage Agent** and **RAG Specialist** (and an optional **Validator Agent** when enabled). The orchestrator routes work between specialist capabilities instead of forcing retrieval every time. Your goal is to study the hand-off graph in MLflow and diagnose how corrupted state can break retrieval.

@@ -56,6 +56,21 @@ def _set_span_attribute(span: Any, key: str, value: Any) -> None:
     span.set_attribute(key, str(value))
 
 
+def _tracking_server_reachable(tracking_uri: str) -> bool:
+    """Quick, short-timeout health check so a down server fails fast instead of
+    triggering urllib3's multi-minute exponential-backoff retry storm."""
+    if not tracking_uri.startswith("http"):
+        # File-based / non-HTTP tracking URIs don't need a reachability check.
+        return True
+    try:
+        import requests
+
+        response = requests.get(f"{tracking_uri.rstrip('/')}/health", timeout=2)
+        return response.status_code == 200
+    except Exception:
+        return False
+
+
 def _configure_once(experiment_name: str) -> bool:
     """Point the mlflow client at the tracking server and enable autolog once per process."""
     global _CONFIGURED, _CONFIG_FAILED
@@ -65,10 +80,21 @@ def _configure_once(experiment_name: str) -> bool:
     if _CONFIG_FAILED:
         return False
 
+    tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5001").strip()
+    if not _tracking_server_reachable(tracking_uri):
+        _CONFIG_FAILED = True
+        logger.warning(
+            "MLflow tracing unavailable: tracking server at %s is not reachable. "
+            "Start it with `mlflow server --backend-store-uri sqlite:///mlflow_data/mlflow.db "
+            "--host 0.0.0.0 --port 5001` to enable tracing, or set ENABLE_MLFLOW_ASK_TRACING/"
+            "ENABLE_MLFLOW_AGENT_TRACING=false to silence this.",
+            tracking_uri,
+        )
+        return False
+
     try:
         import mlflow
 
-        tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5001").strip()
         mlflow.set_tracking_uri(tracking_uri)
         mlflow.set_experiment(experiment_name)
 

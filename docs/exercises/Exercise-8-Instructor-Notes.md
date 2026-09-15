@@ -3,7 +3,7 @@ Facilitator reference: [Instructor Facilitation Rubric](Exercise-Instructor-Faci
 
 ## Prerequisites
 1. Exercise 7 completed.
-2. Use live traces from MLflow during this exercise.
+2. Flask and MLflow (http://localhost:5001) are running; use live traces from MLflow during this exercise.
 3. Ability to view traces and handoffs in Agent Mode.
 
 ## Scenario

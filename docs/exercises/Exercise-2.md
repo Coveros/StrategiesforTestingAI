@@ -5,6 +5,7 @@
 2. The Codespace dependencies installed with `pip install -r requirements.txt`.
 3. Chromium installed with `python -m playwright install chromium`.
 4. Flask running with `python run.py`.
+5. MLflow running on http://localhost:5001 to inspect traces.
 
 ## Scenario
 

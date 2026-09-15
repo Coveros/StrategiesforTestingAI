@@ -6,6 +6,7 @@ Facilitator reference: [Instructor Facilitation Rubric](Exercise-Instructor-Faci
 1. Exercise 4 completed.
 2. Agent mode enabled in the UI.
 3. Ability to view tool calls/traces in Agent Mode.
+4. MLflow running on http://localhost:5001 to measure span repetition and token-bloat behavior.
 
 ## Scenario
 In this exercise you test a real LangChain ReAct single-agent workflow in **Agent mode** with **Crew Mode OFF**. The agent has one tool, `query_knowledge_base`, which reuses the same retrieval logic as Ask mode. Your goal is to analyze agent trajectories, deliberately trigger a ReAct loop, and use MLflow to measure span repetition and token-bloat behavior.

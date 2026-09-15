@@ -5,6 +5,7 @@ Facilitator reference: [Instructor Facilitation Rubric](Exercise-Instructor-Faci
 ## Prerequisites
 1. Exercise 2 completed with your 9-test regression suite in your Codespace.
 2. Regression test results from your Exercise 2 in `regression_test_results/`.
+3. Flask and MLflow (http://localhost:5001) are running so traces can be cross-referenced.
 
 ## Scenario
 Your team added 2 new tests to the golden test suite during Exercise 2. Now audit all 9 of your test results and find evaluation issues. The framework uses weighted thresholds (semantic similarity 40%, keyword match 25%, etc.) that might be too strict or too loose. You'll find one false positive and one false negative, then propose a metric improvement.
