@@ -20,7 +20,12 @@ fi
 python -m pip install -r requirements.txt
 
 echo "Installing Playwright Chromium browser for Exercise 2 UI tests..."
-python -m playwright install chromium
+python -m playwright install --with-deps chromium
+
+echo "Verifying pytest and Playwright are importable..."
+python -c "import pytest, playwright" >/dev/null 2>&1 || {
+  echo "Warning: pytest/playwright import check failed. Retry with: python -m pip install -r requirements.txt"
+}
 
 echo "Verifying MLflow installation..."
 python -c "import mlflow" >/dev/null 2>&1 || {
