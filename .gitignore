@@ -105,7 +105,6 @@ Untitled*.ipynb
 
 # 🔧 DEVELOPMENT TOOLS
 # IDE and editor files
-.vscode/settings.json
 .vscode/launch.json
 .vscode/.ropeproject
 .idea/
