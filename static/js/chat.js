@@ -307,7 +307,7 @@ class ChatApp {
     
     updateCharacterCount() {
         const count = this.messageInput.value.length;
-        const maxLength = 1000;
+        const maxLength = 2000;
         
         this.characterCount.textContent = `${count}/${maxLength}`;
         

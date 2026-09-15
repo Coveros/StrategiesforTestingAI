@@ -1,0 +1,276 @@
+{
+  "suite": "exercise2_ui_golden",
+  "generated_at": "2026-09-15T15:23:10.069938+00:00",
+  "exit_status": 0,
+  "base_url": "http://127.0.0.1:5000",
+  "cases": [
+    {
+      "test_name": "chat_controls",
+      "prompt": "page load",
+      "recorded_at": "2026-09-15T15:22:52.932002+00:00",
+      "observations": {
+        "controls_visible": true
+      }
+    },
+    {
+      "test_name": "happy_path",
+      "prompt": "What are the key challenges in testing GenAI applications?",
+      "recorded_at": "2026-09-15T15:22:57.843051+00:00",
+      "observations": {},
+      "response": {
+        "status": "success",
+        "mode": "rag",
+        "exercise_number": 2,
+        "session_id": "session-1789485773467",
+        "response": "- **Key challenges in testing GenAI applications:**\n  1. **Probabilistic nature**: GenAI systems produce different valid outputs for the same input.\n  2. **Output quality and semantic correctness**: Testing must focus on output quality, semantic correctness, and behavioral patterns.\n  3. **Performance, safety, and robustness**: Regular evaluation is necessary to ensure the system handles edge cases, errors, and adversarial inputs.\n- **Critical aspects to test:**\n  1. **Accuracy and relevance**\n  2. **Safety and appropriateness**\n  3. **Performance**\n  4. **Robustness**\n  5. **Safety incidents**\n- **Production testing schedule:**\n  1. **Daily**: Automated quality metrics and performance monitoring\n  2. **Weekly**: Sample-based human evaluation of recent interactions\n  3. **Monthly**: Comprehensive evaluation across all test scenarios\n  4. **Quarterly**: Full bias audit and adversarial testing refresh\n  5. **Ad-hoc**: After any system changes or when issues are reported\n- **Monitoring and production metrics:**\n  1. **Quality drift**\n  2. **Performance trends**\n  3. **User satisfaction**\n  4. **Cost tracking**\n  5. **Safety incidents**\n- **Common mistakes to avoid:**\n  1. **Over-relying on exact string matching**\n  2. **Insufficient edge case testing**\n  3. **Ignoring prompt sensitivity**\n  4. **Inadequate production monitoring**\n  5. **Not testing with real user data**",
+        "sources": [
+          {
+            "content": "# Frequently Asked Questions: Testing GenAI Applications\n\n## General Testing Questions\n\n### Q: How is testing GenAI different from traditional software testing?\n**A:** Traditional software testing focuses on deterministic behavior - given the same input, you expect the same output....",
+            "metadata": {
+              "chunk_id": 0,
+              "source": "faq_genai_testing.md"
+            },
+            "similarity": 78.8
+          },
+          {
+            "content": "production GenAI system?\n**A:** Regular evaluation schedule:\n- **Daily**: Automated quality metrics and performance monitoring\n- **Weekly**: Sample-based human evaluation of recent interactions\n- **Monthly**: Comprehensive evaluation across all test scenarios\n- **Quarterly**: Full bias audit and...",
+            "metadata": {
+              "chunk_id": 3,
+              "source": "faq_genai_testing.md"
+            },
+            "similarity": 63.5
+          },
+          {
+            "content": "Establish Baseline Performance\nCreate a comprehensive test suite that establishes baseline performance across all key metrics before making changes.\n\n### 2. Continuous Monitoring\nImplement monitoring in production to detect performance degradation, bias drift, and emerging failure modes.\n\n### 3....",
+            "metadata": {
+              "chunk_id": 2,
+              "source": "genai_testing_guide.md"
+            },
+            "similarity": 60.1
+          }
+        ],
+        "response_time": 4.003,
+        "retrieval_time": 0.029274940490722656,
+        "generation_time": 3.973419189453125,
+        "total_time": 4.002694129943848,
+        "error": null
+      }
+    },
+    {
+      "test_name": "hallucination_topic",
+      "prompt": "How should I test hallucinations in a GenAI application?",
+      "recorded_at": "2026-09-15T15:23:00.613427+00:00",
+      "observations": {},
+      "response": {
+        "status": "success",
+        "mode": "rag",
+        "exercise_number": 2,
+        "session_id": "session-1789485778355",
+        "response": "- One-sentence summary: To test hallucinations in a GenAI application, use semantic similarity metrics, test output patterns and structures, implement statistical testing, and set acceptable ranges for variability.\n- 3 to 5 bullet points:\n  \u2022 Use semantic similarity metrics instead of exact string matching\n  \u2022 Test output patterns and structures rather than exact content\n  \u2022 Implement statistical testing across multiple runs\n  \u2022 Set acceptable ranges for variability\n- Maximum 140 words total: Testing hallucinations in a GenAI application requires a unique approach. Use semantic similarity metrics to detect factually incorrect information, test output patterns and structures, implement statistical testing, and set acceptable ranges for variability. Regularly evaluate the system's performance, safety, and robustness, and monitor for quality drift and bias.",
+        "sources": [
+          {
+            "content": "# Testing Generative AI Applications: A Comprehensive Guide\n\n## Introduction\n\nTesting generative AI applications presents unique challenges that differ significantly from traditional software testing. Unlike deterministic systems that produce predictable outputs, GenAI systems are probabilistic and...",
+            "metadata": {
+              "chunk_id": 0,
+              "source": "genai_testing_guide.md"
+            },
+            "similarity": 55.6
+          },
+          {
+            "content": "# Frequently Asked Questions: Testing GenAI Applications\n\n## General Testing Questions\n\n### Q: How is testing GenAI different from traditional software testing?\n**A:** Traditional software testing focuses on deterministic behavior - given the same input, you expect the same output....",
+            "metadata": {
+              "chunk_id": 0,
+              "source": "faq_genai_testing.md"
+            },
+            "similarity": 50.6
+          },
+          {
+            "content": "production GenAI system?\n**A:** Regular evaluation schedule:\n- **Daily**: Automated quality metrics and performance monitoring\n- **Weekly**: Sample-based human evaluation of recent interactions\n- **Monthly**: Comprehensive evaluation across all test scenarios\n- **Quarterly**: Full bias audit and...",
+            "metadata": {
+              "chunk_id": 3,
+              "source": "faq_genai_testing.md"
+            },
+            "similarity": 43.7
+          }
+        ],
+        "response_time": 1.806,
+        "retrieval_time": 0.03007984161376953,
+        "generation_time": 1.775782585144043,
+        "total_time": 1.8058624267578125,
+        "error": null
+      }
+    },
+    {
+      "test_name": "evidence_contract",
+      "prompt": "What metrics are useful for evaluating a RAG system?",
+      "recorded_at": "2026-09-15T15:23:03.003559+00:00",
+      "observations": {},
+      "response": {
+        "status": "success",
+        "mode": "rag",
+        "exercise_number": 2,
+        "session_id": "session-1789485781048",
+        "response": "- **Metrics for RAG System Evaluation**: \n  - Precision and Recall for retrieval quality\n  - MRR and NDCG for generation quality\n  - Hit Rate for detecting retrieval failures\n- **Evaluation Framework**: Comprehensive framework that considers multiple dimensions\n- **Key Evaluation Metrics**: Precision, Recall, MRR, NDCG, Hit Rate\n- **Performance Metrics**: Response latency, Throughput, Token efficiency, Memory usage, API call patterns\n- **Testing Strategies**: Gradual load increase, Realistic query distribution, API dependency simulation, Resource monitoring, Cost tracking\n- **Quality and Safety**: Focus on detecting retrieval failures, ensuring generation quality, and measuring context utilization",
+        "sources": [
+          {
+            "content": "dentify content from retrieved documents in response\n- Measure coverage and integration quality\n- Assess balance with parametric knowledge\n\nThis comprehensive evaluation framework ensures robust assessment of RAG system performance across all critical dimensions.",
+            "metadata": {
+              "chunk_id": 4,
+              "source": "evaluation_metrics.md"
+            },
+            "similarity": 65.7
+          },
+          {
+            "content": "# Evaluation Metrics for RAG Systems\n\n## Introduction\n\nEvaluating Retrieval-Augmented Generation (RAG) systems requires a multi-faceted approach that considers both retrieval quality and generation quality. Unlike traditional machine learning models with clear accuracy metrics, RAG systems need...",
+            "metadata": {
+              "chunk_id": 0,
+              "source": "evaluation_metrics.md"
+            },
+            "similarity": 45.2
+          },
+          {
+            "content": "base issues**: Outdated, incorrect, or poorly formatted source documents\n- **Chunking problems**: Information split across chunks in ways that lose meaning\n\n### Q: How do you test retrieval quality in RAG systems?...",
+            "metadata": {
+              "chunk_id": 1,
+              "source": "faq_genai_testing.md"
+            },
+            "similarity": 43.4
+          }
+        ],
+        "response_time": 1.567,
+        "retrieval_time": 0.024827957153320312,
+        "generation_time": 1.5413637161254883,
+        "total_time": 1.5661916732788086,
+        "error": null
+      }
+    },
+    {
+      "test_name": "empty_input",
+      "prompt": "",
+      "recorded_at": "2026-09-15T15:23:03.762943+00:00",
+      "observations": {
+        "submitted": false
+      }
+    },
+    {
+      "test_name": "oversized_input",
+      "prompt": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "recorded_at": "2026-09-15T15:23:04.678456+00:00",
+      "observations": {},
+      "response": {
+        "status": "error",
+        "mode": null,
+        "exercise_number": null,
+        "session_id": null,
+        "response": "",
+        "sources": [],
+        "response_time": null,
+        "retrieval_time": null,
+        "generation_time": null,
+        "total_time": null,
+        "error": "Message exceeds limit of 2000 characters"
+      }
+    },
+    {
+      "test_name": "repeatability",
+      "prompt": "What is regression testing for GenAI? / Explain regression testing for generative AI.",
+      "recorded_at": "2026-09-15T15:23:09.772079+00:00",
+      "observations": {
+        "first": {
+          "exercise_number": 2,
+          "generation_metrics": {
+            "completion_tokens": 135,
+            "prompt_tokens": 1000,
+            "provider_eval_duration_ns": 1560579000,
+            "provider_load_duration_ns": 10796000,
+            "provider_prompt_eval_duration_ns": 32314000,
+            "provider_total_duration_ns": 1661939300,
+            "total_tokens": 1135
+          },
+          "generation_time": 1.6908259391784668,
+          "mode": "rag",
+          "response": "- One-sentence summary: Regression testing for GenAI involves evaluating the system's output quality, semantic correctness, and behavioral patterns to ensure it meets specific requirements.\n- 3 to 5 bullet points:\n  * Focus on output quality, semantic correctness, and behavioral patterns rather than exact matches.\n  * Regular evaluation schedule includes daily, weekly, monthly, and quarterly checks.\n  * Essential monitoring includes quality drift, performance trends, user satisfaction, cost tracking, and safety incidents.\n  * Strategies for handling non-deterministic nature of GenAI include statistical testing, tolerance ranges, semantic assertions, regression detection, and canary deployments.\n- Maximum 140 words total:",
+          "response_time": 1.726,
+          "retrieval_time": 0.0350039005279541,
+          "session_id": "session-1789485785180",
+          "sources": [
+            {
+              "content": "# Frequently Asked Questions: Testing GenAI Applications\n\n## General Testing Questions\n\n### Q: How is testing GenAI different from traditional software testing?\n**A:** Traditional software testing focuses on deterministic behavior - given the same input, you expect the same output....",
+              "metadata": {
+                "chunk_id": 0,
+                "source": "faq_genai_testing.md"
+              },
+              "similarity": 67.7
+            },
+            {
+              "content": "production GenAI system?\n**A:** Regular evaluation schedule:\n- **Daily**: Automated quality metrics and performance monitoring\n- **Weekly**: Sample-based human evaluation of recent interactions\n- **Monthly**: Comprehensive evaluation across all test scenarios\n- **Quarterly**: Full bias audit and...",
+              "metadata": {
+                "chunk_id": 3,
+                "source": "faq_genai_testing.md"
+              },
+              "similarity": 59.6
+            },
+            {
+              "content": "for bias in GenAI outputs?\n**A:** Systematic approaches:\n- **Demographic fairness**: Test responses across different demographic scenarios\n- **Stereotype detection**: Check for reinforcement of harmful stereotypes\n- **Representation analysis**: Ensure diverse perspectives in responses\n-...",
+              "metadata": {
+                "chunk_id": 2,
+                "source": "faq_genai_testing.md"
+              },
+              "similarity": 54.3
+            }
+          ],
+          "status": "success",
+          "temperature": 0.3,
+          "total_time": 1.725829839706421
+        },
+        "second": {
+          "exercise_number": 2,
+          "generation_metrics": {
+            "completion_tokens": 197,
+            "prompt_tokens": 926,
+            "provider_eval_duration_ns": 2085659999,
+            "provider_load_duration_ns": 13066300,
+            "provider_prompt_eval_duration_ns": 14265000,
+            "provider_total_duration_ns": 2176732300,
+            "total_tokens": 1123
+          },
+          "generation_time": 2.1886658668518066,
+          "mode": "rag",
+          "response": "- **Testing Strategies:** \n  - Use semantic similarity metrics instead of exact string matching\n  - Test output patterns and structures rather than exact content\n  - Implement statistical testing across multiple runs\n  - Set acceptable ranges for variability\n\n- **Detection Methods:**\n  - Fact-checking against known ground truth\n  - Source verification for RAG systems\n  - Confidence scoring and uncertainty quantification\n  - Cross-validation with multiple models or approaches\n\n- **Testing Approaches:**\n  - Systematic testing with diverse demographic scenarios\n  - Fairness metrics across different groups\n  - Red-teaming with adversarial inputs\n  - Regular bias audits and monitoring\n\n- **General Testing Questions:**\n  - How is testing GenAI different from traditional software testing?\n  - What are the most critical aspects to test in a GenAI application?\n  - What constitutes effective adversarial testing for GenAI?\n  - What automated metrics are most reliable for GenAI evaluation?",
+          "response_time": 2.22,
+          "retrieval_time": 0.03104424476623535,
+          "session_id": "session-1789485785180",
+          "sources": [
+            {
+              "content": "# Testing Generative AI Applications: A Comprehensive Guide\n\n## Introduction\n\nTesting generative AI applications presents unique challenges that differ significantly from traditional software testing. Unlike deterministic systems that produce predictable outputs, GenAI systems are probabilistic and...",
+              "metadata": {
+                "chunk_id": 0,
+                "source": "genai_testing_guide.md"
+              },
+              "similarity": 65.8
+            },
+            {
+              "content": "# Frequently Asked Questions: Testing GenAI Applications\n\n## General Testing Questions\n\n### Q: How is testing GenAI different from traditional software testing?\n**A:** Traditional software testing focuses on deterministic behavior - given the same input, you expect the same output....",
+              "metadata": {
+                "chunk_id": 0,
+                "source": "faq_genai_testing.md"
+              },
+              "similarity": 44.3
+            },
+            {
+              "content": "for bias in GenAI outputs?\n**A:** Systematic approaches:\n- **Demographic fairness**: Test responses across different demographic scenarios\n- **Stereotype detection**: Check for reinforcement of harmful stereotypes\n- **Representation analysis**: Ensure diverse perspectives in responses\n-...",
+              "metadata": {
+                "chunk_id": 2,
+                "source": "faq_genai_testing.md"
+              },
+              "similarity": 43.1
+            }
+          ],
+          "status": "success",
+          "temperature": 0.3,
+          "total_time": 2.219710111618042
+        }
+      }
+    }
+  ]
+}
