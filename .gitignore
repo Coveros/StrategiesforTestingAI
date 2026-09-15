@@ -157,6 +157,8 @@ models/
 checkpoints/
 wandb/
 mlruns/
+mlartifacts/
+mlflow_data/
 .mlflow/
 data/raw/
 data/processed/
