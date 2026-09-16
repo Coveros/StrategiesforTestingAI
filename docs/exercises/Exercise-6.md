@@ -3,13 +3,12 @@
 ## Overview
 
 **Team Exercise (30 minutes max)**
-- Pre-generated traces available in MLflow
 - Focus: Diagnose a bounded handoff and understand state mutation impact on multi-agent systems
 
 ## Prerequisites
 1. Flask app running: `python run.py`
 2. MLflow running on http://localhost:5001
-3. Pre-generated traces from `python generate_classroom_traces.py` (run by instructor offline)
+3. The demo chatbot is available at http://localhost:5000
 
 ## Team Exercise - Handoff Corruption Diagnosis (30 minutes)
 
@@ -25,15 +24,16 @@ As a team, diagnose how corrupted state between agents breaks retrieval quality.
 ### Activities (30 minutes total)
 
 #### Activity 1: Baseline Clean Handoff (10 minutes)
-1. **Run this query in the UI (ask or agent mode):**
+1. In the demo chatbot, select **Agent** mode and turn **Crew Mode ON**.
+2. **Run this query:**
    ```
    Compare two test strategies for a GenAI support bot and recommend one.
    ```
-2. **Capture baseline evidence:**
+3. **Capture baseline evidence:**
    - In the UI response, record: Steps taken, tools called, final recommendation
    - In MLflow, find this trace and click into the **Triage Agent → RAG Specialist handoff**
    - Compare: Is the original query intact when passed to RAG Specialist?
-3. **Fill baseline row in table** (see below)
+4. **Fill baseline row in table** (see below)
 
 #### Activity 2: Corrupted Handoff Detection (15 minutes)
 1. **Run this query with crew mode ON:**
@@ -46,10 +46,10 @@ As a team, diagnose how corrupted state between agents breaks retrieval quality.
    - Compare original query vs. what RAG Specialist received
 3. **Analyze side-by-side:**
    - Did the query text change between agents?
-   - How many extra steps resulted from the mutation?
-   - Where did the system loop or retry?
-   - Inspect `handoff.original_query`, `handoff.routed_query`, and `handoff.mutated` on the specialist span.
-   - Compare `trajectory_metrics.handoffs`, `trajectory_metrics.tool_calls`, and `trajectory_metrics.redundant_tool_calls`.
+   - Did the routed query preserve the year and other retrieval-relevant detail?
+   - Did the retrieved response remain relevant after the mutation?
+   - Inspect `handoff.original_query`, `handoff.routed_query`, `handoff.mutated`, and `handoff.integrity_status` on the specialist span.
+   - Compare `trajectory_metrics.handoffs`, `trajectory_metrics.tool_calls`, and `trajectory_metrics.poisoned_retrieval`.
 4. **Fill corrupted row in table** (see below)
 
 ### Results Table
@@ -62,7 +62,7 @@ As a team, diagnose how corrupted state between agents breaks retrieval quality.
 ### Team Debrief (5 minutes)
 
 1. **"What exactly was corrupted in the handoff?"** (Original query vs. mutated)
-2. **"What was the efficiency cost?"** (Extra steps due to retry loops)
+2. **"What did the corrupted routing change in the retrieved response?"** (Compare query detail and relevance)
 3. **"If you were designing this orchestrator, what guardrail would you add?"** (e.g., schema validation, checksums, explicit state contracts)
 
 ### Runtime boundary
@@ -70,7 +70,9 @@ As a team, diagnose how corrupted state between agents breaks retrieval quality.
 Crew mode is intentionally bounded: the default configuration allows four crew
 iterations and a 25-second execution budget. This exercise inspects one
 specialist handoff and its contract; it does not require an unbounded retry
-loop. Use the pre-generated traces when the live provider is slow.
+loop. If the live provider is unavailable, use
+`artifacts/precomputed/trace_samples/exercise6_trajectory_cases_20260416_190513.json`
+as a fallback, but prioritize the live trace for the current handoff fields.
 
 ### Optional: Control Test (Extra)
 If time permits, run the same corrupted query with **crew mode OFF** (single-agent).
@@ -79,4 +81,14 @@ If time permits, run the same corrupted query with **crew mode OFF** (single-age
 - Insight: Is corruption a handoff problem or an LLM problem?
 
 ## Evidence to capture
+
+For both runs, record:
+
+- the UI response, trajectory steps, and tools called
+- the `Triage Agent` root span and the `RAG Specialist` span
+- `handoff.original_query` and `handoff.routed_query`
+- `handoff.mutated` and `handoff.integrity_status`
+- retrieved output and final response relevance
+- `trajectory_metrics.handoffs`, `trajectory_metrics.tool_calls`, and
+   `trajectory_metrics.poisoned_retrieval`
 
