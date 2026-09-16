@@ -88,6 +88,38 @@ def preflight_ollama(ollama_host: str, ollama_model: str):
         print("   - Next step: ensure Ollama is running and OLLAMA_HOST is correct")
 
 
+def classroom_preflight():
+    """Warm the Ask and single-agent paths before a classroom session starts."""
+    enabled = os.getenv("CLASSROOM_PREWARM_ENABLED", "false").lower() in {
+        "1", "true", "yes", "on"
+    }
+    if not enabled:
+        return
+
+    prompt = "What are the key challenges in testing GenAI applications?"
+    print("Preparing Ask and Agent modes for the classroom session...")
+
+    try:
+        from app.main import agentic_pipeline, initialize_rag
+
+        if initialize_rag():
+            print("Ask mode is ready.")
+        else:
+            print("Ask mode preflight did not complete; it will retry on the first request.")
+
+        agentic_pipeline.process(
+            prompt,
+            session_id="classroom-startup-prewarm",
+            include_trace=False,
+            crew_mode=False,
+            exercise_number=None,
+        )
+        print("Agent mode is ready.")
+    except Exception as exc:
+        print(f"Classroom preflight warning: {exc}")
+        print("The app will remain available and retry initialization on demand.")
+
+
 if __name__ == '__main__':
     maybe_relaunch_with_project_venv()
 
@@ -140,6 +172,7 @@ if __name__ == '__main__':
     ollama_host = os.getenv('OLLAMA_HOST', 'http://127.0.0.1:11434')
 
     preflight_ollama(ollama_host, ollama_model)
+    classroom_preflight()
 
     print("🚀 Starting GenAI Testing Tutorial Application...")
     print(f"📚 Documents directory: {os.path.join(os.path.dirname(__file__), 'data', 'documents')}")

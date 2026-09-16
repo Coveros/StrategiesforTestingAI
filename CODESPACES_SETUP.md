@@ -27,7 +27,10 @@ python run.py
 
 Then visit **http://localhost:5000** to access the exercises.
 
-That's it. Ollama and the model start automatically in the background.
+That's it. Ollama and the model start automatically in the background. Before
+the server is announced ready, the classroom setup runs one standard Ask flow
+and one standard Agent flow. This loads the embedding model, ChromaDB, and
+Ollama paths once so students do not pay that delay during the first exercise.
 
 ### 3. Verify Ollama is Ready (Optional)
 ```bash
