@@ -1,11 +1,9 @@
 # Exercise 1: Exploratory Testing for a GenAI Testing Assistant
 
 ## Prerequisites
-1. A short architecture overview (frontend -> Flask API -> RAG pipeline -> LLM).
-2. A demonstration of Visual Studio Code has been completed.
-3. A running GenAI testing assistant in your Codespace at [http://localhost:5000](http://localhost:5000).
-4. A demo of the GenAI Testing Assistant's capabilities and intended use cases has been completed.
-5. (Optional) MLflow running at [http://localhost:5001](http://localhost:5001) for trace inspection. Not required for this exercise — the app detects an unreachable MLflow server and continues without tracing.
+1. A short overview of the GenAI demo architecture has been given
+2. A walkthrough of the Visual Studio Code IDE has been completed
+3. A demo of the GenAI Testing Assistant's capabilities and intended use cases has been completed.
 
 ## Scenario
 You are performing an initial exploratory testing session on a new GenAI testing assistant. Your mission is to expose the limits of traditional black-box testing on probabilistic models. Use your team's exploratory prompts and evaluation criteria, and remember that the assistant's output may be variable and not always perfectly reliable.

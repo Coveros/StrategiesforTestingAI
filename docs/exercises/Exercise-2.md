@@ -2,10 +2,8 @@
 
 ## Prerequisites
 1. Exercise 1 completed.
-2. The Codespace dependencies installed with `pip install -r requirements.txt`.
-3. Chromium installed with `python -m playwright install chromium`.
-4. Flask running with `python run.py`.
-5. MLflow running on http://localhost:5001 to inspect traces.
+2. Review of Golden UI Test Suite
+3. Demonstration of GitHub Copilot features
 
 ## Scenario
 
@@ -16,23 +14,18 @@ implementation.
 
 The suite deliberately validates stable behavior rather than exact generated
 prose. A good generative-AI UI test checks the response contract, grounding
-evidence, useful topic coverage, and bounded failure behavior.
+evidence, useful topic coverage, and bounded failure behavior. Note that since codespaces does not support virtual screens well, we are running these tests in a headless mode so you will not see tests executing in the browser UI.
 
 ## Run the seven starter tests
 
-1. Start the application:
-   ```bash
-   python run.py
-   ```
-2. In VS Code, open the **Testing** beaker and refresh the test tree.
-3. Expand `tests/e2e/test_exercise2_ui.py`.
-4. Run the file, or run individual tests while investigating a failure.
+1. In VS Code, open the **Testing** beaker and run the existing UI test suite
+2. Use GitHub Copilot to add a new test to `tests/e2e/test_exercise2_ui.py`
+3. Rerun the test suite to ensure the new test is included and passes.
+4. It the test fails, ask GitHub Copilot to fit it
 
-You can also run the suite from the terminal:
+You can also run the suite from the terminal in VS Code using this command:
 
-```bash
 python -m pytest tests/e2e/test_exercise2_ui.py -v
-```
 
 The starter cases cover:
 
@@ -61,9 +54,7 @@ check evidence that should remain stable across reasonable model variation:
 
 The browser performs the interaction through the UI. The matching `/api/chat`
 response is also inspected so the test can validate structured evidence that is
-not visible in the chat bubble. The session and exercise values in that payload
-can be used to find the corresponding `rag.query`, `rag.retrieve`, and
-`rag.generate` spans in MLflow.
+not visible in the chat bubble.
 
 ## Extend the suite with Copilot
 
@@ -79,24 +70,21 @@ After Copilot adds a test:
 
 1. Read the assertions and confirm they test observable behavior.
 2. Run the new test from the Testing beaker.
-3. Inspect its matching MLflow trace.
-4. Record the prompt, result, evidence fields, and whether the failure is a
-   product defect, test defect, or expected model variation.
+3. Record the prompt, result, evidence fields, and whether the failure is a product defect, test defect, or expected model variation.
 
 ## Results table
 
-| Case | Prompt or behavior | Pass/fail | Response evidence | MLflow evidence | Interpretation |
-|---|---|---|---|---|---|
-| Starter 1 |  |  |  |  |  |
-| Starter 2 |  |  |  |  |  |
-| Starter 3 |  |  |  |  |  |
-| Added test 1 |  |  |  |  |  |
-| Added test 2 |  |  |  |  |  |
+| Case | Prompt or behavior | Pass/fail | Response evidence | Interpretation |
+|---|---|---|---|---|
+| Starter 1 |  |  |  |  |
+| Starter 2 |  |  |  |  |
+| Starter 3 |  |  |  |  |
+| Added test 1 |  |  |  |  |
+| Added test 2 |  |  |  |  |
 
 ## Team debrief
 
 1. Which assertion was most stable across model wording changes?
 2. Which assertion gave the strongest evidence that the answer was grounded?
 3. Which exploratory test should become part of the golden suite next?
-4. What should be validated in the UI, and what is better validated from the
-   API payload or MLflow trace?
+4. What should be validated in the UI?
