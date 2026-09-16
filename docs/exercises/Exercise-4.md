@@ -35,8 +35,7 @@ their assigned query once in **Ask** mode and analyzes its matching trace.
 
 For your assigned case:
 
-1. Open the UI at `http://localhost:5000/?exercise=4` and confirm **Ask** mode
-   is selected.
+1. Confirm **Ask** mode is selected in the demo chatbot interface.
 2. Submit your assigned query. Record these UI/API evidence fields:
    - `response`
    - top 3 `sources[*].metadata.source`
