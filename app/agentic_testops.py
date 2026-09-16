@@ -586,7 +586,28 @@ class TestOpsAgent:
                 "input.mime_type": "text/plain",
             },
         ) as agent_span:
-            if runtime["kind"] == "classic":
+            if force_loop_bug:
+                observations = []
+                for _ in range(3):
+                    observation = query_knowledge_base.invoke({"query": message})
+                    observations.append(str(observation))
+                    trace.append(
+                        {
+                            "phase": "action",
+                            "content": f"tool=query_knowledge_base input={message}",
+                        }
+                    )
+                    trace.append(
+                        {
+                            "phase": "observation",
+                            "content": str(observation)[:280],
+                        }
+                    )
+                output = (
+                    "The agent repeated the same knowledge-base lookup three times "
+                    "without changing the query."
+                )
+            elif runtime["kind"] == "classic":
                 AgentExecutor = runtime["AgentExecutor"]
                 create_react_agent = runtime["create_react_agent"]
                 agent = create_react_agent(llm, tools, prompt)
