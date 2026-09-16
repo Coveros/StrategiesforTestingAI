@@ -1,0 +1,30 @@
+Section 7 NFR Quick-Run Summary
+====================================
+Timestamp: 2026-09-16T13:15:52.078254
+Session ID: section7-20260916_131507
+Include Trace: True
+Cases Passed: 3 / 9
+Pass Rate: 0.333
+Avg Response Time: 1.28s
+Worst Response Time: 6.84s
+
+Core Checks
+------------------------------------
+Passed: 3 / 6 (0.5)
+Avg Response Time: 1.919s | Worst: 6.84s
+
+ask_baseline: PASS | mode=rag degraded=False poisoned=False steps=0 tools=0 handoffs=0 loop_tax=0.0
+single_agent_baseline: FAIL | mode=agentic degraded=False poisoned=False steps=0 tools=0 handoffs=0 loop_tax=0.0
+ask_long_input: PASS | mode=rag degraded=False poisoned=False steps=0 tools=0 handoffs=0 loop_tax=0.0
+single_gibberish: FAIL | mode=agentic degraded=False poisoned=False steps=0 tools=0 handoffs=0 loop_tax=0.0
+ask_gibberish: PASS | mode=rag degraded=False poisoned=False steps=0 tools=0 handoffs=0 loop_tax=0.0
+single_loop: FAIL | mode=agentic degraded=False poisoned=False steps=0 tools=0 handoffs=0 loop_tax=0.0
+
+Crew Add-On Checks
+------------------------------------
+Passed: 0 / 3 (0.0)
+Avg Response Time: 0.001s | Worst: 0.001s
+
+crew_baseline: FAIL | mode=crew degraded=False poisoned=False steps=0 tools=0 handoffs=0 loop_tax=0.0
+crew_gibberish: FAIL | mode=crew degraded=False poisoned=False steps=0 tools=0 handoffs=0 loop_tax=0.0
+crew_handoff_corruption: FAIL | mode=crew degraded=False poisoned=False steps=0 tools=0 handoffs=0 loop_tax=0.0

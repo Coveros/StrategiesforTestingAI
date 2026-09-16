@@ -50,6 +50,9 @@ class _LocalExerciseClient:
         include_trace = bool(data.get("include_trace", False))
         crew_mode = bool(data.get("crew_mode", False))
         session_id = str(data.get("session_id") or uuid.uuid4())
+        exercise_number = data.get("exercise_number")
+        if not isinstance(exercise_number, int):
+            exercise_number = None
 
         start = time.time()
         payload = self._agent.process(
@@ -57,6 +60,7 @@ class _LocalExerciseClient:
             session_id=session_id,
             include_trace=include_trace,
             crew_mode=crew_mode,
+            exercise_number=exercise_number,
         )
         payload["response_time"] = round(time.time() - start, 3)
         payload["status"] = "success"

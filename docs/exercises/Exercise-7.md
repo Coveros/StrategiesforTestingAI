@@ -1,10 +1,8 @@
 # Exercise 7: Validate NFR Evidence in MLflow
 
 ## Prerequisites
-1. Exercise 6 completed, or the instructor-provided traces are available.
-2. Flask and MLflow are running in the Codespace.
-3. The application has handled at least one Ask, single-agent, and crew request.
-4. Optional automation is available with `python section7_nfr_quickrun.py`.
+1. Exercise 6 completed
+2. The application has handled at least one Ask, single-agent, and crew request.
 
 ## Goal
 

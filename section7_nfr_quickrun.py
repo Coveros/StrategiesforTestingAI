@@ -179,6 +179,7 @@ def run_suite(session_id: str, include_trace: bool) -> Dict[str, Any]:
             "include_trace": include_trace,
             "crew_mode": case["crew_mode"],
             "session_id": f"{session_id}-{case['id']}",
+            "exercise_number": 7,
         }
 
         response = client.post("/api/chat", json=request_payload)
@@ -196,6 +197,10 @@ def run_suite(session_id: str, include_trace: bool) -> Dict[str, Any]:
                 "evaluation": eval_row,
                 "raw": {
                     "response_time": _safe_get(payload, "response_time"),
+                    "retrieval_time": _safe_get(payload, "retrieval_time"),
+                    "generation_time": _safe_get(payload, "generation_time"),
+                    "total_time": _safe_get(payload, "total_time"),
+                    "generation_metrics": _safe_get(payload, "generation_metrics", {}),
                     "trajectory_metrics": _safe_get(payload, "trajectory_metrics", {}),
                     "handoffs": _safe_get(payload, "handoffs", []),
                     "mlflow_trace_enabled": _safe_get(payload, "mlflow_trace_enabled", False),

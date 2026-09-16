@@ -1,0 +1,323 @@
+{
+  "run_meta": {
+    "timestamp": "2026-09-16T13:17:54.998007",
+    "transport": "flask",
+    "session_id": "section7-20260916_131659",
+    "include_trace": true,
+    "total_cases": 9,
+    "passed_cases": 3,
+    "pass_rate": 0.333,
+    "avg_response_time": 0.945,
+    "worst_response_time": 4.012,
+    "core_checks": {
+      "total_cases": 6,
+      "passed_cases": 3,
+      "pass_rate": 0.5,
+      "avg_response_time": 1.418,
+      "worst_response_time": 4.012
+    },
+    "crew_addon_checks": {
+      "total_cases": 3,
+      "passed_cases": 0,
+      "pass_rate": 0.0,
+      "avg_response_time": 0.001,
+      "worst_response_time": 0.002
+    }
+  },
+  "results": [
+    {
+      "id": "ask_baseline",
+      "category": "core",
+      "mode": "rag",
+      "crew_mode": false,
+      "prompt": "What are the key challenges in testing GenAI applications?",
+      "expect": "handled",
+      "evaluation": {
+        "passed": true,
+        "status_code": 200,
+        "degraded_mode": false,
+        "poisoned_retrieval": false,
+        "steps": 0,
+        "tool_calls": 0,
+        "redundant_tool_calls": 0,
+        "handoff_count": 0,
+        "loop_tax": 0.0,
+        "response_preview": "- **Key Challenges in Testing GenAI Applications:**\n  - Testing must focus on output quality, semantic correctness, and behavioral patterns rather than exact ma"
+      },
+      "raw": {
+        "response_time": 4.012,
+        "retrieval_time": 0.014050960540771484,
+        "generation_time": 1.8773398399353027,
+        "total_time": 1.8913908004760742,
+        "generation_metrics": {
+          "completion_tokens": 192,
+          "prompt_tokens": 1063,
+          "provider_eval_duration_ns": 1820272000,
+          "provider_load_duration_ns": 11706700,
+          "provider_prompt_eval_duration_ns": 12094000,
+          "provider_total_duration_ns": 1870278500,
+          "total_tokens": 1255
+        },
+        "trajectory_metrics": {},
+        "handoffs": [],
+        "mlflow_trace_enabled": false
+      }
+    },
+    {
+      "id": "single_agent_baseline",
+      "category": "core",
+      "mode": "agentic",
+      "crew_mode": false,
+      "prompt": "What are the key challenges in testing GenAI applications?",
+      "expect": "handled",
+      "evaluation": {
+        "passed": false,
+        "status_code": 500,
+        "degraded_mode": false,
+        "poisoned_retrieval": false,
+        "steps": 0,
+        "tool_calls": 0,
+        "redundant_tool_calls": 0,
+        "handoff_count": 0,
+        "loop_tax": 0.0,
+        "response_preview": ""
+      },
+      "raw": {
+        "response_time": 0.001,
+        "retrieval_time": null,
+        "generation_time": null,
+        "total_time": null,
+        "generation_metrics": {},
+        "trajectory_metrics": {},
+        "handoffs": [],
+        "mlflow_trace_enabled": false
+      }
+    },
+    {
+      "id": "crew_baseline",
+      "category": "crew-addon",
+      "mode": "agentic",
+      "crew_mode": true,
+      "prompt": "What are the key challenges in testing GenAI applications?",
+      "expect": "handled_with_handoffs",
+      "evaluation": {
+        "passed": false,
+        "status_code": 500,
+        "degraded_mode": false,
+        "poisoned_retrieval": false,
+        "steps": 0,
+        "tool_calls": 0,
+        "redundant_tool_calls": 0,
+        "handoff_count": 0,
+        "loop_tax": 0.0,
+        "response_preview": ""
+      },
+      "raw": {
+        "response_time": 0.001,
+        "retrieval_time": null,
+        "generation_time": null,
+        "total_time": null,
+        "generation_metrics": {},
+        "trajectory_metrics": {},
+        "handoffs": [],
+        "mlflow_trace_enabled": false
+      }
+    },
+    {
+      "id": "ask_long_input",
+      "category": "core",
+      "mode": "rag",
+      "crew_mode": false,
+      "prompt": "Summarize the main reliability and testing risks for a GenAI support assistant in 5 bullets. Focus on hallucinations, retrieval quality, safety, latency, and evaluation drift. Summarize the main reliability and testing risks for a GenAI support assistant in 5 bullets. Focus on hallucinations, retrieval quality, safety, latency, and evaluation drift. Summarize the main reliability and testing risks for a GenAI support assistant in 5 bullets. Focus on hallucinations, retrieval quality, safety, latency, and evaluation drift. Summarize the main reliability and testing risks for a GenAI support assistant in 5 bullets. Focus on hallucinations, retrieval quality, safety, latency, and evaluation drift. Summarize the main reliability and testing risks for a GenAI support assistant in 5 bullets. Focus on hallucinations, retrieval quality, safety, latency, and evaluation drift. Summarize the main reliability and testing risks for a GenAI support assistant in 5 bullets. Focus on hallucinations, retrieval quality, safety, latency, and evaluation drift. Summarize the main reliability and testing risks for a GenAI support assistant in 5 bullets. Focus on hallucinations, retrieval quality, safety, latency, and evaluation drift. Summarize the main reliability and testing risks for a GenAI support assistant in 5 bullets. Focus on hallucinations, retrieval quality, safety, latency, and evaluation drift.",
+      "expect": "handled",
+      "evaluation": {
+        "passed": true,
+        "status_code": 200,
+        "degraded_mode": false,
+        "poisoned_retrieval": false,
+        "steps": 0,
+        "tool_calls": 0,
+        "redundant_tool_calls": 0,
+        "handoff_count": 0,
+        "loop_tax": 0.0,
+        "response_preview": "- **Main reliability and testing risks for a GenAI support assistant:**\n  \u2022 Hallucinations: GenAI may produce responses that are not based on the input, but rat"
+      },
+      "raw": {
+        "response_time": 2.698,
+        "retrieval_time": 0.04452347755432129,
+        "generation_time": 2.652480363845825,
+        "total_time": 2.6970038414001465,
+        "generation_metrics": {
+          "completion_tokens": 269,
+          "prompt_tokens": 1376,
+          "provider_eval_duration_ns": 2575016000,
+          "provider_load_duration_ns": 11435700,
+          "provider_prompt_eval_duration_ns": 11572000,
+          "provider_total_duration_ns": 2644205300,
+          "total_tokens": 1645
+        },
+        "trajectory_metrics": {},
+        "handoffs": [],
+        "mlflow_trace_enabled": false
+      }
+    },
+    {
+      "id": "single_gibberish",
+      "category": "core",
+      "mode": "agentic",
+      "crew_mode": false,
+      "prompt": "xqz@@##123###?? en espanol ??? ###",
+      "expect": "handled",
+      "evaluation": {
+        "passed": false,
+        "status_code": 500,
+        "degraded_mode": false,
+        "poisoned_retrieval": false,
+        "steps": 0,
+        "tool_calls": 0,
+        "redundant_tool_calls": 0,
+        "handoff_count": 0,
+        "loop_tax": 0.0,
+        "response_preview": ""
+      },
+      "raw": {
+        "response_time": 0.001,
+        "retrieval_time": null,
+        "generation_time": null,
+        "total_time": null,
+        "generation_metrics": {},
+        "trajectory_metrics": {},
+        "handoffs": [],
+        "mlflow_trace_enabled": false
+      }
+    },
+    {
+      "id": "ask_gibberish",
+      "category": "core",
+      "mode": "rag",
+      "crew_mode": false,
+      "prompt": "xqz@@##123###?? en espanol ??? ###",
+      "expect": "handled",
+      "evaluation": {
+        "passed": true,
+        "status_code": 200,
+        "degraded_mode": false,
+        "poisoned_retrieval": false,
+        "steps": 0,
+        "tool_calls": 0,
+        "redundant_tool_calls": 0,
+        "handoff_count": 0,
+        "loop_tax": 0.0,
+        "response_preview": "- **Summary:** The provided context discusses the importance of ensuring the safety and reliability of General AI (GenAI) systems, including measures for output"
+      },
+      "raw": {
+        "response_time": 1.793,
+        "retrieval_time": 0.015005350112915039,
+        "generation_time": 1.7777206897735596,
+        "total_time": 1.7927260398864746,
+        "generation_metrics": {
+          "completion_tokens": 181,
+          "prompt_tokens": 730,
+          "provider_eval_duration_ns": 1704868000,
+          "provider_load_duration_ns": 12123500,
+          "provider_prompt_eval_duration_ns": 11298000,
+          "provider_total_duration_ns": 1769141000,
+          "total_tokens": 911
+        },
+        "trajectory_metrics": {},
+        "handoffs": [],
+        "mlflow_trace_enabled": false
+      }
+    },
+    {
+      "id": "crew_gibberish",
+      "category": "crew-addon",
+      "mode": "agentic",
+      "crew_mode": true,
+      "prompt": "xqz@@##123###?? en espanol ??? ###",
+      "expect": "handled",
+      "evaluation": {
+        "passed": false,
+        "status_code": 500,
+        "degraded_mode": false,
+        "poisoned_retrieval": false,
+        "steps": 0,
+        "tool_calls": 0,
+        "redundant_tool_calls": 0,
+        "handoff_count": 0,
+        "loop_tax": 0.0,
+        "response_preview": ""
+      },
+      "raw": {
+        "response_time": 0.002,
+        "retrieval_time": null,
+        "generation_time": null,
+        "total_time": null,
+        "generation_metrics": {},
+        "trajectory_metrics": {},
+        "handoffs": [],
+        "mlflow_trace_enabled": false
+      }
+    },
+    {
+      "id": "single_loop",
+      "category": "core",
+      "mode": "agentic",
+      "crew_mode": false,
+      "prompt": "simulate react loop for trajectory hacking",
+      "expect": "loop_detected",
+      "evaluation": {
+        "passed": false,
+        "status_code": 500,
+        "degraded_mode": false,
+        "poisoned_retrieval": false,
+        "steps": 0,
+        "tool_calls": 0,
+        "redundant_tool_calls": 0,
+        "handoff_count": 0,
+        "loop_tax": 0.0,
+        "response_preview": ""
+      },
+      "raw": {
+        "response_time": 0.001,
+        "retrieval_time": null,
+        "generation_time": null,
+        "total_time": null,
+        "generation_metrics": {},
+        "trajectory_metrics": {},
+        "handoffs": [],
+        "mlflow_trace_enabled": false
+      }
+    },
+    {
+      "id": "crew_handoff_corruption",
+      "category": "crew-addon",
+      "mode": "agentic",
+      "crew_mode": true,
+      "prompt": "simulate handoff corruption for retrieval query about 2024 regression failures",
+      "expect": "handoff_corruption",
+      "evaluation": {
+        "passed": false,
+        "status_code": 500,
+        "degraded_mode": false,
+        "poisoned_retrieval": false,
+        "steps": 0,
+        "tool_calls": 0,
+        "redundant_tool_calls": 0,
+        "handoff_count": 0,
+        "loop_tax": 0.0,
+        "response_preview": ""
+      },
+      "raw": {
+        "response_time": 0.0,
+        "retrieval_time": null,
+        "generation_time": null,
+        "total_time": null,
+        "generation_metrics": {},
+        "trajectory_metrics": {},
+        "handoffs": [],
+        "mlflow_trace_enabled": false
+      }
+    }
+  ]
+}
