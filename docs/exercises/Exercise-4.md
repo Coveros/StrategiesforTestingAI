@@ -2,8 +2,8 @@
 
 ## Prerequisites
 1. Exercise 3 completed.
-2. The GenAI testing assistant is running at [http://localhost:5000](http://localhost:5000).
-3. MLflow is running at [http://localhost:5001](http://localhost:5001).
+2. The MLflow tracking server is running at [http://localhost:5001](http://localhost:5001).
+3. MLflow demo has been completed.
 
 ## Scenario
 
