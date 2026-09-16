@@ -2,7 +2,8 @@
 
 ## Prerequisites
 1. Exercise 4 completed.
-2. The MLflow tracking server is running at [http://localhost:5001](http://localhost:5001).
+2. Agent mode turned on. Crew mode turned off.
+3. The MLflow tracking server is running at [http://localhost:5001](http://localhost:5001).
 
 ## Scenario
 

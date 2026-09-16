@@ -6,9 +6,9 @@
 - Focus: Diagnose a bounded handoff and understand state mutation impact on multi-agent systems
 
 ## Prerequisites
-1. Flask app running: `python run.py`
-2. MLflow running on http://localhost:5001
-3. The demo chatbot is available at http://localhost:5000
+1. Completion of Exercise 5
+2. Crew mode turned on in the demo chatbot
+3. The MLflow tracking server is running at [http://localhost:5001](http://localhost:5001).
 
 ## Team Exercise - Handoff Corruption Diagnosis (30 minutes)
 
