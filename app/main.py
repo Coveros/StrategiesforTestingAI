@@ -57,9 +57,22 @@ EXERCISE_CATALOG = [
     for i in range(1, 10)
 ]
 
-# Initialize RAG pipeline
+# Initialize one shared RAG pipeline for Ask, Agent, and Crew modes.
 rag_pipeline = None
-agentic_pipeline = TestOpsAgent()
+_last_rag_init_error = None
+
+
+def _get_shared_rag_pipeline():
+    """Return the process-wide RAG pipeline, creating it once on demand."""
+    global rag_pipeline, _last_rag_init_error
+    if rag_pipeline is None:
+        rag_pipeline = RAGPipeline()
+        _last_rag_init_error = None
+        logger.info("Shared RAG pipeline initialized successfully")
+    return rag_pipeline
+
+
+agentic_pipeline = TestOpsAgent(rag_pipeline_provider=_get_shared_rag_pipeline)
 
 # Warm up agent/crew system on startup
 try:
@@ -71,7 +84,6 @@ except Exception as e:
     logger.warning("Agent/crew warmup error (non-critical): %s", e)
 
 _rate_limit_buckets = defaultdict(deque)
-_last_rag_init_error = None
 
 
 def is_truthy(value) -> bool:
@@ -186,11 +198,8 @@ def require_admin_token():
 
 def initialize_rag():
     """Initialize the RAG pipeline with error handling."""
-    global rag_pipeline, _last_rag_init_error
     try:
-        rag_pipeline = RAGPipeline()
-        _last_rag_init_error = None
-        logger.info("RAG pipeline initialized successfully")
+        _get_shared_rag_pipeline()
         return True
     except Exception as e:
         _last_rag_init_error = str(e)

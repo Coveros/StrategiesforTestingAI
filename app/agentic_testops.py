@@ -4,7 +4,7 @@ import re
 import time
 import importlib
 from collections import Counter
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 from typing import Any, Dict, List, Optional
 
 if TYPE_CHECKING:
@@ -24,7 +24,7 @@ class TestOpsAgent:
     - MLflow autolog span capture (chain/llm/tool spans via mlflow.langchain.autolog())
     """
 
-    def __init__(self) -> None:
+    def __init__(self, rag_pipeline_provider: Optional[Callable[[], "RAGPipeline"]] = None) -> None:
         self.session_state: Dict[str, Dict[str, Any]] = {}
         self.stats = {
             "requests": 0,
@@ -67,6 +67,7 @@ class TestOpsAgent:
         self.llm: Optional[Any] = None
 
         self.rag_pipeline: Optional["RAGPipeline"] = None
+        self._rag_pipeline_provider = rag_pipeline_provider
 
         self.tracer, self.mlflow_enabled = get_tracer(
             "strategiesfortestingai.agentic",
@@ -320,11 +321,13 @@ class TestOpsAgent:
         return base_name
 
     def _get_rag_pipeline(self) -> "RAGPipeline":
-        # Delay heavy RAG imports until first actual KB access.
-        from app.rag_pipeline import RAGPipeline
-
         if self.rag_pipeline is None:
-            self.rag_pipeline = RAGPipeline()
+            if self._rag_pipeline_provider is not None:
+                self.rag_pipeline = self._rag_pipeline_provider()
+            else:
+                # Preserve standalone TestOpsAgent compatibility outside Flask.
+                from app.rag_pipeline import RAGPipeline
+                self.rag_pipeline = RAGPipeline()
         return self.rag_pipeline
 
     def _empty_trajectory_metrics(self) -> Dict[str, Any]:
