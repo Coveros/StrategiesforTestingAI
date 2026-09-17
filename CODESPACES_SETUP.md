@@ -31,6 +31,8 @@ That's it. Ollama and the model start automatically in the background. Before
 the server is announced ready, the classroom setup runs one standard Ask flow
 and one standard Agent flow. This loads the embedding model, ChromaDB, and
 Ollama paths once so students do not pay that delay during the first exercise.
+On the free 2-core machine, single-agent requests allow up to 120 seconds and
+crew requests allow up to 60 seconds because CPU inference can be slow.
 
 ### 3. Verify Ollama is Ready (Optional)
 ```bash
