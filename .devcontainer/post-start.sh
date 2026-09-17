@@ -3,6 +3,10 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+STARTUP_MARKER="/tmp/strategiesfor-testing-ai-post-start-ran"
+date -Is > "${STARTUP_MARKER}"
+echo "Post-start hook running: ${STARTUP_MARKER}"
+
 if [ -f .env ]; then
   # Export .env values when present; don't fail startup on malformed .env lines.
   set +e

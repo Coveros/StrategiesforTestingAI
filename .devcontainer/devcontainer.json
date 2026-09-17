@@ -27,7 +27,7 @@
 	},
 
 	// Use interpreter-bound pip to avoid PATH ambiguity.
-	"postCreateCommand": "bash .devcontainer/post-create.sh",
+	"postCreateCommand": "bash .devcontainer/post-create.sh || echo 'Warning: post-create setup completed with warnings; post-start services will still run.'",
 	"postStartCommand": "bash .devcontainer/post-start.sh",
 
 	// Specify minimum host requirements for ML workloads (sentence-transformers, chromadb, etc.)
