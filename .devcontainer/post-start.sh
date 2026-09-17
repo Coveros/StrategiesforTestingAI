@@ -133,9 +133,10 @@ ensure_ollama_installed() {
 }
 
 start_ollama_if_needed() {
-  if ! pgrep -f "ollama serve" >/dev/null 2>&1; then
+  if ! curl -sf http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
     echo "Starting Ollama service..."
-    nohup ollama serve >/tmp/ollama.log 2>&1 &
+    nohup ollama serve </dev/null >/tmp/ollama.log 2>&1 &
+    echo $! > /tmp/ollama.pid
   fi
 }
 
@@ -160,7 +161,7 @@ print_startup_status() {
     mlflow_cli="yes"
   fi
 
-  if pgrep -f "mlflow server" >/dev/null 2>&1; then
+  if curl -sf http://127.0.0.1:5001/health >/dev/null 2>&1; then
     mlflow_running="yes"
   fi
 
@@ -202,12 +203,13 @@ python -c "import mlflow" >/dev/null 2>&1 || \
   echo "Warning: MLflow not available in this environment. Run: python -m pip install -r requirements.txt"
 
 if command -v mlflow >/dev/null 2>&1; then
-  if ! pgrep -f "mlflow server" >/dev/null 2>&1; then
+  if ! curl -sf http://127.0.0.1:5001/health >/dev/null 2>&1; then
     echo "Starting MLflow server on port 5001..."
     mkdir -p mlflow_data
     nohup mlflow server \
       --backend-store-uri sqlite:///mlflow_data/mlflow.db \
-      --host 0.0.0.0 --port 5001 >/tmp/mlflow.log 2>&1 &
+      --host 0.0.0.0 --port 5001 </dev/null >/tmp/mlflow.log 2>&1 &
+    echo $! > /tmp/mlflow.pid
     wait_for_mlflow || echo "Warning: MLflow server did not become ready. See /tmp/mlflow.log"
   fi
 else
