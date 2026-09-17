@@ -572,7 +572,8 @@ class RAGPipeline:
         try:
             self._last_generation_metrics = {}
             # Prepare context from retrieved documents
-            context = "\n\n".join(context_docs[:3])  # Use top 3 documents
+            max_context_chars = int(os.getenv('OLLAMA_MAX_CONTEXT_CHARS', '6000'))
+            context = "\n\n".join(context_docs[:3])[:max_context_chars]
             configured_default_temp = float(os.getenv('TEMPERATURE', '0.3'))
             effective_temperature = configured_default_temp if temperature is None else float(temperature)
 
@@ -629,12 +630,16 @@ class RAGPipeline:
                             "keep_alive": os.getenv('OLLAMA_KEEP_ALIVE', '30m'),
                             "options": {
                                 "temperature": effective_temperature,
-                                "num_predict": int(os.getenv('MAX_TOKENS', '600')),
+                                "num_predict": int(os.getenv('MAX_TOKENS', '220')),
+                                "num_ctx": int(os.getenv('OLLAMA_NUM_CTX', '4096')),
                             },
                         },
                         timeout=self.ollama_timeout_seconds,
                     )
-                    response.raise_for_status()
+                    if not response.ok:
+                        raise requests.HTTPError(
+                            f"{response.status_code} from Ollama: {response.text[:500]}"
+                        )
                     return response.json()
 
                 payload = self._provider_call_with_backoff(generate_call)
