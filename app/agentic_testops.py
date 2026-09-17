@@ -658,11 +658,12 @@ class TestOpsAgent:
                 output = "I could not produce an answer from the available context."
 
             # Emit output on the root agent span so MLflow renders it in the Output panel
-            try:
-                agent_span.set_attribute("output.value", output[:1000])
-                agent_span.set_attribute("output.mime_type", "text/plain")
-            except Exception:
-                pass
+            if agent_span is not None:
+                try:
+                    agent_span.set_attribute("output.value", output[:1000])
+                    agent_span.set_attribute("output.mime_type", "text/plain")
+                except Exception:
+                    pass
 
         query_counter = Counter((call.get("tool"), call.get("query")) for call in tool_calls)
         redundant = sum(count - 1 for count in query_counter.values() if count > 1)
@@ -1053,11 +1054,12 @@ class TestOpsAgent:
             output = "I could not produce a multi-agent answer for that request."
 
         # Emit output on the root triage span so MLflow renders it in the Output panel
-        try:
-            triage_span.set_attribute("output.value", output[:1000])
-            triage_span.set_attribute("output.mime_type", "text/plain")
-        except Exception:
-            pass
+        if triage_span is not None:
+            try:
+                triage_span.set_attribute("output.value", output[:1000])
+                triage_span.set_attribute("output.mime_type", "text/plain")
+            except Exception:
+                pass
 
         query_counter = Counter((call.get("tool"), call.get("query")) for call in tool_calls)
         redundant = sum(count - 1 for count in query_counter.values() if count > 1)
@@ -1113,9 +1115,10 @@ class TestOpsAgent:
         ) as security_span:
             if self._contains_harmful_intent(message):
                 self.stats["blocked_actions"] += 1
-                security_span.set_attribute("security.decision", "blocked")
-                security_span.set_attribute("security.reason", "harmful_intent_detected")
-                security_span.set_attribute("security.severity", "high")
+                if security_span is not None:
+                    security_span.set_attribute("security.decision", "blocked")
+                    security_span.set_attribute("security.reason", "harmful_intent_detected")
+                    security_span.set_attribute("security.severity", "high")
                 metrics = self._empty_trajectory_metrics()
                 metrics["steps"] = 1
                 return self._response_payload(
@@ -1133,10 +1136,11 @@ class TestOpsAgent:
 
             if self._is_injection_attempt(message):
                 self.stats["blocked_actions"] += 1
-                security_span.set_attribute("security.decision", "blocked")
-                security_span.set_attribute("security.reason", "prompt_injection_detected")
-                security_span.set_attribute("security.severity", "critical")
-                security_span.set_attribute("injection_markers_detected", True)
+                if security_span is not None:
+                    security_span.set_attribute("security.decision", "blocked")
+                    security_span.set_attribute("security.reason", "prompt_injection_detected")
+                    security_span.set_attribute("security.severity", "critical")
+                    security_span.set_attribute("injection_markers_detected", True)
                 metrics = self._empty_trajectory_metrics()
                 metrics["steps"] = 1
                 return self._response_payload(
@@ -1153,8 +1157,9 @@ class TestOpsAgent:
                 )
             
             # Request passed security gates
-            security_span.set_attribute("security.decision", "allowed")
-            security_span.set_attribute("security.reason", "passed_all_gates")
+            if security_span is not None:
+                security_span.set_attribute("security.decision", "allowed")
+                security_span.set_attribute("security.reason", "passed_all_gates")
 
         if "set persona pirate" in lowered:
             state["persona"] = "pirate"

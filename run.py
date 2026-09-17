@@ -107,6 +107,13 @@ def classroom_preflight():
         else:
             print("Ask mode preflight did not complete; it will retry on the first request.")
 
+        ollama_host = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434").rstrip("/")
+        try:
+            requests.get(f"{ollama_host}/api/tags", timeout=2).raise_for_status()
+        except Exception as exc:
+            print(f"Agent mode preflight deferred: Ollama is not ready ({exc}).")
+            return
+
         agentic_pipeline.process(
             prompt,
             session_id="classroom-startup-prewarm",
