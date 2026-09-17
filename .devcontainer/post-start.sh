@@ -224,7 +224,11 @@ if ensure_ollama_prerequisites && ensure_ollama_installed; then
     fi
     
     echo "Pre-warming model ${MODEL} into memory..."
-    curl -s http://localhost:11434/api/generate -d "{\"model\": \"${MODEL}\", \"keep_alive\": -1}" > /dev/null 2>&1 || true
+    KEEP_ALIVE_VALUE="${OLLAMA_KEEP_ALIVE:-24h}"
+    curl -s http://localhost:11434/api/generate \
+      -H "Content-Type: application/json" \
+      -d "{\"model\": \"${MODEL}\", \"prompt\": \"Reply with OK.\", \"stream\": false, \"keep_alive\": \"${KEEP_ALIVE_VALUE}\", \"options\": {\"num_predict\": 8}}" \
+      > /dev/null 2>&1 || echo "Warning: Ollama model prewarm failed; the app will retry on first request."
   else
     echo "Warning: Ollama service did not become ready. See /tmp/ollama.log"
   fi
