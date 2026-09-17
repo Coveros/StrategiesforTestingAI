@@ -4,7 +4,8 @@ flask-cors>=6.0.0
 
 # AI/ML APIs and models
 sentence-transformers>=5.0.0
-torch>=2.1.0
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.6.0+cpu
 langchain>=0.3.0
 langchain-classic>=0.3.0
 langgraph>=0.3.0

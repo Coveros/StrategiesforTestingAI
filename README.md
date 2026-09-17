@@ -55,6 +55,10 @@ Frontend (HTML/CSS/JS) → Flask Backend → RAG Pipeline → Ollama (Local SLM)
 - 2GB+ RAM for vector database
 - Windows PowerShell (for Windows users)
 
+The Codespaces dependency set uses the CPU-only PyTorch wheel. Ollama handles
+LLM inference separately, so CUDA packages are unnecessary for this project
+and would exceed the free-tier Codespaces disk budget.
+
 ### Installation
 
 1. **Clone and Navigate**
