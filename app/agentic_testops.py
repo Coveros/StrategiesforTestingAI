@@ -111,6 +111,7 @@ class TestOpsAgent:
                 base_url=self.ollama_host,
                 temperature=self.temperature,
                 num_predict=self.max_tokens,
+                num_ctx=int(self._safe_float(os.getenv("OLLAMA_NUM_CTX", "4096"), default=4096)),
                 # Refresh the model's TTL on every call so idle gaps don't evict it.
                 keep_alive=os.getenv('OLLAMA_KEEP_ALIVE', '30m'),
                 sync_client_kwargs={"timeout": self.request_timeout_seconds},
@@ -539,7 +540,8 @@ class TestOpsAgent:
             ):
                 result = self._kb_lookup(query, k=3)
                 docs = result.get("documents", [])
-                text = "\n\n".join(docs)
+                max_tool_context_chars = int(os.getenv("OLLAMA_AGENT_CONTEXT_CHARS", "6000"))
+                text = "\n\n".join(docs)[:max_tool_context_chars]
 
                 tool_calls.append(
                     {
