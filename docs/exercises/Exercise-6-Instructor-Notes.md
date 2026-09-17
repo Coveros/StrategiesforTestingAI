@@ -11,6 +11,25 @@ Facilitator reference: [Instructor Facilitation Rubric](Exercise-Instructor-Faci
 ## Scenario
 You are auditing a real multi-agent flow in LangChain with core roles **Triage Agent** and **RAG Specialist** (and an optional **Validator Agent** when enabled). The orchestrator routes work between specialist capabilities instead of forcing retrieval every time. Your goal is to study the hand-off graph in MLflow and diagnose how corrupted state can break retrieval.
 
+## Review Workflow: Complete the Shared Demo
+
+Use the same facilitator prompt from Exercises 4 and 5 as a short Crew-mode
+comparison:
+
+```text
+How do I detect hallucinations in RAG systems?
+```
+
+Review the three traces together:
+
+1. Ask: `rag.query` -> `rag.retrieve` -> `rag.generate`.
+2. Agent: `Single-Agent ReAct` -> `query_knowledge_base`.
+3. Crew: `Triage Agent` -> `rag_agent_tool` -> `RAG Specialist`.
+
+Compare the final answers, retrieval evidence, latency, tool calls, and handoff
+fields. Students then run their own carried-forward prompt assignment in Crew
+mode before the team performs the separate handoff-corruption control.
+
 # Exercise 6 Instructor Notes: Multi-Agent Handoff and Trajectory Analysis
 Facilitator reference: [Instructor Facilitation Rubric](Exercise-Instructor-Facilitation-Rubric.md)
 

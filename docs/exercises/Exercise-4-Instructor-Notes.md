@@ -10,6 +10,27 @@ Facilitator reference: [Instructor Facilitation Rubric](Exercise-Instructor-Faci
 ## Scenario
 This exercise focuses on **Ask mode**, the deterministic RAG pipeline. A user asks one question, the app retrieves context from the vector database, and then sends the query plus context to the LLM in one straight shot. In MLflow, students should see a clean linear trace with exactly 3 spans: **Chains -> Retriever -> LLM**.
 
+## Review Workflow: Shared Cross-Mode Demo
+
+Before teams begin, run this prompt once as the instructor demonstration:
+
+```text
+How do I detect hallucinations in RAG systems?
+```
+
+Review it in **Ask** mode and show the class:
+
+1. The answer, source names, similarity values, and timing fields in the UI.
+2. The matching MLflow trace with `rag.query`, `rag.retrieve`, and `rag.generate`.
+3. The retrieved document outputs and generated answer in the Inputs/Outputs panels.
+
+Tell teams to keep their Exercise 4 case assignments. Each student will run
+that same prompt in Agent mode for Exercise 5 and Crew mode for Exercise 6,
+then compare answer quality, tool calls, handoffs, latency, and trace shape.
+
+The demonstration prompt is not one of the assigned prompts, so it provides a
+shared example without duplicating a student's case.
+
 ## Instructor Preparation: What to Watch For
 
 ### Signals Students Should Notice

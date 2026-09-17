@@ -13,7 +13,10 @@
 ## Team Exercise - Handoff Corruption Diagnosis (30 minutes)
 
 ### Goal
-As a team, diagnose how corrupted state between agents breaks retrieval quality. Understand where handoffs introduce mutation and efficiency loss.
+As a team, continue the same case assignments from Exercises 4 and 5, now in
+Crew mode. Compare how each assigned prompt changes when a Triage Agent routes
+it to a RAG Specialist, then diagnose how corrupted state between agents breaks
+retrieval quality.
 
 ### Role Assignments (Divide these among 3-5 team members)
 - **MLflow Navigator**: Opens MLflow and filters traces
@@ -23,20 +26,18 @@ As a team, diagnose how corrupted state between agents breaks retrieval quality.
 
 ### Activities (30 minutes total)
 
-#### Activity 1: Baseline Clean Handoff (10 minutes)
+#### Activity 1: Assigned Prompt Comparison (10 minutes)
 1. In the demo chatbot, select **Agent** mode and turn **Crew Mode ON**.
-2. **Run this query:**
-   ```
-   Compare two test strategies for a GenAI support bot and recommend one.
-   ```
-3. **Capture baseline evidence:**
-   - In the UI response, record: Steps taken, tools called, final recommendation
-   - In MLflow, find this trace and click into the **Triage Agent → RAG Specialist handoff**
-   - Compare: Is the original query intact when passed to RAG Specialist?
-4. **Fill baseline row in table** (see below)
+2. Run the same prompt assigned to you in Exercises 4 and 5.
+3. Capture the UI response, steps taken, tools called, and final answer.
+4. In MLflow, inspect the **Triage Agent → RAG Specialist handoff** and
+   compare the Crew trace with your Ask and single-Agent traces for the same
+   prompt.
+5. Fill your assigned row in the table below.
 
 #### Activity 2: Corrupted Handoff Detection (15 minutes)
-1. **Run this query with crew mode ON:**
+1. After everyone has completed their assigned prompt, run this shared control
+   query with Crew mode ON:
    ```
    simulate handoff corruption for retrieval query about 2024 regression failures
    ```
@@ -50,14 +51,18 @@ As a team, diagnose how corrupted state between agents breaks retrieval quality.
    - Did the retrieved response remain relevant after the mutation?
    - Inspect `handoff.original_query`, `handoff.routed_query`, `handoff.mutated`, and `handoff.integrity_status` on the specialist span.
    - Compare `trajectory_metrics.handoffs`, `trajectory_metrics.tool_calls`, and `trajectory_metrics.poisoned_retrieval`.
-4. **Fill corrupted row in table** (see below)
+4. **Fill the corruption-control row in the table** (see below)
 
 ### Results Table
 
 | Run Type | Query Summary | Actual Steps | Handoff Query Intact? | Retrieval Success? | Root Cause |
 |---|---|---:|---|---|---|
-| Baseline | Compare test strategies | | Yes / No | Yes / No | — |
-| Corrupted | Regression failures | | Yes / No | Yes / No | [Find in MLflow] |
+| case1 | Exercise 4 case 1 prompt | | Yes / No | Yes / No | — |
+| case2 | Exercise 4 case 2 prompt | | Yes / No | Yes / No | — |
+| case3 | Exercise 4 case 3 prompt | | Yes / No | Yes / No | — |
+| case4 | Exercise 4 case 4 prompt | | Yes / No | Yes / No | — |
+| case5 | Exercise 4 case 5 prompt | | Yes / No | Yes / No | — |
+| corruption control | Regression failures | | Yes / No | Yes / No | [Find in MLflow] |
 
 ### Team Debrief (5 minutes)
 

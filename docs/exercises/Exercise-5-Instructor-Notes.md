@@ -11,6 +11,25 @@ Facilitator reference: [Instructor Facilitation Rubric](Exercise-Instructor-Faci
 ## Scenario
 In this exercise you test a real LangChain ReAct single-agent workflow in **Agent mode** with **Crew Mode OFF**. The agent has one tool, `query_knowledge_base`, which reuses the same retrieval logic as Ask mode. Your goal is to analyze agent trajectories, deliberately trigger a ReAct loop, and use MLflow to measure span repetition and token-bloat behavior.
 
+## Review Workflow: Continue the Shared Demo
+
+If you demonstrated this prompt in Exercise 4, use it only as an instructor
+control comparison:
+
+```text
+How do I detect hallucinations in RAG systems?
+```
+
+Show how the same question changes from the Ask trace to a single-agent trace:
+
+1. Compare the final answer and retrieved evidence.
+2. Compare the linear Ask spans with the `Single-Agent ReAct` and
+   `query_knowledge_base` spans.
+3. Point out tool-call count, termination status, latency, and token usage.
+
+Students should then run their assigned Exercise 4 prompt in Agent mode. The
+shared demonstration prompt is separate from their assigned cases.
+
 ## Instructor Preparation: What to Watch For
 
 ### Signals Students Should Notice

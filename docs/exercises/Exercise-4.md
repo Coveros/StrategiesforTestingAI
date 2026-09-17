@@ -22,6 +22,8 @@ compare findings and select one improvement to prioritize.
 Form a team of three to five people. Assign one case to each person. For teams
 of three or four, complete only the first three or four cases. Each person runs
 their assigned query once in **Ask** mode and analyzes its matching trace.
+Keep these case assignments for Exercises 5 and 6: the same person will run
+the same prompt in single-Agent mode and then Crew mode for comparison.
 
 | Case ID | Assigned query |
 |---|---|
