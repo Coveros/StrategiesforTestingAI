@@ -577,7 +577,10 @@ class TestOpsAgent:
             "You are a testing assistant focused on GenAI quality, safety, and reliability. "
             "For factual classroom content, your first action must be query_knowledge_base using the user's question. "
             "Do not produce Final Answer before at least one tool call. "
-            "If tool results are empty, stop after a small number of retries and explain what is missing."
+            "If tool results are empty, stop after a small number of retries and explain what is missing. "
+            "After the final tool observation, answer the user's question directly in no more than 3 concise bullet points. "
+            "Do not describe your reasoning, tool-call protocol, or missing internal steps. "
+            "Do not output JSON or stop mid-sentence."
         )
 
         if force_loop_bug:
@@ -1438,7 +1441,9 @@ class TestOpsAgent:
 
             prompt = (
                 "You are a testing assistant. Use only the provided context when possible, "
-                "and acknowledge missing evidence when context is insufficient.\n\n"
+                "and acknowledge missing evidence when context is insufficient. "
+                "Answer directly in no more than 3 concise bullet points. Do not describe "
+                "internal tool use or reasoning.\n\n"
                 f"Question: {message}\n\n"
                 f"Context:\n{context}"
             )

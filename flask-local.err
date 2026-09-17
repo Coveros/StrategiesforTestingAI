@@ -1,0 +1,24 @@
+2026/09/17 09:25:09 INFO mlflow.agent.hint: Load the `instrumenting-with-mlflow-tracing` skill at C:\Users\jpayne\Documents\Training\Notebooks for ML classes\StrategiesforTestingAI\.venv\Lib\site-packages\mlflow\assistant\skills\instrumenting-with-mlflow-tracing\SKILL.md before writing any tracing code; it ships with this MLflow install. Set MLFLOW_DISABLE_AGENT_HINT=1 to silence this.
+INFO:httpx:HTTP Request: POST http://127.0.0.1:11434/api/chat "HTTP/1.1 200 OK"
+INFO:app.agentic_testops:Agent/crew system warmup successful
+INFO:app.main:Agent/crew warmup completed
+Traceback (most recent call last):
+  File "C:\Users\jpayne\Documents\Training\Notebooks for ML classes\StrategiesforTestingAI\run.py", line 82, in preflight_ollama
+    print(f"\u2705 Ollama preflight passed: {ollama_model} is available")
+  File "C:\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2705' in position 0: character maps to <undefined>
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\jpayne\Documents\Training\Notebooks for ML classes\StrategiesforTestingAI\run.py", line 181, in <module>
+    preflight_ollama(ollama_host, ollama_model)
+  File "C:\Users\jpayne\Documents\Training\Notebooks for ML classes\StrategiesforTestingAI\run.py", line 85, in preflight_ollama
+    print("\u26a0\ufe0f Ollama preflight warning: unable to reach configured OLLAMA_HOST")
+  File "C:\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 0-1: character maps to <undefined>
+2026/09/17 09:25:13 INFO mlflow.tracing.export.async_export_queue: Flushing the async trace logging queue before program exit. This may take a while...
