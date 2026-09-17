@@ -257,6 +257,8 @@ class TestOpsAgent:
 
         trace: List[Dict[str, str]] = []
         output = ""
+        saw_tool_observation = False
+        last_ai_had_tool_calls = False
         messages = result.get("messages", []) if isinstance(result, dict) else []
 
         for msg in messages:
@@ -266,6 +268,7 @@ class TestOpsAgent:
             if msg_type == "ai":
                 output = text or output
                 tool_calls = getattr(msg, "tool_calls", None) or []
+                last_ai_had_tool_calls = bool(tool_calls)
                 for tool_call in tool_calls:
                     if isinstance(tool_call, dict):
                         tool_name = str(tool_call.get("name", "unknown"))
@@ -278,6 +281,7 @@ class TestOpsAgent:
                         "content": f"tool={tool_name} input={tool_input}",
                     })
             elif msg_type == "tool":
+                saw_tool_observation = True
                 trace.append({
                     "phase": "observation",
                     "content": text[:280],
@@ -296,6 +300,14 @@ class TestOpsAgent:
         return {
             "output": output.strip(),
             "trace": trace,
+            "finalized": bool(output.strip()) and not last_ai_had_tool_calls,
+            "pending_tool_calls": last_ai_had_tool_calls,
+            "termination_reason": (
+                "pending_tool_calls" if last_ai_had_tool_calls
+                else "final_answer" if output.strip()
+                else "empty_output"
+            ),
+            "tool_observations": int(saw_tool_observation),
         }
 
     def _span(self, name: str, attrs: Optional[Dict[str, Any]] = None):
@@ -525,6 +537,8 @@ class TestOpsAgent:
         # mlflow.langchain.autolog() (enabled in app/mlflow_tracing.py) captures
         # chain/llm/tool spans automatically; no manual callback needed here.
         callbacks: List[Any] = []
+        agent_finalized = True
+        agent_termination_reason = "final_answer"
 
         @tool
         def query_knowledge_base(query: str) -> str:
@@ -655,6 +669,10 @@ class TestOpsAgent:
                 )
                 output = str(langgraph_result.get("output", "")).strip()
                 trace.extend(langgraph_result.get("trace", []))
+                agent_finalized = bool(langgraph_result.get("finalized", False))
+                agent_termination_reason = str(
+                    langgraph_result.get("termination_reason", "unknown")
+                )
 
             if not output:
                 output = "I could not produce an answer from the available context."
@@ -682,7 +700,7 @@ class TestOpsAgent:
         if len(state["history"]) > 30:
             state["history"] = state["history"][-30:]
 
-        return self._response_payload(
+        payload = self._response_payload(
             response=output,
             trace=trace,
             tool_calls=tool_calls,
@@ -693,6 +711,9 @@ class TestOpsAgent:
             crew_mode=False,
             exercise_number=exercise_number,
         )
+        payload["agent_finalized"] = agent_finalized
+        payload["agent_termination_reason"] = agent_termination_reason
+        return payload
 
     def _run_multi_agent(
         self,
@@ -1250,7 +1271,7 @@ class TestOpsAgent:
                     force_loop_bug=force_loop_bug,
                 )
 
-            if self._should_apply_bootstrap(payload):
+            if self._should_apply_bootstrap(payload) or self._is_unfinished_agent_response(payload):
                 payload = self._apply_bootstrap_recovery(
                     payload=payload,
                     message=message,
@@ -1295,6 +1316,26 @@ class TestOpsAgent:
 
         metrics = payload.get("trajectory_metrics") or {}
         return int(metrics.get("tool_calls", 0) or 0) == 0
+
+    def _is_unfinished_agent_response(self, payload: Dict[str, Any]) -> bool:
+        """Detect ReAct narration that leaked instead of producing a final answer."""
+        if payload.get("agent_finalized") is False:
+            return True
+
+        response = str(payload.get("response", "")).lower()
+        if not response:
+            return True
+
+        leaked_markers = (
+            "you've asked me to provide",
+            "i've made a tool call",
+            "i'll make another tool call",
+            "i'll wait for a non-empty response",
+            '"name": "query_knowledge_base"',
+            '"parameters": {"query"',
+            "do not produce a final answer",
+        )
+        return any(marker in response for marker in leaked_markers)
 
     def _apply_bootstrap_recovery(
         self,

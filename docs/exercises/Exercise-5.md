@@ -52,8 +52,10 @@ For your assigned case:
    - `trajectory_metrics.degraded_mode`
    - trace duration and LLM token usage when emitted
 5. Compare the observed trajectory with the expected observation in the case
-   table. For the trajectory-hacking case, look for the expected vertical tower
-   of repeated `query_knowledge_base` calls.
+   table. Record any retries, recovery behavior, redundant calls, or incomplete
+   reasoning visible in the UI or trace. For the trajectory-hacking case, look
+   for repeated `query_knowledge_base` spans and record whether repetition
+   actually occurred.
 6. Classify the result as **Expected behavior**, **Inefficient trajectory**,
    **Safety concern**, or **No confirmed conclusion**. Add one concise row to
    the team evidence table.
@@ -63,8 +65,9 @@ For your assigned case:
 When every assigned case is complete, compare the agent traces and UI evidence.
 
 1. Identify which prompt used the most steps, tool calls, and tokens.
-2. Compare a bounded trajectory with the trajectory-hacking case. Where did
-   span repetition begin, and what evidence shows it was redundant?
+2. Compare a bounded trajectory with the trajectory-hacking case. Did span
+   repetition, recovery, or incomplete reasoning occur? What evidence shows
+   whether the behavior was redundant?
 3. Decide whether the safety-challenge case controlled tool use appropriately.
 4. Agree on one bounded CI test idea that detects span repetition or redundant
    tool calls. Use a threshold such as two repeated calls for the same
