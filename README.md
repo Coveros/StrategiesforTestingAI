@@ -93,10 +93,10 @@ and would exceed the free-tier Codespaces disk budget.
    - `AGENT_REQUEST_TIMEOUT_SECONDS=300` to avoid client-side timeouts on local CPU inference
    - `AGENT_BOOTSTRAP_ON_ZERO_TOOLS=auto` enables a transparent one-step bootstrap in student mode only
    - Set `AGENT_BOOTSTRAP_ON_ZERO_TOOLS=false` for pure-autonomy instructor demonstrations
-   - `OLLAMA_KEEP_ALIVE=30m` (default) keeps the model loaded between queries. Without it,
-     Ollama unloads the model after 5 minutes idle, and the next query pays a slow ~30-50s
-     reload. Increase this (or set `-1` for never-unload) if class discussions between
-     queries commonly exceed 30 minutes.
+    - `OLLAMA_KEEP_ALIVE=30m` (default) keeps the model loaded between queries. Without it,
+       Ollama unloads the model after 5 minutes idle, and the next query pays a slow ~30-50s
+       reload. Increase this to a duration such as `24h` if class discussions between
+       queries commonly exceed 30 minutes.
 
    Exercise Hub defaults to Student View only. Set `EXERCISE_HUB_ENABLE_INSTRUCTOR=True` in `.env` only for instructor-led sessions.
 
