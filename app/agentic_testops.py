@@ -1329,6 +1329,23 @@ class TestOpsAgent:
         if not response:
             return True
 
+        tool_calls = payload.get("tool_calls") or []
+        successful_tool_result = any(
+            isinstance(call, dict) and int(call.get("result_count", 0) or 0) > 0
+            for call in tool_calls
+        )
+        if successful_tool_result and any(
+            marker in response
+            for marker in (
+                "tool call response was empty",
+                "did not return any results",
+                "unable to find relevant information",
+                "cannot provide a final answer",
+                "missing information",
+            )
+        ):
+            return True
+
         leaked_markers = (
             "you've asked me to provide",
             "i've made a tool call",
