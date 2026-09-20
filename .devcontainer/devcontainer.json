@@ -36,7 +36,8 @@
 		"FLASK_DEBUG": "false",
 		"ENABLE_RATE_LIMITING": "true",
 		"MAX_CONCURRENT_INFERENCE_REQUESTS": "1",
-		"MLFLOW_SERVER_WORKERS": "1"
+		"MLFLOW_SERVER_WORKERS": "1",
+		"MLFLOW_SERVER_JOB_EXECUTION_MAX_WORKERS": "1"
 	},
 
 	// Use interpreter-bound pip to avoid PATH ambiguity.
