@@ -1,21 +1,31 @@
-import app.main as main
+import pytest
 
 
-def test_chat_rejects_missing_json_content_type():
+@pytest.fixture
+def main_module():
+    import app.main as main
+
+    return main
+
+
+def test_chat_rejects_missing_json_content_type(main_module):
+    main = main_module
     response = main.app.test_client().post('/api/chat', data='message=test')
 
     assert response.status_code == 415
     assert response.get_json()['status'] == 'error'
 
 
-def test_chat_rejects_empty_message():
+def test_chat_rejects_empty_message(main_module):
+    main = main_module
     response = main.app.test_client().post('/api/chat', json={'message': ' '})
 
     assert response.status_code == 400
     assert response.get_json()['error'] == 'Empty message provided'
 
 
-def test_chat_returns_429_when_inference_slot_is_busy():
+def test_chat_returns_429_when_inference_slot_is_busy(main_module):
+    main = main_module
     assert main._inference_slots.acquire(blocking=False)
     try:
         response = main.app.test_client().post('/api/chat', json={'message': 'test'})
@@ -26,7 +36,8 @@ def test_chat_returns_429_when_inference_slot_is_busy():
     assert response.get_json()['status'] == 'error'
 
 
-def test_health_returns_503_when_rag_initialization_fails(monkeypatch):
+def test_health_returns_503_when_rag_initialization_fails(main_module, monkeypatch):
+    main = main_module
     monkeypatch.setattr(main, 'rag_pipeline', None)
     monkeypatch.setattr(main, 'initialize_rag', lambda: False)
 
