@@ -13,6 +13,7 @@
 
 	// Boot-time defaults used before a local .env is created.
 	"remoteEnv": {
+		"PATH": "${containerWorkspaceFolder}/.venv/bin:${containerEnv:PATH}",
 		"OLLAMA_MODEL": "llama3.2:1b",
 		"AGENT_MODEL": "llama3.2:1b",
 		"AGENT_REQUEST_TIMEOUT_SECONDS": "300",

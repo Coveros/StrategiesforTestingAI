@@ -7,7 +7,6 @@ Entry point for running the Flask application
 import os
 import sys
 import subprocess
-import requests
 
 # Add the app directory to the Python path
 sys.path.insert(0, os.path.dirname(__file__))
@@ -20,20 +19,13 @@ def format_pip_install_cmd() -> str:
 def get_project_venv_python() -> str | None:
     """Return project venv Python path when present, otherwise None."""
     base_dir = os.path.dirname(__file__)
-    parent_dir = os.path.dirname(base_dir)
     if os.name == "nt":
         candidates = [
             os.path.join(base_dir, ".venv", "Scripts", "python.exe"),
-            os.path.join(parent_dir, ".venv", "Scripts", "python.exe"),
-            os.path.join(base_dir, "training-env", "Scripts", "python.exe"),
-            os.path.join(parent_dir, "training-env", "Scripts", "python.exe"),
         ]
     else:
         candidates = [
             os.path.join(base_dir, ".venv", "bin", "python"),
-            os.path.join(parent_dir, ".venv", "bin", "python"),
-            os.path.join(base_dir, "training-env", "bin", "python"),
-            os.path.join(parent_dir, "training-env", "bin", "python"),
         ]
 
     for candidate in candidates:
@@ -67,6 +59,8 @@ def maybe_relaunch_with_project_venv():
 
 def preflight_ollama(ollama_host: str, ollama_model: str):
     """Perform a quick connectivity check to Ollama before app startup."""
+    import requests
+
     tags_url = f"{ollama_host.rstrip('/')}/api/tags"
     try:
         response = requests.get(tags_url, timeout=8)
@@ -90,6 +84,8 @@ def preflight_ollama(ollama_host: str, ollama_model: str):
 
 def classroom_preflight():
     """Warm the Ask and single-agent paths before a classroom session starts."""
+    import requests
+
     enabled = os.getenv("CLASSROOM_PREWARM_ENABLED", "false").lower() in {
         "1", "true", "yes", "on"
     }
