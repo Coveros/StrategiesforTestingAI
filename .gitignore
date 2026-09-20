@@ -29,6 +29,7 @@ logs/
 results/
 experiment_logs/
 performance_metrics/
+artifacts/exercise2/ui_golden_run_*.json
 
 # 💾 DATABASE FILES
 # ChromaDB and other database files (large and regeneratable)

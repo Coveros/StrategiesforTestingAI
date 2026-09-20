@@ -21,7 +21,7 @@ evidence, useful topic coverage, and bounded failure behavior. Note that since c
 1. In VS Code, open the **Testing** beaker and run the existing UI test suite
 2. Use GitHub Copilot to add a new test to `tests/e2e/test_exercise2_ui.py`
 3. Rerun the test suite to ensure the new test is included and passes.
-4. It the test fails, ask GitHub Copilot to fit it
+4. It the test fails, ask GitHub Copilot to fix it
 
 You can also run the suite from the terminal in VS Code using this command:
 
