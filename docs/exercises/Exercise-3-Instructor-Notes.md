@@ -22,6 +22,13 @@ Your team added 2 new tests to the golden test suite during Exercise 2. Now audi
 2. Semantic thresholds may hide groundedness or safety problems.
 3. Students may propose metrics without clear placement in the existing framework.
 
+### Prompt-Specific Teaching Issue to Highlight
+If students do not spot the issue, guide them to the failure mode created by the prompts themselves:
+- A "good enough" answer can fail because the test is too strict about exact wording, not because the answer is actually wrong.
+- A hopeful model response can pass because of loose keyword overlap even when the answer is not grounded or is semantically weak.
+- This is the classic false-positive and false-negative lab: the prompt and metric combination can reward the wrong behavior or punish acceptable variation.
+- The teaching point is that threshold design is part of the product risk, not just a technical detail.
+
 ### Recommended Modifications to Discuss
 1. Calibrate thresholds by test category rather than one global value when justified.
 2. Add one risk-focused metric (for example safety/refusal or grounding check) with clear failure semantics.

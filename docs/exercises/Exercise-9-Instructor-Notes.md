@@ -22,6 +22,13 @@ You are the release board deciding Ship / No-Ship using baseline versus candidat
 2. Students may cherry-pick qualitative examples instead of using suite-wide evidence.
 3. Warning states (PASS_WITH_WARNINGS) may be treated as unconditional Ship decisions.
 
+### Prompt-Specific Teaching Issue to Highlight
+If students miss the issue, connect the release decision back to the prompts that create the risk:
+- The candidate drift case is intentionally configured to simulate a pirate persona, so students should see that style drift can create a pass/fail difference without a totally broken system.
+- The harmful-content and handoff-corruption checks are the safety and orchestration gates; these are not optional quality observations.
+- A release board should default to No-Ship when the gate fails or when the pass-rate drop exceeds the threshold, even if the answer seems plausible in a few examples.
+- The teaching objective is to make students connect the artifact result to a real engineering decision rather than a subjective opinion.
+
 ### Recommended Modifications to Discuss
 1. Formalize board policy: required evidence checklist plus non-negotiable FAIL rules.
 2. Add explicit rollback triggers tied to monitored runtime indicators.

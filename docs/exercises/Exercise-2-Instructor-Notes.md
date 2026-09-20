@@ -40,6 +40,13 @@ exploratory findings.
   test: the expected result is a bounded HTTP 400 response.
 - The empty-input test should not create a request or a chat message.
 
+### Prompt-Specific Teaching Issue to Highlight
+If students miss the defect, direct them to the exact behavior the prompts are designed to surface:
+- Empty-input and oversized-input prompts should reveal contract boundaries, not model quality.
+- The happy-path or grounded query should produce a useful answer plus source evidence, not just fluent text.
+- Repeatability checks should show that a paraphrased question can still preserve valid response contracts, while a brittle exact-text assertion would fail for the wrong reason.
+- The teaching issue is not a single "bad answer" but the difference between a stable product contract and a fragile test that depends on exact prose.
+
 ## Copilot coaching prompt
 
 Recommend a prompt such as:

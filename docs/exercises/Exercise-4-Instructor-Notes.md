@@ -8,7 +8,7 @@ Facilitator reference: [Instructor Facilitation Rubric](Exercise-Instructor-Faci
 4. An MLflow demo has been completed.
 
 ## Scenario
-This exercise focuses on **Ask mode**, the deterministic RAG pipeline. A user asks one question, the app retrieves context from the vector database, and then sends the query plus context to the LLM in one straight shot. In MLflow, students should see a clean linear trace with exactly 3 spans: **Chains -> Retriever -> LLM**.
+This exercise focuses on **Ask mode**, the deterministic RAG pipeline. A user asks one question, the app retrieves context from the vector database, and then sends the query plus context to the LLM in one straight shot. In MLflow, students should see a clean linear trace with the expected 3-span structure: **Chains -> Retriever -> LLM**.
 
 ## Review Workflow: Shared Cross-Mode Demo
 
@@ -34,7 +34,7 @@ shared example without duplicating a student's case.
 ## Instructor Preparation: What to Watch For
 
 ### Signals Students Should Notice
-1. Ask mode should present a stable 3-span flow (rag.query -> rag.retrieve -> rag.generate).
+1. Ask mode should present a stable 3-span flow (`rag.query` -> `rag.retrieve` -> `rag.generate`).
 2. Retrieval quality and generation quality are separate failure surfaces.
 3. Similarity values and source metadata should be used as evidence, not just answer fluency.
 
@@ -42,6 +42,13 @@ shared example without duplicating a student's case.
 1. Students may misclassify generation defects as retrieval defects without trace evidence.
 2. Low-similarity sources may still yield plausible answers that mask grounding issues.
 3. Teams may treat timing variance as correctness variance.
+
+### Prompt-Specific Teaching Issue to Highlight
+If students do not identify the issue, highlight the exact failure mode in the case prompts:
+- The assigned cases are deliberately chosen so that a fluent answer may still be weak if the source evidence is irrelevant, low-similarity, or missing.
+- Students should notice that a response can sound polished yet still fail context precision or grounding checks.
+- The key teaching issue is separating retrieval quality from generation quality: the app may answer confidently, but the trace reveals whether it used relevant context.
+- In the shared demo prompt, the issue to flag is the difference between a plausible answer and a grounded answer supported by relevant sources.
 
 ### Recommended Modifications to Discuss
 1. Add explicit retrieval acceptance checks (minimum similarity/source expectations by case).
@@ -51,54 +58,57 @@ shared example without duplicating a student's case.
 ## Student tasks
 1. Open the UI at `http://localhost:5000/?exercise=4` and stay in **Ask** mode.
 2. Open MLflow at `http://localhost:5001` and prepare to inspect traces.
-3. Run these 3 target queries in Ask mode:
-   - What are the key differences between black-box and white-box testing for GenAI?
-   - According to production best practices, what is the recommended batch size for GenAI evaluations?
-   - Explain hallucination in the context of GenAI testing.
+3. Use the five case assignments from Exercise 4, keeping the same person-to-case mapping for Exercises 5 and 6.
+   - `case1`: What are the key differences between black-box and white-box testing for GenAI?
+   - `case2`: According to production best practices, what is the recommended batch size for GenAI evaluations?
+   - `case3`: Explain hallucination in the context of GenAI testing.
+   - `case4`: What evidence should a golden UI test use instead of exact generated prose?
+   - `case5`: What should a tester do when a GenAI response has no relevant source evidence?
 4. For each query response in the UI, capture these evidence fields:
    - `response`
    - top 3 `sources[*].metadata.source`
    - top 3 `sources[*].similarity`
    - `retrieval_time`, `generation_time`, `total_time`
-5. In MLflow, capture trace evidence and confirm whether the path is the expected straight-line sequence:
-   - `Chains`
-   - `Retriever`
-   - `LLM`
-   In this codebase, these conceptual labels appear with concrete span names:
+5. In MLflow, locate the trace that matches the request and confirm its path is the expected straight-line sequence:
    - `Chains` -> `rag.query`
    - `Retriever` -> `rag.retrieve`
    - `LLM` -> `rag.generate`
-   Use this quick interpretation guide while reviewing traces:
-   - `Chains` = top-level Ask mode workflow
-   - `Retriever` = vector database lookup and ranking
-   - `LLM` = answer generation from retrieved context
-6. Record results in this table as you run each case:
+6. Inspect the Inputs/Outputs panels and record, when present:
+   - query and prompt inputs
+   - retrieved document outputs
+   - generated answer output
+   - `generation_metrics.prompt_tokens`, `generation_metrics.completion_tokens`, and `generation_metrics.total_tokens`
+   - total trace duration compared with API `total_time`
+7. Classify the result as Context Precision, Groundedness, Context Recall, or **No confirmed bug**.
+8. Assign an owning team for each defect: AI Engineer, Software Developer, or Shared.
+9. Add one concise row to the team evidence table.
+10. Write one short bug report using this template:
+   - Case ID
+   - Bug title
+   - Expected behavior
+   - Actual behavior
+   - Trace and UI/API evidence
+   - Failure type
+   - Owning team
+   - Recommended fix
 
-| Case ID | Query | UI Evidence | MLflow Evidence | Failure Type | Owner |
+## Team Evidence Table
+
+| Case ID | Analyst | UI/API evidence | MLflow trace evidence | Classification | Owner |
 |---|---|---|---|---|---|
 | case1 |  |  |  |  |  |
 | case2 |  |  |  |  |  |
 | case3 |  |  |  |  |  |
-
-7. Note whether the trace stays deterministic in structure even when answer wording varies slightly.
-8. For each case, classify the main defect as Context Precision, Groundedness, Context Recall, or **No confirmed bug**.
-9. Assign an owning team for each defect: AI Engineer (model or prompt behavior), Software Developer (application or integration behavior), or Shared.
-10. Write 3 short bug reports with one recommended fix each, using this template:
-   - Bug title
-   - Expected behavior
-   - Actual behavior
-   - Failure type
-   - Owning team
-   - Recommended fix
-11. Use the same 3 case IDs (`case1`, `case2`, `case3`) in your bug reports so your evidence is easy to audit.
+| case4 |  |  |  |  |  |
+| case5 |  |  |  |  |  |
 
 ## Contingency only (if live tracing is unavailable)
 Use precomputed evidence only when the live path is blocked (for example: local provider outage, network failure, or MLflow service unavailable):
 - `artifacts/precomputed/trace_samples/exercise4_trace_cases_20260416_190513.json`
 
 ## Team debrief questions
-1. Did every Ask mode run stay a 3-span linear trace? If not, where did it diverge?
-2. What trace evidence was most persuasive for separating retrieval issues from generation issues?
-3. Which single fix should be prioritized first?
+1. Did every assigned Ask-mode run stay a 3-span linear trace? If not, where did it diverge?
+2. Which trace evidence most clearly explained something the UI/API evidence alone could not?
+3. Which single fix should be prioritized first, and what evidence supports that decision?
 
 

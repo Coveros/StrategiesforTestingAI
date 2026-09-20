@@ -2,19 +2,16 @@
 Facilitator reference: [Instructor Facilitation Rubric](Exercise-Instructor-Facilitation-Rubric.md)
 
 ## Prerequisites
-1. Exercise 5 completed.
-2. Agent mode enabled in the UI.
-3. Crew Mode enabled in the UI.
-4. Ability to capture trace/trajectory evidence.
-5. MLflow running on http://localhost:5001.
+1. Completion of Exercise 5.
+2. Crew mode turned on in the demo chatbot.
+3. The MLflow tracking server is running at [http://localhost:5001](http://localhost:5001).
 
 ## Scenario
-You are auditing a real multi-agent flow in LangChain with core roles **Triage Agent** and **RAG Specialist** (and an optional **Validator Agent** when enabled). The orchestrator routes work between specialist capabilities instead of forcing retrieval every time. Your goal is to study the hand-off graph in MLflow and diagnose how corrupted state can break retrieval.
+This exercise continues the same case assignments from Exercises 4 and 5, but in **Crew mode**. Students compare the Ask trace, the single-agent trace, and the multi-agent handoff trace for the same prompt, then diagnose how a corrupted state or mutated handoff can break retrieval quality.
 
 ## Review Workflow: Complete the Shared Demo
 
-Use the same facilitator prompt from Exercises 4 and 5 as a short Crew-mode
-comparison:
+Use the same facilitator prompt from Exercises 4 and 5 as a short Crew-mode comparison:
 
 ```text
 How do I detect hallucinations in RAG systems?
@@ -22,114 +19,96 @@ How do I detect hallucinations in RAG systems?
 
 Review the three traces together:
 
-1. Ask: `rag.query` -> `rag.retrieve` -> `rag.generate`.
-2. Agent: `Single-Agent ReAct` -> `query_knowledge_base`.
-3. Crew: `Triage Agent` -> `rag_agent_tool` -> `RAG Specialist`.
+1. Ask: `rag.query` -> `rag.retrieve` -> `rag.generate`
+2. Agent: `Single-Agent ReAct` -> `query_knowledge_base`
+3. Crew: `Triage Agent` -> `rag_agent_tool` -> `RAG Specialist`
 
-Compare the final answers, retrieval evidence, latency, tool calls, and handoff
-fields. Students then run their own carried-forward prompt assignment in Crew
-mode before the team performs the separate handoff-corruption control.
+Compare the final answers, retrieval evidence, latency, tool calls, and handoff fields. Students then run their own carried-forward prompt assignment in Crew mode before the team performs the separate handoff-corruption control.
 
-# Exercise 6 Instructor Notes: Multi-Agent Handoff and Trajectory Analysis
-Facilitator reference: [Instructor Facilitation Rubric](Exercise-Instructor-Facilitation-Rubric.md)
+## Role Assignments
 
-## Two-Part Structure
+Divide the team across 3-5 roles:
 
-This exercise has two components:
-1. **Part 1 (30 min)**: Classroom demo using `generate_classroom_traces.py`
-2. **Part 2 (45-55 min)**: Individual student exercise on handoff corruption
+- **MLflow Navigator**: Opens MLflow and filters traces
+- **Trajectory Analyst**: Examines span sequences and tool calls
+- **Evidence Scribe**: Records findings in the results table
+- **Debugger** (optional): Proposes fixes based on findings
 
----
+## Team Exercise - Handoff Corruption Diagnosis
 
-## Part 1: Classroom Demo Preparation and Facilitation
+### Goal
+As a team, continue the same case assignments from Exercises 4 and 5, now in Crew mode. Compare how each assigned prompt changes when a Triage Agent routes it to a RAG Specialist, then diagnose how corrupted state between agents breaks retrieval quality.
 
-### What You'll Do
-1. Run `python generate_classroom_traces.py` in front of the class
-2. Walk through the resulting 12 traces in MLflow
-3. Lead discussion on multi-agent behavior across 3 scenarios
+### Activity 1: Assigned Prompt Comparison
+1. In the demo chatbot, select **Agent** mode and turn **Crew Mode ON**.
+2. Run the same prompt assigned to you in Exercises 4 and 5.
+3. Capture the UI response, steps taken, tools called, and final answer.
+4. In MLflow, inspect the **Triage Agent → RAG Specialist handoff** and compare the Crew trace with your Ask and Agent traces for the same prompt.
+5. Fill your assigned row in the table below.
 
-### Before Class
-- Ensure Flask is running: `python run.py`
-- Ensure MLflow is running: `mlflow server --backend-store-uri sqlite:///mlflow_data/mlflow.db --host 0.0.0.0 --port 5001`
-- Ensure Ollama is running and model is warm
-- Test the script once: `python generate_classroom_traces.py`
-- Make note of the output file: `classroom_traces_results.json`
+### Activity 2: Corrupted Handoff Detection
+1. After everyone has completed their assigned prompt, run this shared control query with Crew mode ON:
+   ```
+   simulate handoff corruption for retrieval query about 2024 regression failures
+   ```
+2. Capture corrupted evidence:
+   - In UI response, note whether retrieval failed or the query was modified.
+   - In MLflow, inspect the same **Triage Agent → RAG Specialist handoff**.
+   - Compare the original query with the routed query and the specialist output.
+3. Analyze side-by-side:
+   - Did the query text change between agents?
+   - Did the routed query preserve the year and other retrieval-relevant detail?
+   - Did the retrieved response remain relevant after the mutation?
+   - Inspect `handoff.original_query`, `handoff.routed_query`, `handoff.mutated`, and `handoff.integrity_status` on the specialist span.
+   - Compare `trajectory_metrics.handoffs`, `trajectory_metrics.tool_calls`, and `trajectory_metrics.poisoned_retrieval`.
+4. Fill the corruption-control row in the table below.
 
-### During Class
+## Results Table
 
-Use [MODULE_6_SCRIPT_TRACE_WALKTHROUGH.md](../MODULE_6_SCRIPT_TRACE_WALKTHROUGH.md) as your detailed reference guide for what to point out in each scenario.
+| Run Type | Query Summary | Actual Steps | Handoff Query Intact? | Retrieval Success? | Root Cause |
+|---|---|---:|---|---|---|
+| case1 | Exercise 4 case 1 prompt | | Yes / No | Yes / No | — |
+| case2 | Exercise 4 case 2 prompt | | Yes / No | Yes / No | — |
+| case3 | Exercise 4 case 3 prompt | | Yes / No | Yes / No | — |
+| case4 | Exercise 4 case 4 prompt | | Yes / No | Yes / No | — |
+| case5 | Exercise 4 case 5 prompt | | Yes / No | Yes / No | — |
+| corruption control | Regression failures | | Yes / No | Yes / No | [Find in MLflow] |
 
-1. **Announce** (2 min): "We're going to generate 12 example traces together and walk through them"
-2. **Run script** (6 min): Execute the script, let students watch progress
-3. **Open MLflow** (2 min): Show http://localhost:5001 → Traces tab
-4. **Activity 1 - Consistency** (5 min):
-   - Show traces labeled "same_prompt" (refer to walkthrough guide for key metrics)
-   - Expand two runs side-by-side
-   - Point out differences in agent routing, tool calls, retrieval phrasing
-   - Ask: "Why did the agent make different decisions for the same prompt?"
-5. **Activity 2 - Robustness** (10 min):
-   - Filter "variation" traces (refer to walkthrough for variation-specific tips)
-   - Show how wording changes agent behavior, retrieval strategy, tool selection
-   - Highlight hallucination detection (compare INPUT/OUTPUT panels)
-   - Ask: "How would you make the agent more robust to wording variations?"
-6. **Activity 3 - Diversity** (10 min):
-   - Show "different_prompt" traces (refer to walkthrough for edge case detection)
-   - Point out whether retrieval was necessary or the agent self-answered
-   - Discuss efficiency differences across question types
-   - Ask: "What guardrails would prevent failures on unusual questions?"
-7. **Debrief** (5 min):
-   - Summarize key observations from all 3 scenarios
-   - Bridge to Part 2 exercise
-   - Explain: "Next, you'll do this analysis yourselves with corruption scenarios"
+## Team Debrief
 
-### Tips for Smooth Facilitation
-- Have script output projected so students can see progress
-- Keep MLflow UI visible in another window for quick switching
-- Use this language: "Notice in the trace... What do you see in the span attributes?"
-- Pause at interesting traces to let students examine them
-- If a trace fails, acknowledge it: "This is a real failure case you'd debug in production"
+1. **What exactly was corrupted in the handoff?** (Original query vs. mutated)
+2. **What did the corrupted routing change in the retrieved response?** (Compare query detail and relevance)
+3. **If you were designing this orchestrator, what guardrail would you add?** (For example: schema validation, checksums, or explicit state contracts)
 
----
+### Prompt-Specific Teaching Issue to Highlight
+If students miss the issue, call attention to the exact trace evidence created by the prompts:
+- The assigned prompt comparison is meant to show that the answer looks reasonable even when the query or retrieval context has drifted.
+- The corruption control (`simulate handoff corruption for retrieval query about 2024 regression failures`) is designed to reveal whether the query mutates during the Triage-to-RAG handoff.
+- The teaching problem is not only a wrong answer; it is a hidden state bug where the retrieval logic is operating on altered input, which breaks grounding without always producing an obviously broken response.
+- Students should use `handoff.original_query`, `handoff.routed_query`, and `trajectory_metrics.poisoned_retrieval` as the primary bug signal.
 
-## Part 2: Individual Exercise - Handoff Corruption (Existing Content)
+## Runtime boundary
 
-### Prerequisites
+Crew mode is intentionally bounded: the default configuration allows four crew iterations and a 25-second execution budget. This exercise inspects one specialist handoff and its contract; it does not require an unbounded retry loop. If the live provider is unavailable, use `artifacts/precomputed/trace_samples/exercise6_trajectory_cases_20260416_190513.json` as a fallback, but prioritize the live trace for the current handoff fields.
 
-### Likely Issues, Defects, or Quality Challenges
-1. Students may treat shallow crew traces as failure instead of checking handoff fields.
-2. Handoff quality may degrade without obvious user-facing text changes.
-3. Over-delegation or unnecessary handoffs can increase overhead without quality gains.
+## Evidence to capture
 
-### Recommended Modifications to Discuss
-1. Enforce handoff schema checks (required fields and immutable original query reference).
-2. Add integrity assertions comparing original and routed query for high-risk cases.
-3. Add a handoff-efficiency guardrail (max handoffs or min utility per handoff).
+For both runs, record:
 
-### What to Watch For in Student Traces
-   - Compare two test strategies for a GenAI support bot and recommend one.
-   - Create a release test plan with risks, gates, and rollback criteria.
-   - Summarize noisy bug reports into top root causes and priorities.
-   - Design fairness tests for a multilingual assistant.
-   - Write a production readiness memo using retrieval, groundedness, and latency findings.
-   - simulate handoff corruption for retrieval query about 2024 regression failures.
-5. Run one non-corruption query first and capture baseline evidence from metadata.
-   - In the response's **Agent Execution** block, capture: `Trajectory` (steps/tools/handoffs/redundant), `Tools Called`, and `Trace` (if shown).
-   - Record this as your baseline row for that query.
-6. In MLflow, inspect the baseline run as an agent graph and confirm you can see the flow between **Triage Agent** and **RAG Specialist**. If Validator is enabled in your environment, include it in the observed flow.
-7. Run the handoff-corruption scenario: `simulate handoff corruption for retrieval query about 2024 regression failures`.
-8. Capture corrupted-run evidence from UI metadata and MLflow traces.
-9. Compare baseline vs corrupted run for handoff count, retrieval quality, and redundant tool calls.
-10. Record results in this table for both runs:
+- the UI response, trajectory steps, and tools called
+- the `Triage Agent` root span and the `RAG Specialist` span
+- `handoff.original_query` and `handoff.routed_query`
+- `handoff.mutated` and `handoff.integrity_status`
+- retrieved output and final response relevance
+- `trajectory_metrics.handoffs`, `trajectory_metrics.tool_calls`, and `trajectory_metrics.poisoned_retrieval`
 
-| Run Type | Query | Actual Steps | Optimal Steps | Efficiency Score | Handoff Quality Note | Evidence |
-|---|---|---:|---:|---:|---|---|
-| Baseline |  |  |  |  |  |  |
-| Corrupted |  |  |  |  |  |  |
+## Optional: Control Test
 
-11. In MLflow, click into the hand-off between **Triage Agent** and **RAG Specialist** and compare the original query with the routed query.
-12. Calculate Efficiency Score = Optimal Steps / Actual Steps.
-13. As a team, propose one fix for handoff integrity and one guardrail for loop control.
-14. As a control, run the same corruption prompt once with **Crew Mode OFF** and note that the handoff mutation should not appear in the single-agent path.
+If time permits, run the same corrupted query with **Crew Mode OFF** (single-agent).
+
+- Expected: no handoff, no corruption.
+- Observation: does it perform better or worse?
+- Insight: is corruption a handoff problem or an LLM problem?
 
 ## Team debrief questions
 1. What caused the worst inefficiency: loop, bad handoff, or over-delegation?

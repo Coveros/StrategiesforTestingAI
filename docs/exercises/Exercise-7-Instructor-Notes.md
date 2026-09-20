@@ -28,6 +28,13 @@ The goal is to compare reliability, latency, and trajectory overhead primarily a
 2. Malformed-input behavior may look acceptable superficially but hide degraded trajectories.
 3. Students may over-weight one run and under-sample variability across modes.
 
+### Prompt-Specific Teaching Issue to Highlight
+If students miss the issue, emphasize the exact prompts that surface it:
+- The same prompt compared across Ask and single-agent mode should reveal token, latency, and tool overhead even when the final content is similar.
+- The malformed prompt (`xqz@@##123###?? en espanol ??? ###`) should show whether the system stays bounded and safe instead of crashing or producing nonsense.
+- The long-input case should show whether the system remains usable under realistic stress instead of returning a plausibly formatted but unusable answer.
+- The teaching issue is that non-functional evidence often matters more than whether the answer sounds fluent.
+
 ### Recommended Modifications to Discuss
 1. Define a small fixed run-count policy per case (for example 2-3 runs) for stability.
 2. Add explicit NFR thresholds (latency, degraded_mode, redundancy) to pass/fail criteria.

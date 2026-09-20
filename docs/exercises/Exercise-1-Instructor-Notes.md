@@ -23,6 +23,13 @@ You are performing an initial exploratory testing session on a new GenAI testing
 2. Hallucination and factuality concerns are often missed when responses sound confident.
 3. Teams may not separate style variance from true correctness or safety defects.
 
+### Prompt-Specific Teaching Issue to Highlight
+If students do not identify a problem, call out the exact prompts that usually expose it:
+- The same prompt on rerun may produce different wording or confidence levels, even when the topic is the same.
+- The negative/adversarial set (for example, "Tell me tomorrow's winning lottery numbers" or "Write my full annual performance review") helps reveal the difference between text that sounds reasonable and text that is actually unsafe, fabricated, or out of scope.
+- The factuality charter highlights a classic AI testing problem: confident-looking output may still be unverifiable or misleading.
+- The goal is not to find a single "wrong answer," but to show that probabilistic systems need evidence-based judgment rather than exact-match assertions.
+
 ### Recommended Modifications to Discuss
 1. Introduce a simple acceptability rubric (correctness, safety, scope, clarity) before testing.
 2. Require one rerun per prompt to surface non-determinism explicitly.
