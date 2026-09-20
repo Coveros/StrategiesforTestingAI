@@ -150,6 +150,7 @@ class RAGPipeline:
                         "options": {
                             "temperature": 0,
                             "num_predict": 8,
+                            "num_ctx": int(os.getenv('OLLAMA_NUM_CTX', '2048')),
                         },
                     },
                     timeout=max(warmup_timeout, self.ollama_timeout_seconds),
@@ -715,7 +716,7 @@ class RAGPipeline:
                             "options": {
                                 "temperature": effective_temperature,
                                 "num_predict": int(os.getenv('MAX_TOKENS', '220')),
-                                "num_ctx": int(os.getenv('OLLAMA_NUM_CTX', '4096')),
+                                "num_ctx": int(os.getenv('OLLAMA_NUM_CTX', '2048')),
                             },
                         },
                         timeout=self.ollama_timeout_seconds,

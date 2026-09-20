@@ -112,7 +112,7 @@ class TestOpsAgent:
                 base_url=self.ollama_host,
                 temperature=self.temperature,
                 num_predict=self.max_tokens,
-                num_ctx=int(self._safe_float(os.getenv("OLLAMA_NUM_CTX", "4096"), default=4096)),
+                num_ctx=int(self._safe_float(os.getenv("OLLAMA_NUM_CTX", "2048"), default=2048)),
                 # Refresh the model's TTL on every call so idle gaps don't evict it.
                 keep_alive=os.getenv('OLLAMA_KEEP_ALIVE', '30m'),
                 sync_client_kwargs={"timeout": self.request_timeout_seconds},
