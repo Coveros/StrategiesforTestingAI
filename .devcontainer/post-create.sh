@@ -25,10 +25,25 @@ if [ -f .env ]; then
   fi
 fi
 
-"${PYTHON_BIN}" -m pip install --no-cache-dir -r requirements.txt
+REQUIREMENTS_HASH="$(sha256sum requirements.txt | awk '{print $1}')"
+REQUIREMENTS_MARKER=".venv/.requirements-${REQUIREMENTS_HASH}"
+if [ -f "${REQUIREMENTS_MARKER}" ]; then
+  echo "Python requirements already installed for the current requirements.txt."
+else
+  echo "Installing Python requirements into ${PYTHON_BIN}..."
+  "${PYTHON_BIN}" -m pip install --no-cache-dir -r requirements.txt
+  find .venv -maxdepth 1 -name '.requirements-*' -type f -delete
+  touch "${REQUIREMENTS_MARKER}"
+fi
 
-echo "Installing Playwright Chromium browser for Exercise 2 UI tests..."
-"${PYTHON_BIN}" -m playwright install --with-deps chromium
+PLAYWRIGHT_MARKER=".venv/.playwright-chromium-installed"
+if [ -f "${PLAYWRIGHT_MARKER}" ]; then
+  echo "Playwright Chromium is already installed."
+else
+  echo "Installing Playwright Chromium browser for Exercise 2 UI tests..."
+  "${PYTHON_BIN}" -m playwright install --with-deps chromium
+  touch "${PLAYWRIGHT_MARKER}"
+fi
 
 echo "Verifying pytest and Playwright are importable..."
 "${PYTHON_BIN}" -c "import pytest, playwright" >/dev/null 2>&1 || {
@@ -181,7 +196,7 @@ print_status_summary() {
   local ollama_running="no"
   local model_ready="no"
 
-  if command -v mlflow >/dev/null 2>&1; then
+  if "${PYTHON_BIN}" -c "import mlflow" >/dev/null 2>&1; then
     mlflow_cli="yes"
   fi
 
@@ -219,8 +234,12 @@ if ensure_ollama_prerequisites && ensure_ollama_installed; then
   start_ollama_if_needed
 
   if wait_for_ollama; then
-    echo "Ensuring model is present: ${MODEL}"
-    ollama pull "${MODEL}" || echo "Warning: model pull failed during post-create. You can retry with: ollama pull ${MODEL}"
+    if ollama list 2>/dev/null | awk '{print $1}' | grep -qx "${MODEL}"; then
+      echo "Ollama model already present: ${MODEL}"
+    else
+      echo "Pulling Ollama model: ${MODEL}"
+      ollama pull "${MODEL}" || echo "Warning: model pull failed during post-create. You can retry with: ollama pull ${MODEL}"
+    fi
   else
     echo "Warning: Ollama did not become ready during post-create. See /tmp/ollama.log"
   fi

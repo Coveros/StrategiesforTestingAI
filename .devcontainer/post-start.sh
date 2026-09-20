@@ -166,7 +166,7 @@ print_startup_status() {
   local ollama_running="no"
   local model_ready="no"
 
-  if command -v mlflow >/dev/null 2>&1; then
+  if "${PYTHON_BIN}" -c "import mlflow" >/dev/null 2>&1; then
     mlflow_cli="yes"
   fi
 
@@ -211,11 +211,11 @@ wait_for_mlflow() {
 "${PYTHON_BIN}" -c "import mlflow" >/dev/null 2>&1 || \
   echo "Warning: MLflow not available in this environment. Run: python -m pip install -r requirements.txt"
 
-if command -v mlflow >/dev/null 2>&1; then
+if "${PYTHON_BIN}" -c "import mlflow" >/dev/null 2>&1; then
   if ! curl -sf http://127.0.0.1:5001/health >/dev/null 2>&1; then
     echo "Starting MLflow server on port 5001..."
     mkdir -p mlflow_data
-    nohup mlflow server \
+    nohup "${PYTHON_BIN}" -m mlflow server \
       --backend-store-uri sqlite:///mlflow_data/mlflow.db \
       --host 0.0.0.0 --port 5001 </dev/null >/tmp/mlflow.log 2>&1 &
     echo $! > /tmp/mlflow.pid
