@@ -152,7 +152,7 @@ load_dotenv()
 
 # Import and run the Flask app
 try:
-    from app.main import app, initialize_rag
+    import app.main as app_main
 except ModuleNotFoundError as e:
     missing = getattr(e, "name", "unknown module")
     print("Missing required Python dependency:")
@@ -175,14 +175,24 @@ if __name__ == '__main__':
     ollama_host = os.getenv('OLLAMA_HOST', 'http://127.0.0.1:11434')
 
     preflight_ollama(ollama_host, ollama_model)
-    classroom_preflight()
 
+    rag_warmup_completed = True
     if os.getenv('RAG_WARMUP_ENABLED', 'false').lower() in {'1', 'true', 'yes', 'on'}:
         print("Preparing RAG and Ollama before accepting classroom requests...")
-        if initialize_rag():
+        rag_ready = app_main.initialize_rag()
+        rag_warmup_completed = bool(
+            app_main.rag_pipeline
+            and app_main.rag_pipeline.stats.get('warmup_completed', False)
+        )
+        if rag_ready and rag_warmup_completed:
             print("RAG and Ollama startup warmup completed.")
         else:
             print("RAG startup warmup did not complete; the app will retry on demand.")
+
+    if rag_warmup_completed:
+        app_main.warmup_agentic_pipeline()
+    else:
+        print("Agent/crew startup warmup deferred because Ollama warmup did not complete.")
 
     print("Starting GenAI Testing Tutorial Application...")
     print(f"Documents directory: {os.path.join(os.path.dirname(__file__), 'data', 'documents')}")
@@ -192,7 +202,7 @@ if __name__ == '__main__':
     print("\n" + "="*50)
     
     # Start the Flask application
-    app.run(
+    app_main.app.run(
         host='0.0.0.0',
         port=int(os.getenv('FLASK_PORT', 5000)),
         debug=os.getenv('FLASK_DEBUG', 'True').lower() == 'true'

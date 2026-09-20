@@ -234,7 +234,7 @@ if ensure_ollama_prerequisites && ensure_ollama_installed; then
       ollama pull "${MODEL}" || echo "Warning: model pull failed. Retry with: ollama pull ${MODEL}"
     fi
 
-    if [ "${OLLAMA_PREWARM_ENABLED:-false}" = "true" ] || [ "${RAG_WARMUP_ENABLED:-false}" = "true" ] || [ "${CLASSROOM_PREWARM_ENABLED:-false}" = "true" ] || [ "${AGENT_WARMUP_ON_STARTUP:-false}" = "true" ]; then
+    if [ "${OLLAMA_PREWARM_ENABLED:-false}" = "true" ] || [ "${CLASSROOM_PREWARM_ENABLED:-false}" = "true" ]; then
       echo "Pre-warming model ${MODEL} into memory..."
       KEEP_ALIVE_VALUE="${OLLAMA_KEEP_ALIVE:-30m}"
       curl -s http://localhost:11434/api/generate \
