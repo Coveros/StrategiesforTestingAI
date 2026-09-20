@@ -2,6 +2,7 @@ import os
 import logging
 import time
 import traceback
+import subprocess
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 from dotenv import load_dotenv
@@ -18,15 +19,22 @@ load_dotenv(dotenv_path=PROJECT_ROOT / '.env')
 
 logger = logging.getLogger(__name__)
 
+
 class RAGPipeline:
     """
     Simplified Retrieval-Augmented Generation pipeline using local embeddings,
     ChromaDB, and Ollama for generation.
-    
+
     This class implements a complete RAG system with some intentional issues
     for students to discover during testing exercises.
     """
-    
+
+    @staticmethod
+    def _should_run_startup_warmup() -> bool:
+        """Startup warmups are opt-in to avoid repeated cold model loads in constrained environments."""
+        enabled = os.getenv('RAG_WARMUP_ENABLED', 'false')
+        return str(enabled).strip().lower() in ('1', 'true', 'yes', 'on')
+
     def __init__(self):
         """Initialize the RAG pipeline."""
         self.embedding_model = None
@@ -49,7 +57,7 @@ class RAGPipeline:
             'average_retrieval_time': 0,
             'errors': 0,
             'mlflow_ask_tracing_enabled': self.mlflow_enabled,
-            'warmup_enabled': False,
+            'warmup_enabled': self._should_run_startup_warmup(),
             'warmup_completed': False,
             'warmup_time': 0.0,
             'warmup_error': None,
@@ -58,9 +66,14 @@ class RAGPipeline:
         self._last_provider_call_time = 0
         self._min_spacing = 0.1  # spacing between local provider calls
         self.mlflow_quality_signals_enabled = self._is_truthy_env('MLFLOW_QUALITY_SIGNALS_ENABLED', False)
-        
+
         self._initialize_components()
-        self._warm_up_runtime()
+        if self._should_run_startup_warmup():
+            self._warm_up_runtime()
+        else:
+            logger.info("Startup warmup disabled by configuration; first request will load the model on demand.")
+            self.stats['warmup_completed'] = False
+            self.stats['warmup_error'] = 'startup warmup disabled'
 
     def _is_truthy_env(self, key: str, default: bool = False) -> bool:
         """Read a boolean-like env var safely."""
@@ -367,14 +380,57 @@ class RAGPipeline:
             logger.error(f"Failed to add documents to database: {str(e)}")
             raise
     
+    def _restart_ollama_service(self) -> bool:
+        """Restart the local Ollama service if the generation worker died unexpectedly."""
+        ollama_bin = os.getenv('OLLAMA_BIN', 'ollama')
+        if not ollama_bin:
+            return False
+
+        try:
+            logger.warning("Detected Ollama worker termination. Restarting local Ollama service...")
+            subprocess.run(["pkill", "-f", "ollama serve"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.Popen(
+                [ollama_bin, "serve"],
+                stdout=open('/tmp/ollama.log', 'ab'),
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+                close_fds=True,
+            )
+            time.sleep(5)
+
+            try:
+                health = requests.get(f"{self.ollama_host}/api/tags", timeout=10)
+                if health.ok:
+                    return True
+            except Exception:
+                pass
+
+            return False
+        except Exception as exc:
+            logger.error("Failed to restart Ollama service after termination: %s", exc)
+            return False
+
+    def _is_ollama_termination_error(self, error_text: str) -> bool:
+        """Return True when the worker died mid-generation and needs recovery."""
+        if not error_text:
+            return False
+        normalized = error_text.lower()
+        markers = (
+            "llama-server process has terminated",
+            "signal: terminated",
+            "working process has terminated",
+            "500 from ollama",
+            "internal server error for url: http://127.0.0.1:11434/api/generate",
+        )
+        return any(marker in normalized for marker in markers)
+
     def _provider_call_with_backoff(self, call_func, *args, **kwargs):
         """Execute a provider call with simple spacing and backoff on transient failures."""
         # Enforce minimum spacing between calls
         elapsed = time.time() - self._last_provider_call_time
         if elapsed < self._min_spacing:
             time.sleep(self._min_spacing - elapsed)
-        
-        # Exponential backoff for transient failures
+
         max_retries = 3
         for attempt in range(max_retries):
             try:
@@ -382,6 +438,16 @@ class RAGPipeline:
                 return call_func(*args, **kwargs)
             except Exception as e:
                 error_text = str(e)
+                if self._is_ollama_termination_error(error_text):
+                    if attempt < max_retries - 1:
+                        logger.warning("Ollama worker terminated during inference; restarting service and retrying (%s/%s)", attempt + 1, max_retries)
+                        self._restart_ollama_service()
+                        time.sleep(2)
+                        self._last_provider_call_time = time.time()
+                        continue
+                    logger.error("Ollama worker termination persisted after restart attempt: %s", error_text)
+                    raise
+
                 if attempt < max_retries - 1 and any(marker in error_text for marker in ("429", "503", "504", "ConnectionError", "Read timed out")):
                     backoff_time = 2 ** (attempt + 1)  # 2s, 4s, 8s
                     logger.warning(f"Provider transient error, retry {attempt + 1}/{max_retries} after {backoff_time}s")

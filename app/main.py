@@ -74,12 +74,16 @@ def _get_shared_rag_pipeline():
 
 agentic_pipeline = TestOpsAgent(rag_pipeline_provider=_get_shared_rag_pipeline)
 
-# Warm up agent/crew system on startup
+# Warm up agent/crew system on startup only when explicitly enabled.
+# In constrained Codespaces environments, repeated preloading can kill the local Ollama worker.
 try:
-    if agentic_pipeline.warmup():
-        logger.info("Agent/crew warmup completed")
+    if is_truthy(os.getenv('AGENT_WARMUP_ON_STARTUP', 'false')):
+        if agentic_pipeline.warmup():
+            logger.info("Agent/crew warmup completed")
+        else:
+            logger.warning("Agent/crew warmup failed (non-critical)")
     else:
-        logger.warning("Agent/crew warmup failed (non-critical)")
+        logger.info("Agent/crew startup warmup is disabled by configuration")
 except Exception as e:
     logger.warning("Agent/crew warmup error (non-critical): %s", e)
 
