@@ -152,7 +152,7 @@ load_dotenv()
 
 # Import and run the Flask app
 try:
-    from app.main import app
+    from app.main import app, initialize_rag
 except ModuleNotFoundError as e:
     missing = getattr(e, "name", "unknown module")
     print("Missing required Python dependency:")
@@ -176,6 +176,13 @@ if __name__ == '__main__':
 
     preflight_ollama(ollama_host, ollama_model)
     classroom_preflight()
+
+    if os.getenv('RAG_WARMUP_ENABLED', 'false').lower() in {'1', 'true', 'yes', 'on'}:
+        print("Preparing RAG and Ollama before accepting classroom requests...")
+        if initialize_rag():
+            print("RAG and Ollama startup warmup completed.")
+        else:
+            print("RAG startup warmup did not complete; the app will retry on demand.")
 
     print("Starting GenAI Testing Tutorial Application...")
     print(f"Documents directory: {os.path.join(os.path.dirname(__file__), 'data', 'documents')}")
