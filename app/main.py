@@ -10,6 +10,7 @@ from app.rag_pipeline import RAGPipeline
 from app.agentic_testops import TestOpsAgent
 import time
 import traceback
+import threading
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from collections import defaultdict, deque
 from functools import wraps
@@ -62,6 +63,10 @@ rag_pipeline = None
 _last_rag_init_error = None
 
 
+def is_truthy(value) -> bool:
+    return str(value).strip().lower() in ('1', 'true', 'yes', 'on')
+
+
 def _get_shared_rag_pipeline():
     """Return the process-wide RAG pipeline, creating it once on demand."""
     global rag_pipeline, _last_rag_init_error
@@ -88,10 +93,11 @@ except Exception as e:
     logger.warning("Agent/crew warmup error (non-critical): %s", e)
 
 _rate_limit_buckets = defaultdict(deque)
-
-
-def is_truthy(value) -> bool:
-    return str(value).strip().lower() in ('1', 'true', 'yes', 'on')
+try:
+    _max_inference_slots = max(1, int(os.getenv('MAX_CONCURRENT_INFERENCE_REQUESTS', '1')))
+except ValueError:
+    _max_inference_slots = 1
+_inference_slots = threading.BoundedSemaphore(_max_inference_slots)
 
 
 def should_expose_diagnostics() -> bool:
@@ -202,8 +208,10 @@ def require_admin_token():
 
 def initialize_rag():
     """Initialize the RAG pipeline with error handling."""
+    global _last_rag_init_error
     try:
         _get_shared_rag_pipeline()
+        _last_rag_init_error = None
         return True
     except Exception as e:
         _last_rag_init_error = str(e)
@@ -355,36 +363,53 @@ def chat():
                     'error': 'Temperature out of range. Use a value between 0.0 and 1.0',
                     'status': 'error'
                 }), 400
+
+        if not _inference_slots.acquire(blocking=False):
+            return jsonify({
+                'error': 'The local inference worker is busy. Retry shortly.',
+                'status': 'error',
+                'retry_after_seconds': 2,
+            }), 429
         
+        inference_slot_acquired = True
         if mode == 'agentic':
             # Process with the test-ops agentic loop
             agent_timeout_seconds = resolve_agent_api_timeout_seconds(crew_mode)
 
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(
-                    agentic_pipeline.process,
-                    user_message,
-                    session_id=session_id,
-                    include_trace=include_trace,
-                    crew_mode=crew_mode,
-                    exercise_number=exercise_number,
+            executor = ThreadPoolExecutor(max_workers=1)
+            future = executor.submit(
+                agentic_pipeline.process,
+                user_message,
+                session_id=session_id,
+                include_trace=include_trace,
+                crew_mode=crew_mode,
+                exercise_number=exercise_number,
+            )
+            try:
+                response_data = future.result(timeout=agent_timeout_seconds)
+            except FutureTimeoutError:
+                logger.warning(
+                    "Agent mode request timed out after %.1fs (session=%s, crew_mode=%s)",
+                    agent_timeout_seconds,
+                    session_id,
+                    crew_mode,
                 )
-                try:
-                    response_data = future.result(timeout=agent_timeout_seconds)
-                except FutureTimeoutError:
-                    logger.warning(
-                        "Agent mode request timed out after %.1fs (session=%s, crew_mode=%s)",
-                        agent_timeout_seconds,
-                        session_id,
-                        crew_mode,
-                    )
-                    return jsonify({
-                        'error': 'Agent mode timed out before completion. Try a shorter prompt or lower iterations.',
-                        'status': 'error',
-                        'mode': mode,
-                        'session_id': session_id,
-                        'exercise_number': exercise_number,
-                    }), 504
+                future.cancel()
+                future.add_done_callback(lambda _completed: _inference_slots.release())
+                executor.shutdown(wait=False, cancel_futures=True)
+                inference_slot_acquired = False
+                return jsonify({
+                    'error': 'Agent mode timed out before completion. Try a shorter prompt or lower iterations.',
+                    'status': 'error',
+                    'mode': mode,
+                    'session_id': session_id,
+                    'exercise_number': exercise_number,
+                }), 504
+            except Exception:
+                executor.shutdown(wait=True)
+                raise
+            else:
+                executor.shutdown(wait=True)
         else:
             # Check if RAG pipeline is initialized
             if rag_pipeline is None:
@@ -396,15 +421,26 @@ def chat():
                     }
                     if should_expose_diagnostics() and _last_rag_init_error:
                         error_payload['details'] = _last_rag_init_error
-                    return jsonify(error_payload), 500
+                    _inference_slots.release()
+                    inference_slot_acquired = False
+                    return jsonify(error_payload), 503
             
             # Get response from RAG pipeline
-            response_data = rag_pipeline.query(
-                user_message,
-                temperature=requested_temperature,
-                session_id=session_id,
-                exercise_number=exercise_number,
-            )
+            try:
+                response_data = rag_pipeline.query(
+                    user_message,
+                    temperature=requested_temperature,
+                    session_id=session_id,
+                    exercise_number=exercise_number,
+                )
+            except Exception:
+                logger.error("RAG provider request failed", exc_info=True)
+                _inference_slots.release()
+                inference_slot_acquired = False
+                return jsonify({
+                    'error': 'RAG provider is unavailable. Verify Ollama and retry.',
+                    'status': 'error',
+                }), 503
         
         # Calculate response time
         response_time = time.time() - start_time
@@ -417,6 +453,8 @@ def chat():
         response_data['exercise_number'] = exercise_number
         
         logger.info(f"Query processed successfully in {response_time:.3f}s")
+        _inference_slots.release()
+        inference_slot_acquired = False
         return jsonify(response_data)
         
     except Exception as e:
@@ -424,6 +462,8 @@ def chat():
         error_ref = uuid.uuid4().hex[:8]
         logger.error(f"Error processing query [{error_ref}]: {str(e)}")
         logger.error(traceback.format_exc())
+        if 'inference_slot_acquired' in locals() and inference_slot_acquired:
+            _inference_slots.release()
         
         return jsonify({
             'error': f'Request processing failed (ref: {error_ref})',
@@ -449,7 +489,7 @@ def health_check():
                 }
                 if should_expose_diagnostics() and _last_rag_init_error:
                     error_payload['details'] = _last_rag_init_error
-                return jsonify(error_payload), 500
+                return jsonify(error_payload), 503
         
         # Get detailed health status from RAG pipeline
         health_status = rag_pipeline.health_check()
@@ -484,7 +524,7 @@ def health_check():
             'collection': False,
             'documents_loaded': False,
             'error': 'Health check failed'
-        }), 500
+        }), 503
 
 @app.route('/api/stats', methods=['GET'])
 @rate_limit('stats', max_requests=30, window_seconds=60)

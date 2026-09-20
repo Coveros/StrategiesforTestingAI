@@ -12,7 +12,11 @@ import subprocess
 
 def get_preferred_python():
     """Return venv Python when available, otherwise current interpreter."""
-    venv_python = r"c:\Users\jpayne\Documents\Training\Notebooks for ML classes\training-env\Scripts\python.exe"
+    project_root = os.path.dirname(os.path.abspath(__file__))
+    if os.name == "nt":
+        venv_python = os.path.join(project_root, ".venv", "Scripts", "python.exe")
+    else:
+        venv_python = os.path.join(project_root, ".venv", "bin", "python")
     return venv_python if os.path.exists(venv_python) else sys.executable
 
 
@@ -31,28 +35,28 @@ def pause_for_user(prompt: str = "\nPress Enter to return to menu..."):
 
 def show_menu():
     """Show main menu."""
-    print("🧪 GenAI Testing Tutorial - Quick Launcher")
+    print("GenAI Testing Tutorial - Quick Launcher")
     print("=" * 60)
     print()
-    print("1. 🧪 Run Regression Testing")
+    print("1. Run Regression Testing")
     print("   Test against gold standards with quality gates")
     print()
-    print("2. 📊 Run Evaluation Framework")
+    print("2. Run Evaluation Framework")
     print("   Metric definitions used in Exercise 3")
     print()
-    print("3. 🔍 Run Retrieval Experiment")
+    print("3. Run Retrieval Experiment")
     print("   Optional tuning support for Exercise 4")
     print()
-    print("4. 🚀 Start Flask Application")
+    print("4. Start Flask Application")
     print("   Launch the chat interface")
     print()
-    print("5. 🛡️ Run Section 7 NFR Quick-Run")
+    print("5. Run Section 7 NFR Quick-Run")
     print("   Generate Exercise 7 evidence artifacts")
     print()
-    print("6. 🤖 Run Section 9 Agentic CI Suite")
+    print("6. Run Section 9 Agentic CI Suite")
     print("   Generate Exercise 9 gate artifacts")
     print()
-    print("7. 📚 Open Documentation")
+    print("7. Open Documentation")
     print("   View comprehensive guides and documentation")
     print()
     print("0. Exit")
@@ -60,7 +64,7 @@ def show_menu():
 
 def run_regression_testing():
     """Launch regression testing."""
-    print("🧪 Launching Regression Testing...")
+    print("Launching Regression Testing...")
     python_exec = get_preferred_python()
     
     if python_exec != sys.executable:
@@ -68,36 +72,36 @@ def run_regression_testing():
         try:
             subprocess.run([python_exec, "-m", "regression_testing.regression_testing"], check=True)
         except subprocess.CalledProcessError as e:
-            print(f"❌ Error running regression tests: {e}")
+            print(f"Error running regression tests: {e}")
     else:
         try:
             subprocess.run([python_exec, "-m", "regression_testing.regression_testing"], check=True)
         except subprocess.CalledProcessError as e:
-            print(f"❌ Error running regression tests: {e}")
+            print(f"Error running regression tests: {e}")
         except FileNotFoundError:
-            print("❌ Python not found. Make sure Python is in your PATH.")
+            print("Python not found. Make sure Python is in your PATH.")
 
 def run_evaluation_framework():
     """Run evaluation framework."""
-    print("📊 Running Evaluation Framework...")
+    print("Running Evaluation Framework...")
     python_exec = get_preferred_python()
     try:
         subprocess.run([python_exec, "tests/evaluation_framework.py"], check=True)
     except subprocess.CalledProcessError as e:
-        print(f"❌ Error running evaluation framework: {e}")
+        print(f"Error running evaluation framework: {e}")
     except FileNotFoundError:
-        print("❌ Python not found. Make sure Python is in your PATH.")
+        print("Python not found. Make sure Python is in your PATH.")
 
 def run_retrieval_experiment():
     """Run optional retrieval tuning experiment used by Exercise 4."""
-    print("🔍 Running Retrieval Experiment...")
+    print("Running Retrieval Experiment...")
     python_exec = get_preferred_python()
     try:
         subprocess.run([python_exec, "experiments/retrieval_experiments.py"], check=True)
     except subprocess.CalledProcessError as e:
-        print(f"❌ Error running retrieval experiment: {e}")
+        print(f"Error running retrieval experiment: {e}")
     except FileNotFoundError:
-        print("❌ Python not found. Make sure Python is in your PATH.")
+        print("Python not found. Make sure Python is in your PATH.")
 
 def start_flask_app():
     """Start the Flask application."""
@@ -106,7 +110,7 @@ def start_flask_app():
     if python_exec != sys.executable:
         print("Using training-env virtual environment...")
 
-    print("🚀 Starting Flask Application...")
+    print("Starting Flask Application...")
     print("The chat interface will be available at: http://localhost:5000")
     print("Press Ctrl+C to stop the server.")
     try:
@@ -118,7 +122,7 @@ def start_flask_app():
         )
 
         if dependency_check.returncode != 0:
-            print("❌ Missing required Flask dependencies for this Python environment.")
+            print("Missing required Flask dependencies for this Python environment.")
             print(f"Using Python: {python_exec}")
             print("Install dependencies with:")
             print(f"  \"{python_exec}\" -m pip install -r requirements.txt")
@@ -126,48 +130,48 @@ def start_flask_app():
 
         subprocess.run([python_exec, "run.py"], check=True)
     except subprocess.CalledProcessError as e:
-        print(f"❌ Error starting Flask app: {e}")
+        print(f"Error starting Flask app: {e}")
     except KeyboardInterrupt:
-        print("\n🛑 Server stopped.")
+        print("\nServer stopped.")
     except FileNotFoundError:
-        print("❌ Python not found. Make sure Python is in your PATH.")
+        print("Python not found. Make sure Python is in your PATH.")
 
 def run_section7_quickrun():
     """Run Section 7 quick-run artifact generator."""
-    print("🛡️ Running Section 7 NFR Quick-Run...")
+    print("Running Section 7 NFR Quick-Run...")
     python_exec = get_preferred_python()
     try:
         subprocess.run([python_exec, "section7_nfr_quickrun.py"], check=True)
     except subprocess.CalledProcessError as e:
-        print(f"❌ Error running Section 7 quick-run: {e}")
+        print(f"Error running Section 7 quick-run: {e}")
     except FileNotFoundError:
-        print("❌ Python not found. Make sure Python is in your PATH.")
+        print("Python not found. Make sure Python is in your PATH.")
 
 def run_section9_suite():
     """Run Section 9 agentic CI suite artifact generator."""
-    print("🤖 Running Section 9 Agentic CI Suite...")
+    print("Running Section 9 Agentic CI Suite...")
     python_exec = get_preferred_python()
     try:
         subprocess.run([python_exec, "section9_agentic_test_suite.py"], check=True)
     except subprocess.CalledProcessError as e:
-        print(f"❌ Error running Section 9 suite: {e}")
+        print(f"Error running Section 9 suite: {e}")
     except FileNotFoundError:
-        print("❌ Python not found. Make sure Python is in your PATH.")
+        print("Python not found. Make sure Python is in your PATH.")
 
 def open_documentation():
     """Show documentation options."""
-    print("📚 Available Documentation:")
+    print("Available Documentation:")
     print()
     print("Main documentation files:")
-    print("• README.md - Main project overview (this directory)")
-    print("• docs/exercises/Exercise-1.md ... Exercise-9.md - Student lab guides")
-    print("• docs/exercises/Exercise-1-Instructor-Notes.md ... Exercise-9-Instructor-Notes.md")
-    print("• docs/Section-Bridge-RAG-to-Agentic.md - Section transition deck text")
-    print("• docs/appsec-demo/ - AppSec demo runbook, baseline, and speaker notes")
+    print("- README.md - Main project overview (this directory)")
+    print("- docs/exercises/Exercise-1.md ... Exercise-9.md - Student lab guides")
+    print("- docs/exercises/Exercise-1-Instructor-Notes.md ... Exercise-9-Instructor-Notes.md")
+    print("- docs/Section-Bridge-RAG-to-Agentic.md - Section transition deck text")
+    print("- docs/appsec-demo/ - AppSec demo runbook, baseline, and speaker notes")
     print()
     print("Online documentation:")
-    print("• Open any .md file in a text editor or markdown viewer")
-    print("• Use VS Code or similar for best viewing experience")
+    print("- Open any .md file in a text editor or markdown viewer")
+    print("- Use VS Code or similar for best viewing experience")
     
     # Try to open main README
     doc_choice = (safe_input("Open main README.md? (y/n): ") or "n").strip().lower()
@@ -178,7 +182,7 @@ def open_documentation():
             elif os.name == 'posix':  # macOS and Linux
                 subprocess.run(["open", "README.md"], check=True)
         except Exception as e:
-            print(f"❌ Could not open README.md automatically: {e}")
+            print(f"Could not open README.md automatically: {e}")
             print("Please open README.md in your preferred text editor.")
 
 def main():
@@ -189,12 +193,12 @@ def main():
         try:
             raw_choice = safe_input("Select option (0-7): ")
             if raw_choice is None:
-                print("\n👋 Input stream closed. Exiting launcher.")
+                print("\nInput stream closed. Exiting launcher.")
                 break
             choice = raw_choice.strip()
             
             if choice == "0":
-                print("👋 Happy testing! Remember to explore all the testing approaches!")
+                print("Happy testing! Remember to explore all the testing approaches!")
                 break
             elif choice == "1":
                 run_regression_testing()
@@ -211,17 +215,17 @@ def main():
             elif choice == "7":
                 open_documentation()
             else:
-                print("❌ Invalid choice. Please select 0-7.")
+                print("Invalid choice. Please select 0-7.")
             
             if choice != "0" and choice != "6":  # Don't pause after Flask app
                 pause_for_user("\nPress Enter to return to menu...")
                 print("\n" + "="*80)
                 
         except KeyboardInterrupt:
-            print("\n\n👋 Launcher interrupted. Goodbye!")
+            print("\n\nLauncher interrupted. Goodbye!")
             break
         except Exception as e:
-            print(f"\n❌ Error: {str(e)}")
+            print(f"\nError: {str(e)}")
             pause_for_user("Press Enter to continue...")
 
 if __name__ == "__main__":
@@ -229,7 +233,7 @@ if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
     
-    print("🔧 GenAI Testing Tutorial Quick Launcher")
+    print("GenAI Testing Tutorial Quick Launcher")
     print("Working directory:", os.getcwd())
     print()
     

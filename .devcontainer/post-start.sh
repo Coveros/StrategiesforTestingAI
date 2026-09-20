@@ -3,6 +3,11 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+PYTHON_BIN="python"
+if [ -x .venv/bin/python ]; then
+  PYTHON_BIN=".venv/bin/python"
+fi
+
 STARTUP_MARKER="/tmp/strategiesfor-testing-ai-post-start-ran"
 date -Is > "${STARTUP_MARKER}"
 echo "Post-start hook running: ${STARTUP_MARKER}"
@@ -203,7 +208,7 @@ wait_for_mlflow() {
   return 1
 }
 
-python -c "import mlflow" >/dev/null 2>&1 || \
+"${PYTHON_BIN}" -c "import mlflow" >/dev/null 2>&1 || \
   echo "Warning: MLflow not available in this environment. Run: python -m pip install -r requirements.txt"
 
 if command -v mlflow >/dev/null 2>&1; then

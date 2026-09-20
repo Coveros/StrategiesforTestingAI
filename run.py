@@ -57,7 +57,7 @@ def maybe_relaunch_with_project_venv():
     if os.path.abspath(venv_python) == current_python:
         return
 
-    print("🔁 Switching to project virtual environment interpreter...")
+    print("Switching to project virtual environment interpreter...")
     env = os.environ.copy()
     env["TESTING_AI_SKIP_VENV_REDIRECT"] = "1"
     cmd = [venv_python, os.path.abspath(__file__), *sys.argv[1:]]
@@ -75,14 +75,14 @@ def preflight_ollama(ollama_host: str, ollama_model: str):
         model_names = {m.get("name") for m in models if isinstance(m, dict)}
 
         if ollama_model not in model_names:
-            print("⚠️ Ollama is reachable, but configured model was not found:")
+            print("Ollama is reachable, but configured model was not found:")
             print(f"   - Configured model: {ollama_model}")
             print("   - Next step: run `ollama pull " + ollama_model + "`")
         else:
-            print(f"✅ Ollama preflight passed: {ollama_model} is available")
+            print(f"Ollama preflight passed: {ollama_model} is available")
 
     except Exception as exc:
-        print("⚠️ Ollama preflight warning: unable to reach configured OLLAMA_HOST")
+        print("Ollama preflight warning: unable to reach configured OLLAMA_HOST")
         print(f"   - Host: {ollama_host}")
         print(f"   - Details: {exc}")
         print("   - Next step: ensure Ollama is running and OLLAMA_HOST is correct")
@@ -135,7 +135,7 @@ try:
     from dotenv import load_dotenv
 except ModuleNotFoundError as e:
     missing = getattr(e, "name", "unknown module")
-    print("❌ Missing required Python dependency:")
+    print("Missing required Python dependency:")
     print(f"   - {missing}")
     print("\nInstall project dependencies with your current interpreter:")
     print(f"   {format_pip_install_cmd()}")
@@ -159,7 +159,7 @@ try:
     from app.main import app
 except ModuleNotFoundError as e:
     missing = getattr(e, "name", "unknown module")
-    print("❌ Missing required Python dependency:")
+    print("Missing required Python dependency:")
     print(f"   - {missing}")
     print("\nInstall project dependencies with your current interpreter:")
     print(f"   {format_pip_install_cmd()}")
@@ -181,11 +181,11 @@ if __name__ == '__main__':
     preflight_ollama(ollama_host, ollama_model)
     classroom_preflight()
 
-    print("🚀 Starting GenAI Testing Tutorial Application...")
-    print(f"📚 Documents directory: {os.path.join(os.path.dirname(__file__), 'data', 'documents')}")
-    print(f"🔧 Environment: {os.getenv('FLASK_ENV', 'development')}")
-    print(f"🧠 LLM Provider: Ollama ({ollama_model}) @ {ollama_host}")
-    print(f"🌐 Server will start on: http://localhost:{os.getenv('FLASK_PORT', 5000)}")
+    print("Starting GenAI Testing Tutorial Application...")
+    print(f"Documents directory: {os.path.join(os.path.dirname(__file__), 'data', 'documents')}")
+    print(f"Environment: {os.getenv('FLASK_ENV', 'development')}")
+    print(f"LLM Provider: Ollama ({ollama_model}) @ {ollama_host}")
+    print(f"Server will start on: http://localhost:{os.getenv('FLASK_PORT', 5000)}")
     print("\n" + "="*50)
     
     # Start the Flask application

@@ -8,7 +8,8 @@ Personal GitHub accounts can run these exercises on the **free 2-core machine**.
 - **But it works reliably** without timeouts or crashes
 - **No upgrade needed** — boot and go
 
-If you want faster responses, you can optionally upgrade to 4-core mid-session (instructions below).
+This guide intentionally stays on the free-machine profile: 2 CPUs, 4 GB RAM,
+and 32 GB storage. Do not change the machine size for this demo.
 
 ## Quick Start Steps
 
@@ -19,7 +20,7 @@ If you want faster responses, you can optionally upgrade to 4-core mid-session (
 - VS Code will open automatically
 
 ### 2. Start the Flask App
-Once VS Code is open, open a terminal and run:
+Once VS Code is open, confirm the workspace interpreter is `.venv` and run:
 
 ```bash
 python run.py
@@ -27,17 +28,15 @@ python run.py
 
 Then visit **http://localhost:5000** to access the exercises.
 
-That's it. Ollama and the model start automatically in the background. Before
-the server is announced ready, the classroom setup runs one standard Ask flow
-and one standard Agent flow. This loads the embedding model, ChromaDB, and
-Ollama paths once so students do not pay that delay during the first exercise.
-On the free 2-core machine, single-agent requests allow up to 120 seconds and
-crew requests allow up to 60 seconds because CPU inference can be slow.
+Ollama and the model start automatically in the background. Startup warmup is
+disabled to avoid loading the embedding model and Ollama twice on the 2-core
+machine. The first real request may take 30-60 seconds while CPU inference
+loads; later requests should be faster.
 
 ### 3. Verify Ollama is Ready (Optional)
 ```bash
 ollama list        # should show llama3.2:1b
-grep -c ^processor /proc/cpuinfo  # shows 2 (or 4 if you upgraded)
+  grep -c ^processor /proc/cpuinfo  # should show 2
 ```
 
 ## Performance Notes
@@ -47,12 +46,9 @@ grep -c ^processor /proc/cpuinfo  # shows 2 (or 4 if you upgraded)
 - Subsequent requests: ~20-30 seconds each
 - This is normal for CPU inference
 
-**If responses are too slow:**
-- Go to https://github.com/codespaces
-- Click ⋯ next to your Codespace → **"Change machine type"** → select **4-core**
-- Close VS Code, then open https://github.com/codespaces and click ⋯ → **"Open in Browser"**
-- Wait ~2 minutes for restart
-- Responses will be ~10x faster
+If responses are slow, wait for the first model load to finish and avoid sending
+parallel requests. The application serializes local inference to protect the
+4 GB memory limit.
 
 ## Troubleshooting
 
@@ -61,12 +57,8 @@ grep -c ^processor /proc/cpuinfo  # shows 2 (or 4 if you upgraded)
 **Fix**: Wait 30-60 seconds and try again. Inference on 2-core is slow. If it persists, check `/tmp/ollama.log`
 
 ### Responses are very slow (30+ seconds)
-**Expected on 2-core.** This is normal for CPU inference. If unacceptable, upgrade to 4-core:
-1. Go to https://github.com/codespaces
-2. Click ⋯ → **"Change machine type"** → **4-core**
-3. Close browser tab
-4. Open https://github.com/codespaces → ⋯ → **"Open in Browser"**
-5. Wait ~2 minutes for restart
+**Expected on 2-core.** This is normal for CPU inference. Avoid parallel requests
+and allow the first request to finish loading the model.
 
 ### Ollama model won't download
 **Cause**: Network or disk space
@@ -76,13 +68,12 @@ grep -c ^processor /proc/cpuinfo  # shows 2 (or 4 if you upgraded)
 
 - **2-core Codespace**: Free for personal accounts (within monthly core-hour limits)
   - For a 3-day × 4-hour course: ~24 core-hours, well within the 120 free core-hours/month
-- **4-core Codespace (optional upgrade)**: Billable (~$0.36/hour)
-  - Only upgrade if you need faster responses
-  - Only active while you're using it — auto-stops after 240 minutes idle
+- The demo targets the free 2-core, 4 GB, 32 GB Codespace profile.
 
 ## Questions?
 
 If you hit issues:
 1. Check /tmp/ollama.log in the terminal
-2. Verify you're on a 4-core machine: `grep -c ^processor /proc/cpuinfo`
+2. Verify you're on a 2-core machine: `grep -c ^processor /proc/cpuinfo`
 3. Try restarting the post-start: `bash .devcontainer/post-start.sh`
+4. MLflow tracing is optional; the chat app remains usable when port 5001 is unavailable.

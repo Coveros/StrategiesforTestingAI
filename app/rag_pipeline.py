@@ -182,6 +182,7 @@ class RAGPipeline:
             # Create persistent database
             db_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'chroma_db')
             os.makedirs(db_path, exist_ok=True)
+            self._cleanup_chroma_backups(os.path.dirname(db_path))
 
             try:
                 self.vector_db = chromadb.PersistentClient(
@@ -270,6 +271,23 @@ class RAGPipeline:
         except Exception as e:
             logger.error(f"Failed to initialize vector database: {str(e)}")
             raise
+
+    @staticmethod
+    def _cleanup_chroma_backups(data_dir: str, keep: int = 2) -> None:
+        """Keep recent automatic Chroma recovery backups within the disk budget."""
+        backup_paths = sorted(
+            Path(data_dir).glob('chroma_db_backup_*'),
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        )
+        for backup_path in backup_paths[keep:]:
+            try:
+                import shutil
+
+                shutil.rmtree(backup_path)
+                logger.info("Removed old Chroma backup: %s", backup_path)
+            except OSError as exc:
+                logger.warning("Could not remove old Chroma backup %s: %s", backup_path, exc)
     
     def _load_documents(self):
         """Load and process documents into the vector database."""

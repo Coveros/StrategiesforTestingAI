@@ -3,6 +3,14 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+PYTHON_BIN="python"
+if [ ! -x .venv/bin/python ]; then
+  python -m venv .venv
+fi
+if [ -x .venv/bin/python ]; then
+  PYTHON_BIN=".venv/bin/python"
+fi
+
 if [ -f .env ]; then
   # Export .env values when present; don't fail setup on malformed .env lines.
   set +e
@@ -17,18 +25,18 @@ if [ -f .env ]; then
   fi
 fi
 
-python -m pip install --no-cache-dir -r requirements.txt
+"${PYTHON_BIN}" -m pip install --no-cache-dir -r requirements.txt
 
 echo "Installing Playwright Chromium browser for Exercise 2 UI tests..."
-python -m playwright install --with-deps chromium
+"${PYTHON_BIN}" -m playwright install --with-deps chromium
 
 echo "Verifying pytest and Playwright are importable..."
-python -c "import pytest, playwright" >/dev/null 2>&1 || {
+"${PYTHON_BIN}" -c "import pytest, playwright" >/dev/null 2>&1 || {
   echo "Warning: pytest/playwright import check failed. Retry with: python -m pip install -r requirements.txt"
 }
 
 echo "Verifying MLflow installation..."
-python -c "import mlflow" >/dev/null 2>&1 || {
+"${PYTHON_BIN}" -c "import mlflow" >/dev/null 2>&1 || {
   echo "Warning: MLflow import check failed. Retry with: python -m pip install -r requirements.txt"
 }
 
