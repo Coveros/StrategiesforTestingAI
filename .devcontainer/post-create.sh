@@ -40,8 +40,31 @@ PLAYWRIGHT_MARKER=".venv/.playwright-chromium-installed"
 if [ -f "${PLAYWRIGHT_MARKER}" ]; then
   echo "Playwright Chromium is already installed."
 else
+  install_playwright_linux_deps() {
+    local apt_source_args=(
+      -o Dir::Etc::sourcelist=/etc/apt/sources.list.d/debian.sources
+      -o Dir::Etc::sourceparts=-
+    )
+    local packages=(
+      libasound2 libatk-bridge2.0-0 libatk1.0-0 libcups2 libdbus-1-3
+      libdrm2 libgbm1 libglib2.0-0 libnspr4 libnss3 libpango-1.0-0
+      libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxdamage1 libxext6
+      libxfixes3 libxrandr2 libxshmfence1 libxkbcommon0 libgtk-3-0
+      fonts-liberation ca-certificates
+    )
+
+    if command -v sudo >/dev/null 2>&1; then
+      sudo apt-get update "${apt_source_args[@]}"
+      sudo apt-get install -y "${apt_source_args[@]}" "${packages[@]}"
+    else
+      apt-get update "${apt_source_args[@]}"
+      apt-get install -y "${apt_source_args[@]}" "${packages[@]}"
+    fi
+  }
+
   echo "Installing Playwright Chromium browser for Exercise 2 UI tests..."
-  "${PYTHON_BIN}" -m playwright install --with-deps chromium
+  install_playwright_linux_deps
+  "${PYTHON_BIN}" -m playwright install chromium
   touch "${PLAYWRIGHT_MARKER}"
 fi
 

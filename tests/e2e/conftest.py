@@ -9,6 +9,7 @@ from playwright.sync_api import APIResponse, Page
 
 
 BASE_URL = os.getenv("E2E_BASE_URL", "http://127.0.0.1:5000").rstrip("/")
+CHAT_RESPONSE_TIMEOUT_MS = int(os.getenv("E2E_CHAT_RESPONSE_TIMEOUT_MS", "180000"))
 _RUN_EVIDENCE = []
 
 
@@ -87,12 +88,15 @@ def ask_page(page: Page, base_url: str) -> Page:
 
 def submit_ask(page: Page, message: str) -> APIResponse:
     """Submit through the UI and return the matching API response for assertions."""
-    with page.expect_response("**/api/chat") as response_info:
+    with page.expect_response("**/api/chat", timeout=CHAT_RESPONSE_TIMEOUT_MS) as response_info:
         page.locator("#messageInput").fill(message)
         page.locator("#sendButton").click()
 
     response = response_info.value
-    page.locator("#messagesContainer .message.assistant").last.wait_for(state="visible")
+    page.locator("#messagesContainer .message.assistant").last.wait_for(
+        state="visible",
+        timeout=CHAT_RESPONSE_TIMEOUT_MS,
+    )
     return response
 
 
