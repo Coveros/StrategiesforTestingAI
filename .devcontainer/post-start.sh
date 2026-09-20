@@ -217,7 +217,8 @@ if "${PYTHON_BIN}" -c "import mlflow" >/dev/null 2>&1; then
     mkdir -p mlflow_data
     nohup "${PYTHON_BIN}" -m mlflow server \
       --backend-store-uri sqlite:///mlflow_data/mlflow.db \
-      --host 0.0.0.0 --port 5001 </dev/null >/tmp/mlflow.log 2>&1 &
+      --host 0.0.0.0 --port 5001 \
+      --workers "${MLFLOW_SERVER_WORKERS:-1}" </dev/null >/tmp/mlflow.log 2>&1 &
     echo $! > /tmp/mlflow.pid
     wait_for_mlflow || echo "Warning: MLflow server did not become ready. See /tmp/mlflow.log"
   fi
